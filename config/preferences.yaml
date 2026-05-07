@@ -1,0 +1,82 @@
+scoring:
+  source_weight: 0.18
+  keyword_weight: 0.42
+  recency_weight: 0.22
+  feedback_weight: 0.13
+  egg_price_weight: 0.05
+categories:
+  business:
+    boost_keywords:
+      - 経営
+      - 戦略
+      - 新規事業
+      - 市場
+      - 資本
+      - 価格戦略
+      - business
+      - strategy
+      - market
+    downrank_keywords:
+      - 株価
+      - 為替
+  food:
+    boost_keywords:
+      - スイーツ
+      - カフェ
+      - 外食
+      - 商品開発
+      - 新商品
+      - 限定
+      - dessert
+      - restaurant
+      - bakery
+    downrank_keywords:
+      - クーポン
+      - 値引き
+  ai_dev:
+    boost_keywords:
+      - AI
+      - LLM
+      - agent
+      - developer
+      - Python
+      - API
+      - model
+      - research
+      - inference
+    downrank_keywords:
+      - 噂
+      - 炎上
+  egg:
+    boost_keywords:
+      - 卵
+      - たまご
+      - 玉子
+      - ゆで卵
+      - 温泉卵
+      - 煮卵
+      - 加工
+      - 商品開発
+      - 技術
+      - 惣菜
+      - egg
+      - boiled egg
+      - product development
+      - processing
+    downrank_keywords:
+      - 価格
+      - 相場
+      - 卵価
+preferred_sources:
+  business:
+    - "ITmedia ビジネス"
+    - "Harvard Business Review"
+  food:
+    - "グルメ Watch"
+    - "えん食べ"
+  ai_dev:
+    - "OpenAI Blog"
+    - "Google AI Blog"
+  egg:
+    - "食品産業新聞社"
+    - "日本食糧新聞"

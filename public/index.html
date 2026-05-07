@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal-Newsroom</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Personal-Newsroom</p>
+      <h1>今日読むべき40本</h1>
+    </div>
+    <p class="updated">更新: <time id="generatedAt"></time></p>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="カテゴリ"></nav>
+  <main id="app" class="article-list"></main>
+
+  <template id="articleTemplate">
+    <article class="card">
+      <div class="card-top">
+        <span class="source"></span>
+        <span class="score"></span>
+      </div>
+      <h2><a class="title" target="_blank" rel="noopener noreferrer"></a></h2>
+      <p class="category"></p>
+      <ul class="summary"></ul>
+      <p class="impact"></p>
+      <p class="egg-insight"></p>
+      <div class="actions">
+        <button class="feedback like" type="button" data-value="like">いいね</button>
+        <button class="feedback bad" type="button" data-value="bad">バッド</button>
+      </div>
+    </article>
+  </template>
+
+  <script id="newsData" type="application/json">{"generated_at":"","categories":{"business":"経営・ビジネス","food":"スイーツ・飲食","ai_dev":"AI・開発","egg":"卵"},"articles":[]}</script>
+  <script src="./app.js"></script>
+</body>
+</html>

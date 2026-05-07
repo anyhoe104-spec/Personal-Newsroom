@@ -1,0 +1,66 @@
+# Personal-Newsroom
+
+自分専用のスマホ向けニュースMVPです。4カテゴリのRSSを取得し、要約、スコアリング、カテゴリ別10件表示、いいね / バッドのフィードバックUIを提供します。
+
+## カテゴリ
+
+- 経営・ビジネス
+- スイーツ・飲食
+- AI・開発
+- 卵（加工品・ゆで卵・温泉卵・煮卵・商品開発・技術・トレンド）
+
+## セットアップ
+
+```bash
+python -m pip install -r requirements.txt
+python scripts/fetch_rss.py
+python scripts/score_articles.py
+python scripts/build_site.py
+```
+
+生成後、`public/index.html` をブラウザで開くと確認できます。
+
+## AI要約
+
+APIキーなしでも動きます。その場合は記事タイトルとRSS概要から仮要約を生成します。
+
+AI要約を使う場合のみ、どちらかを環境変数に設定してください。
+
+```bash
+export OPENAI_API_KEY="..."
+# または
+export ANTHROPIC_API_KEY="..."
+```
+
+任意で `OPENAI_MODEL` または `ANTHROPIC_MODEL` も指定できます。
+
+## フィードバック
+
+ブラウザ上のいいね / バッドは、まず `localStorage` に保存されます。次回スコアに反映したい場合は、同じ形式の内容を `data/feedback.json` に反映してから以下を実行します。
+
+```bash
+python scripts/update_preferences.py
+python scripts/score_articles.py
+python scripts/build_site.py
+```
+
+学習はカテゴリ内だけで行います。いいねは類似キーワード・同一ソースを上げ、バッドは下げます。
+
+## GitHub Pages
+
+Pages の公開元を GitHub Actions に設定してください。`daily_news.yml` が毎日 `public/` を生成し、Pages artifact としてアップロードします。
+
+## ファイル構成
+
+- `config/sources.yaml`: RSSソース
+- `config/preferences.yaml`: スコアリング設定とカテゴリ別キーワード
+- `config/prompts.yaml`: AI要約用プロンプト
+- `scripts/fetch_rss.py`: RSS取得と要約
+- `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
+- `scripts/build_site.py`: 静的HTML生成
+- `scripts/update_preferences.py`: `feedback.json` から嗜好設定を更新
+- `public/index.html`: GitHub Pages用HTML
+- `public/style.css`: スマホ優先CSS
+- `public/app.js`: タブ表示とフィードバックUI
+- `data/articles.json`: 記事データ
+- `data/feedback.json`: 次回スコア反映用フィードバック

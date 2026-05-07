@@ -1,0 +1,47 @@
+categories:
+  business:
+    label: "経営・ビジネス"
+    sources:
+      - name: "NHK 経済"
+        url: "https://www3.nhk.or.jp/rss/news/cat5.xml"
+      - name: "ITmedia ビジネス"
+        url: "https://rss.itmedia.co.jp/rss/2.0/business.xml"
+      - name: "Harvard Business Review"
+        url: "https://hbr.org/feed"
+  food:
+    label: "スイーツ・飲食"
+    sources:
+      - name: "グルメ Watch"
+        url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/gmw/feed.rdf"
+      - name: "えん食べ"
+        url: "https://entabe.jp/rss"
+      - name: "Food Business News"
+        url: "https://www.foodbusinessnews.net/rss"
+  ai_dev:
+    label: "AI・開発"
+    sources:
+      - name: "OpenAI Blog"
+        url: "https://openai.com/news/rss.xml"
+      - name: "Google AI Blog"
+        url: "https://blog.google/technology/ai/rss/"
+      - name: "Hacker News"
+        url: "https://hnrss.org/frontpage"
+  egg:
+    label: "卵"
+    domestic_ratio: 0.8
+    sources:
+      - name: "食品産業新聞社"
+        url: "https://www.ssnp.co.jp/feed/"
+        region: "jp"
+      - name: "日本食糧新聞"
+        url: "https://news.nissyoku.co.jp/feed"
+        region: "jp"
+      - name: "農林水産省 新着情報"
+        url: "https://www.maff.go.jp/j/pr/rss.xml"
+        region: "jp"
+      - name: "Food Business News"
+        url: "https://www.foodbusinessnews.net/rss"
+        region: "global"
+      - name: "Food Navigator"
+        url: "https://www.foodnavigator.com/Info/Latest-News/RSS"
+        region: "global"
