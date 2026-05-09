@@ -17,7 +17,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "articles.json"
 SOURCES_PATH = ROOT / "config" / "sources.yaml"
-PROMPTS_PATH = ROOT / "config" / "prompts.yaml"
 socket.setdefaulttimeout(20)
 
 
@@ -59,8 +58,8 @@ def fallback_summary(title: str, description: str, category_label: str) -> tuple
         clipped,
         "今後の事業・開発・購買判断のヒントとして確認します。",
     ]
-    impact = "自分の情報収集テーマに近い論点なら深掘り候補です。"
-    egg_insight = "加工技術・商品企画・売場展開のどこに応用できるかを見る価値があります。"
+    impact = "自分の情報収集テーマに近い論点を深掘りする候補です。"
+    egg_insight = "加工技術、商品企画、売場展開のどこに応用できるかを見る価値があります。"
     return lines, impact, egg_insight
 
 
@@ -114,12 +113,17 @@ def summarize_with_ai(title: str, description: str, category_key: str, category_
         while len(summary) < 3:
             summary.append("追加確認したいニュースです。")
         return summary, str(parsed.get("impact", ""))[:140], str(parsed.get("egg_insight", ""))[:140]
-    except Exception:
+    except Exception as exc:
+        print(f"[ai] summary fallback: {exc}")
         return fallback_summary(title, description, category_label)
 
 
 def fetch_feed(source: dict, category_key: str, category_label: str) -> list[dict]:
     feed = feedparser.parse(source["url"])
+    if getattr(feed, "bozo", False):
+        reason = getattr(feed, "bozo_exception", "unknown parse error")
+        print(f"[rss] {category_key} / {source['name']}: parse warning: {reason}")
+
     articles = []
     for entry in feed.entries[:30]:
         title = clean_text(entry.get("title", ""))
@@ -150,10 +154,10 @@ def fetch_feed(source: dict, category_key: str, category_label: str) -> list[dic
 
 def sample_articles(category_key: str, category_label: str, count: int = 10) -> list[dict]:
     examples = {
-        "business": "新規事業と市場変化を読むための経営ニュース",
-        "food": "スイーツ・外食の商品開発と店舗トレンド",
+        "business": "新規事業と市場変化を読むための経済ニュース",
+        "food": "スイーツ・外食・商品開発と店舗トレンド",
         "ai_dev": "AIモデル、開発ツール、API活用のアップデート",
-        "egg": "卵加工品・ゆで卵・温泉卵の商品開発と技術トレンド",
+        "egg": "卵加工品、ゆで卵、温泉卵の商品開発と技術トレンド",
     }
     now = datetime.now(timezone.utc).isoformat()
     articles = []
@@ -189,11 +193,17 @@ def main() -> None:
         category_articles: list[dict] = []
         for source in category.get("sources", []):
             try:
-                category_articles.extend(fetch_feed(source, category_key, category["label"]))
-            except Exception:
+                source_articles = fetch_feed(source, category_key, category["label"])
+                print(f"[rss] {category_key} / {source['name']}: fetched {len(source_articles)} articles")
+                category_articles.extend(source_articles)
+            except Exception as exc:
+                source_name = source.get("name", source.get("url", "unknown"))
+                print(f"[rss] {category_key} / {source_name}: failed: {exc}")
                 continue
         if len(category_articles) < 10:
-            category_articles.extend(sample_articles(category_key, category["label"], 10 - len(category_articles)))
+            missing = 10 - len(category_articles)
+            print(f"[fallback] {category_key} / {category['label']}: adding {missing} sample articles")
+            category_articles.extend(sample_articles(category_key, category["label"], missing))
         for article in category_articles:
             if article["id"] in seen:
                 continue

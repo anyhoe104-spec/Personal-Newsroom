@@ -1,6 +1,6 @@
 categories:
   business:
-    label: "経営・ビジネス"
+    label: "経済・ビジネス"
     sources:
       - name: "NHK 経済"
         url: "https://www3.nhk.or.jp/rss/news/cat5.xml"
@@ -11,6 +11,10 @@ categories:
   food:
     label: "スイーツ・飲食"
     sources:
+      - name: "食品産業新聞社"
+        url: "https://www.ssnp.co.jp/feed/"
+      - name: "日本食糧新聞"
+        url: "https://news.nissyoku.co.jp/feed"
       - name: "グルメ Watch"
         url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/gmw/feed.rdf"
       - name: "えん食べ"
