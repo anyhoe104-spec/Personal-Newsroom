@@ -119,7 +119,13 @@ def summarize_with_ai(title: str, description: str, category_key: str, category_
 
 
 def fetch_feed(source: dict, category_key: str, category_label: str) -> list[dict]:
-    feed = feedparser.parse(source["url"])
+    response = requests.get(
+        source["url"],
+        headers={"User-Agent": "Personal-Newsroom/1.0 (+https://github.com/anyhoe104-spec/Personal-Newsroom)"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    feed = feedparser.parse(response.content)
     if getattr(feed, "bozo", False):
         reason = getattr(feed, "bozo_exception", "unknown parse error")
         print(f"[rss] {category_key} / {source['name']}: parse warning: {reason}")
@@ -205,9 +211,10 @@ def main() -> None:
             print(f"[fallback] {category_key} / {category['label']}: adding {missing} sample articles")
             category_articles.extend(sample_articles(category_key, category["label"], missing))
         for article in category_articles:
-            if article["id"] in seen:
+            seen_key = f"{article['category']}:{article['id']}"
+            if seen_key in seen:
                 continue
-            seen.add(article["id"])
+            seen.add(seen_key)
             all_articles.append(article)
 
     DATA_PATH.parent.mkdir(parents=True, exist_ok=True)

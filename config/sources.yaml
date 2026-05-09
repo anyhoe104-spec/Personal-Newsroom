@@ -10,17 +10,12 @@ categories:
         url: "https://hbr.org/feed"
   food:
     label: "スイーツ・飲食"
+    focus: "外食、スイーツ、新商品、限定メニュー、流行トレンド"
     sources:
-      - name: "食品産業新聞社"
-        url: "https://www.ssnp.co.jp/feed/"
-      - name: "日本食糧新聞"
-        url: "https://news.nissyoku.co.jp/feed"
       - name: "グルメ Watch"
-        url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/gmw/feed.rdf"
+        url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/grw/feed.rdf"
       - name: "えん食べ"
-        url: "https://entabe.jp/rss"
-      - name: "Food Business News"
-        url: "https://www.foodbusinessnews.net/rss"
+        url: "https://entabe.jp/news/feed.rss"
   ai_dev:
     label: "AI・開発"
     sources:
@@ -32,6 +27,7 @@ categories:
         url: "https://hnrss.org/frontpage"
   egg:
     label: "卵"
+    focus: "卵加工品、商品開発、製造技術、業務用途、食品産業動向"
     domestic_ratio: 0.8
     sources:
       - name: "食品産業新聞社"
