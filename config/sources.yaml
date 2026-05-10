@@ -1,47 +1,92 @@
+# source_type:
+#   rss: 通常RSS
+#   google_alert: GoogleアラートRSS（通常RSSとして取得）
+#   api_stub: 将来API取得を実装するための予約枠
 categories:
   business:
-    label: "経営・ビジネス"
+    label: "経済・ビジネス"
     sources:
       - name: "NHK 経済"
+        source_type: "rss"
         url: "https://www3.nhk.or.jp/rss/news/cat5.xml"
       - name: "ITmedia ビジネス"
+        source_type: "rss"
         url: "https://rss.itmedia.co.jp/rss/2.0/business.xml"
       - name: "Harvard Business Review"
+        source_type: "rss"
         url: "https://hbr.org/feed"
   food:
     label: "スイーツ・飲食"
+    focus: "外食、スイーツ、新商品、限定メニュー、流行トレンド"
     sources:
       - name: "グルメ Watch"
-        url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/gmw/feed.rdf"
+        source_type: "rss"
+        url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/grw/feed.rdf"
       - name: "えん食べ"
-        url: "https://entabe.jp/rss"
-      - name: "Food Business News"
-        url: "https://www.foodbusinessnews.net/rss"
+        source_type: "rss"
+        url: "https://entabe.jp/news/feed.rss"
   ai_dev:
     label: "AI・開発"
     sources:
       - name: "OpenAI Blog"
+        source_type: "rss"
         url: "https://openai.com/news/rss.xml"
       - name: "Google AI Blog"
+        source_type: "rss"
         url: "https://blog.google/technology/ai/rss/"
       - name: "Hacker News"
+        source_type: "rss"
         url: "https://hnrss.org/frontpage"
+      # GoogleアラートRSSを追加する場合の例:
+      # - name: "Google Alert: AI agents"
+      #   source_type: "google_alert"
+      #   url: "https://www.google.com/alerts/feeds/xxxxxxxx/yyyyyyyy"
+      # 将来API取得を追加する場合の予約例:
+      # - name: "Example API"
+      #   source_type: "api_stub"
+      #   url: "https://api.example.com/news"
   egg:
     label: "卵"
+    focus: "卵加工品、商品開発、製造技術、業務用途、食品産業動向"
     domestic_ratio: 0.8
     sources:
       - name: "食品産業新聞社"
+        source_type: "rss"
         url: "https://www.ssnp.co.jp/feed/"
         region: "jp"
       - name: "日本食糧新聞"
+        source_type: "rss"
         url: "https://news.nissyoku.co.jp/feed"
         region: "jp"
       - name: "農林水産省 新着情報"
+        source_type: "rss"
         url: "https://www.maff.go.jp/j/pr/rss.xml"
         region: "jp"
       - name: "Food Business News"
+        source_type: "rss"
         url: "https://www.foodbusinessnews.net/rss"
         region: "global"
       - name: "Food Navigator"
+        source_type: "rss"
         url: "https://www.foodnavigator.com/Info/Latest-News/RSS"
         region: "global"
+sources:
+  - name: "Google Alert: スイーツ 新商品"
+    type: "google_alert"
+    url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
+    category: "food"
+
+  - name: "Google Alert: 外食 トレンド"
+    type: "google_alert"
+    url: "https://www.google.com/alerts/feeds/14991717492503514582/6074943813560512715"
+    category: "food"
+
+  - name: "Google Alert: 卵 加工品"
+    type: "google_alert"
+    url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
+    category: "egg"
+
+  - name: "Google Alert: 生成AI 開発"
+    type: "google_alert"
+    url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
+    category: "ai_dev"

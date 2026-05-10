@@ -8,16 +8,16 @@ import socket
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from typing import Any
 
-import feedparser
 import requests
 import yaml
+from collectors import COLLECTORS
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "articles.json"
 SOURCES_PATH = ROOT / "config" / "sources.yaml"
-PROMPTS_PATH = ROOT / "config" / "prompts.yaml"
 socket.setdefaulttimeout(20)
 
 
@@ -59,22 +59,71 @@ def fallback_summary(title: str, description: str, category_label: str) -> tuple
         clipped,
         "今後の事業・開発・購買判断のヒントとして確認します。",
     ]
-    impact = "自分の情報収集テーマに近い論点なら深掘り候補です。"
-    egg_insight = "加工技術・商品企画・売場展開のどこに応用できるかを見る価値があります。"
+    impact = "自分の情報収集テーマに近い論点を深掘りする候補です。"
+    egg_insight = "加工技術、商品企画、売場展開のどこに応用できるかを見る価値があります。"
     return lines, impact, egg_insight
 
 
-def summarize_with_ai(title: str, description: str, category_key: str, category_label: str) -> tuple[list[str], str, str]:
+def fallback_ai_dev_title(title: str) -> str:
+    lowered = title.lower()
+    keyword_titles = [
+        (("voice", "audio"), "音声AIモデルとAPI活用のアップデート"),
+        (("agent", "agents"), "AIエージェント活用の新しい動き"),
+        (("codex",), "Codexと開発支援ワークフローのアップデート"),
+        (("model", "gpt", "llm"), "AIモデルとLLM活用のアップデート"),
+        (("privacy", "trusted", "cyber"), "AIの安全性・プライバシー関連アップデート"),
+        (("api",), "AI API活用のアップデート"),
+        (("developer", "language", "go", "python"), "開発者向けツールと実装トピック"),
+    ]
+    for keywords, label in keyword_titles:
+        if any(keyword in lowered for keyword in keywords):
+            return label
+    return "AI・開発ニュースの注目アップデート"
+
+
+def fallback_ai_dev_localize(title: str, description: str) -> tuple[str, list[str], str]:
+    base = clean_text(description) or title
+    clipped = base[:100] + ("..." if len(base) > 100 else "")
+    translated_title = fallback_ai_dev_title(title)
+    summary = [
+        "AI・開発領域の新しい動きとして確認したい記事です。",
+        f"原文タイトル: {title}",
+        f"要点候補: {clipped}",
+    ]
+    impact = "モデル、開発ツール、API活用の判断材料として後で深掘りできます。"
+    return translated_title, summary, impact
+
+
+def parse_ai_json(content: str) -> dict[str, Any]:
+    cleaned = content.strip().strip("`").removeprefix("json").strip()
+    return json.loads(cleaned)
+
+
+def ai_translate_and_summarize(
+    title: str,
+    description: str,
+    category_key: str,
+    category_label: str,
+) -> tuple[str, list[str], str, str]:
     openai_key = os.getenv("OPENAI_API_KEY")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if category_key == "ai_dev" and not openai_key and not anthropic_key:
+        translated_title, summary, impact = fallback_ai_dev_localize(title, description)
+        return translated_title, summary, impact, ""
     if not openai_key and not anthropic_key:
-        return fallback_summary(title, description, category_label)
+        summary, impact, egg_insight = fallback_summary(title, description, category_label)
+        return title, summary, impact, egg_insight
 
     prompt = (
         "日本語で返答してください。JSONのみを返してください。"
-        "形式: {\"summary\":[\"...\",\"...\",\"...\"],\"impact\":\"...\",\"egg_insight\":\"...\"}\n"
-        f"カテゴリ: {category_label}\nタイトル: {title}\n本文: {description[:1500]}\n"
+        "形式: {\"translated_title\":\"...\",\"summary\":[\"...\",\"...\",\"...\"],"
+        "\"impact\":\"...\",\"egg_insight\":\"...\"}\n"
+        f"カテゴリ: {category_label}\n原文タイトル: {title}\n本文: {description[:1500]}\n"
     )
+    if category_key == "ai_dev":
+        prompt += "英語タイトルの場合は自然な日本語タイトルへ翻訳してください。"
+    else:
+        prompt += "translated_title は原文タイトルと同じで構いません。"
     if category_key != "egg":
         prompt += "egg_insight は空文字にしてください。"
 
@@ -102,71 +151,105 @@ def summarize_with_ai(title: str, description: str, category_key: str, category_
                 },
                 json={
                     "model": os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-latest"),
-                    "max_tokens": 500,
+                    "max_tokens": 700,
                     "messages": [{"role": "user", "content": prompt}],
                 },
                 timeout=25,
             )
             response.raise_for_status()
             content = response.json()["content"][0]["text"]
-        parsed = json.loads(content.strip().strip("`").removeprefix("json").strip())
-        summary = [str(x)[:120] for x in parsed.get("summary", [])[:3]]
+        parsed = parse_ai_json(content)
+        translated_title = str(parsed.get("translated_title") or title)[:160]
+        summary = [str(x)[:140] for x in parsed.get("summary", [])[:3]]
         while len(summary) < 3:
             summary.append("追加確認したいニュースです。")
-        return summary, str(parsed.get("impact", ""))[:140], str(parsed.get("egg_insight", ""))[:140]
-    except Exception:
-        return fallback_summary(title, description, category_label)
+        impact = str(parsed.get("impact", ""))[:160]
+        egg_insight = str(parsed.get("egg_insight", ""))[:160]
+        return translated_title, summary, impact, egg_insight
+    except Exception as exc:
+        print(f"[ai] summary fallback: {exc}")
+        if category_key == "ai_dev":
+            translated_title, summary, impact = fallback_ai_dev_localize(title, description)
+            return translated_title, summary, impact, ""
+        summary, impact, egg_insight = fallback_summary(title, description, category_label)
+        return title, summary, impact, egg_insight
 
 
-def fetch_feed(source: dict, category_key: str, category_label: str) -> list[dict]:
-    feed = feedparser.parse(source["url"])
+def normalize_entry(entry: dict, source: dict, category_key: str, category_label: str) -> dict | None:
+    original_title = clean_text(entry.get("title", ""))
+    url = entry.get("link", "")
+    if not original_title or not url:
+        return None
+    description = clean_text(entry.get("summary", "") or entry.get("description", ""))
+    translated_title, summary, impact, egg_insight = ai_translate_and_summarize(
+        original_title,
+        description,
+        category_key,
+        category_label,
+    )
+    source_type = source.get("source_type", "rss")
+    return {
+        "id": article_id(url, original_title),
+        "title": translated_title,
+        "original_title": original_title,
+        "translated_title": translated_title,
+        "url": url,
+        "source": source["name"],
+        "source_type": source_type,
+        "source_region": source.get("region", "jp"),
+        "category": category_key,
+        "category_label": category_label,
+        "published_at": parse_date(entry),
+        "raw_summary": description,
+        "summary": summary,
+        "impact": impact,
+        "egg_insight": egg_insight if category_key == "egg" else "",
+        "score": 0,
+    }
+
+
+def fetch_source(source: dict, category_key: str, category_label: str) -> list[dict]:
+    source_type = source.get("source_type", "rss")
+    collector = COLLECTORS.get(source_type)
+    if collector is None:
+        print(f"[source] {category_key} / {source['name']}: unsupported source_type={source_type}")
+        return []
+    entries = collector(source)
     articles = []
-    for entry in feed.entries[:30]:
-        title = clean_text(entry.get("title", ""))
-        url = entry.get("link", "")
-        if not title or not url:
-            continue
-        description = clean_text(entry.get("summary", "") or entry.get("description", ""))
-        summary, impact, egg_insight = summarize_with_ai(title, description, category_key, category_label)
-        articles.append(
-            {
-                "id": article_id(url, title),
-                "title": title,
-                "url": url,
-                "source": source["name"],
-                "source_region": source.get("region", "jp"),
-                "category": category_key,
-                "category_label": category_label,
-                "published_at": parse_date(entry),
-                "raw_summary": description,
-                "summary": summary,
-                "impact": impact,
-                "egg_insight": egg_insight if category_key == "egg" else "",
-                "score": 0,
-            }
-        )
+    for entry in entries:
+        article = normalize_entry(entry, source, category_key, category_label)
+        if article:
+            articles.append(article)
     return articles
 
 
 def sample_articles(category_key: str, category_label: str, count: int = 10) -> list[dict]:
     examples = {
-        "business": "新規事業と市場変化を読むための経営ニュース",
-        "food": "スイーツ・外食の商品開発と店舗トレンド",
+        "business": "新規事業と市場変化を読むための経済ニュース",
+        "food": "スイーツ・外食・新商品と店舗トレンド",
         "ai_dev": "AIモデル、開発ツール、API活用のアップデート",
-        "egg": "卵加工品・ゆで卵・温泉卵の商品開発と技術トレンド",
+        "egg": "卵加工品、ゆで卵、温泉卵の商品開発と技術トレンド",
     }
     now = datetime.now(timezone.utc).isoformat()
     articles = []
     for i in range(1, count + 1):
-        title = f"{category_label} サンプル記事 {i}: {examples[category_key]}"
+        original_title = f"{category_label} サンプル記事 {i}: {examples[category_key]}"
         url = f"https://example.com/personal-newsroom/{category_key}/{i}"
-        summary, impact, egg_insight = fallback_summary(title, examples[category_key], category_label)
+        if category_key == "ai_dev":
+            translated_title, summary, impact = fallback_ai_dev_localize(original_title, examples[category_key])
+            egg_insight = ""
+        else:
+            translated_title = original_title
+            summary, impact, egg_insight = fallback_summary(original_title, examples[category_key], category_label)
         articles.append(
             {
-                "id": article_id(url, title),
-                "title": title,
+                "id": article_id(url, original_title),
+                "title": translated_title,
+                "original_title": original_title,
+                "translated_title": translated_title,
                 "url": url,
                 "source": "Fallback Sample",
+                "source_type": "fallback",
                 "source_region": "jp",
                 "category": category_key,
                 "category_label": category_label,
@@ -189,15 +272,23 @@ def main() -> None:
         category_articles: list[dict] = []
         for source in category.get("sources", []):
             try:
-                category_articles.extend(fetch_feed(source, category_key, category["label"]))
-            except Exception:
+                source_articles = fetch_source(source, category_key, category["label"])
+                source_type = source.get("source_type", "rss")
+                print(f"[{source_type}] {category_key} / {source['name']}: fetched {len(source_articles)} articles")
+                category_articles.extend(source_articles)
+            except Exception as exc:
+                source_name = source.get("name", source.get("url", "unknown"))
+                print(f"[source] {category_key} / {source_name}: failed: {exc}")
                 continue
         if len(category_articles) < 10:
-            category_articles.extend(sample_articles(category_key, category["label"], 10 - len(category_articles)))
+            missing = 10 - len(category_articles)
+            print(f"[fallback] {category_key} / {category['label']}: adding {missing} sample articles")
+            category_articles.extend(sample_articles(category_key, category["label"], missing))
         for article in category_articles:
-            if article["id"] in seen:
+            seen_key = f"{article['category']}:{article['id']}"
+            if seen_key in seen:
                 continue
-            seen.add(article["id"])
+            seen.add(seen_key)
             all_articles.append(article)
 
     DATA_PATH.parent.mkdir(parents=True, exist_ok=True)

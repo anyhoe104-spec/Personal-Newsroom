@@ -7,7 +7,7 @@ scoring:
 categories:
   business:
     boost_keywords:
-      - 経営
+      - 経済
       - 戦略
       - 新規事業
       - 市場
@@ -24,15 +24,22 @@ categories:
       - スイーツ
       - カフェ
       - 外食
-      - 商品開発
       - 新商品
       - 限定
+      - 期間限定
+      - コンビニ
+      - レストラン
+      - メニュー
+      - トレンド
       - dessert
       - restaurant
       - bakery
     downrank_keywords:
-      - クーポン
-      - 値引き
+      - 卵加工
+      - 食品工場
+      - 原料価格
+      - 相場
+      - 業務用
   ai_dev:
     boost_keywords:
       - AI
@@ -45,25 +52,33 @@ categories:
       - research
       - inference
     downrank_keywords:
-      - 噂
       - 炎上
+      - 噂
   egg:
     boost_keywords:
       - 卵
       - たまご
-      - 玉子
+      - 鶏卵
       - ゆで卵
       - 温泉卵
       - 煮卵
-      - 加工
+      - 卵加工
+      - 加工技術
       - 商品開発
-      - 技術
-      - 惣菜
+      - 業務用
+      - 食品工場
+      - 製造
+      - 品質
       - egg
       - boiled egg
       - product development
       - processing
     downrank_keywords:
+      - カフェ
+      - スイーツ
+      - 期間限定
+      - クーポン
+      - 値引き
       - 価格
       - 相場
       - 卵価
@@ -80,3 +95,4 @@ preferred_sources:
   egg:
     - "食品産業新聞社"
     - "日本食糧新聞"
+    - "農林水産省 新着情報"

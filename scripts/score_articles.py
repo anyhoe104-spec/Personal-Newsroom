@@ -44,7 +44,7 @@ def recency_score(published_at: str) -> float:
 def feedback_score(article: dict, feedback_items: list[dict]) -> float:
     if not feedback_items:
         return 0.0
-    article_tokens = tokenize(f"{article['title']} {article.get('raw_summary', '')}")
+    article_tokens = tokenize(" ".join((article.get("title", ""), article.get("original_title", ""), article.get("raw_summary", ""))))
     score = 0.0
     for item in feedback_items:
         direction = 1 if item.get("value") == "like" else -1
@@ -59,7 +59,7 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
     category = article["category"]
     category_prefs = prefs["categories"].get(category, {})
     weights = prefs["scoring"]
-    text = f"{article['title']} {article.get('raw_summary', '')}".lower()
+    text = " ".join((article.get("title", ""), article.get("original_title", ""), article.get("raw_summary", ""))).lower()
 
     boost_keywords = category_prefs.get("boost_keywords", [])
     downrank_keywords = category_prefs.get("downrank_keywords", [])
@@ -73,7 +73,7 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
     learned = (feedback_score(article, feedback.get(category, [])) + 1) / 2
 
     egg_price_penalty = 0.0
-    if category == "egg" and any(kw in text for kw in ("価格", "相場", "卵価", "price")):
+    if category == "egg" and any(kw in text for kw in ("關難ｽ｡隴ｬ・ｼ", "騾ｶ・ｸ陜｣・ｴ", "陷奇ｽｵ關難ｽ｡", "price")):
         egg_price_penalty = weights.get("egg_price_weight", 0.05)
 
     score = (
@@ -111,9 +111,10 @@ def enforce_category_limits(articles: list[dict], per_category: int = 10) -> lis
     unique = []
     seen = set()
     for article in selected:
-        if article["id"] in seen:
+        seen_key = f"{article['category']}:{article['id']}"
+        if seen_key in seen:
             continue
-        seen.add(article["id"])
+        seen.add(seen_key)
         unique.append(article)
     return unique
 
