@@ -53,6 +53,27 @@ python scripts/build_site.py
 
 学習はカテゴリ内だけで行います。いいねは類似キーワードと同一ソースを上げ、バッドは下げます。
 
+## GoogleアラートRSSの追加方法
+
+Googleアラートで作成したアラートは、配信先をRSSにするとフィードURLを取得できます。取得したURLを `config/sources.yaml` の対象カテゴリに追加してください。
+
+```yaml
+categories:
+  ai_dev:
+    sources:
+      - name: "Google Alert: AI agents"
+        source_type: "google_alert"
+        url: "https://www.google.com/alerts/feeds/xxxxxxxx/yyyyyyyy"
+```
+
+`source_type` は以下を想定しています。
+
+- `rss`: 通常のRSSフィードです。既存RSS取得と同じ動作です。
+- `google_alert`: GoogleアラートRSSです。通常RSSとして取得し、記事には `source_type: google_alert` を保存します。
+- `api_stub`: 将来API取得を追加するための予約枠です。現時点では記事を追加せず、既存処理を止めません。
+
+記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・開発カテゴリでは、APIキーがある場合はOpenAIまたはAnthropicで日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
+
 ## GitHub Pages
 
 Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml` が毎日 `public/` を生成し、Pages artifactとしてアップロードします。
@@ -66,6 +87,7 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
 - `scripts/build_site.py`: 静的HTML生成
 - `scripts/update_preferences.py`: `feedback.json` から好み設定を更新
+- `scripts/collectors/`: RSS、GoogleアラートRSS、将来API取得の入口
 - `public/index.html`: GitHub Pages用HTML
 - `public/style.css`: スマホ優先CSS
 - `public/app.js`: タブ表示とフィードバックUI
