@@ -86,32 +86,17 @@ def fallback_summary(title: str, description: str, category_label: str) -> tuple
 
 
 def fallback_ai_dev_title(title: str) -> str:
-    lowered = title.lower()
-    keyword_titles = [
-        (("voice", "audio"), "音声AIモデルとAPI活用のアップデート"),
-        (("agent", "agents"), "AIエージェント活用の新しい動き"),
-        (("codex",), "Codexと開発支援ワークフローのアップデート"),
-        (("model", "gpt", "llm"), "AIモデルとLLM活用のアップデート"),
-        (("privacy", "trusted", "cyber"), "AIの安全性・プライバシー関連アップデート"),
-        (("api",), "AI API活用のアップデート"),
-        (("developer", "language", "go", "python"), "開発者向けツールと実装トピック"),
-    ]
-    for keywords, label in keyword_titles:
-        if any(keyword in lowered for keyword in keywords):
-            return label
-    return "AI・開発ニュースの注目アップデート"
+    return f"翻訳未取得: {title[:120]}"
 
 
 def fallback_ai_dev_localize(title: str, description: str) -> tuple[str, list[str], str]:
-    base = clean_text(description) or title
-    clipped = base[:100] + ("..." if len(base) > 100 else "")
     translated_title = fallback_ai_dev_title(title)
     summary = [
-        "AI・開発領域の新しい動きとして確認したい記事です。",
-        f"原文タイトル: {title}",
-        f"要点候補: {clipped}",
+        "翻訳未取得のため、原文情報をもとに仮表示しています。",
+        "Claude翻訳に成功すると、ここに日本語の要約3点が表示されます。",
+        "詳細は記事リンク先の原文を確認してください。",
     ]
-    impact = "モデル、開発ツール、API活用の判断材料として後で深掘りできます。"
+    impact = "翻訳未取得です。APIキー、モデル名、Anthropic APIの応答状況を確認してください。"
     return translated_title, summary, impact
 
 
@@ -273,6 +258,7 @@ def sample_articles(category_key: str, category_label: str, count: int = 10) -> 
                 "id": article_id(url, original_title),
                 "title": translated_title,
                 "original_title": original_title,
+                "display_title": translated_title,
                 "translated_title": translated_title,
                 "translated_summary": summary if category_key == "ai_dev" else [],
                 "url": url,
@@ -303,6 +289,44 @@ def is_english_article(title: str, description: str) -> bool:
     return len(re.findall(r"[A-Za-z]{3,}", text)) >= 3
 
 
+def is_generic_ai_dev_title(title: str) -> bool:
+    generic_titles = (
+        "音声AIモデルとAPI活用のアップデート",
+        "AIエージェント活用の新しい動き",
+        "Codexと開発支援ワークフローのアップデート",
+        "AIモデルとLLM活用のアップデート",
+        "AIの安全性・プライバシー関連アップデート",
+        "AI API活用のアップデート",
+        "開発者向けツールと実装トピック",
+        "AI・開発ニュースの注目アップデート",
+    )
+    return title in generic_titles or title.startswith("翻訳未取得:")
+
+
+def looks_like_untranslated_summary(lines: list) -> bool:
+    joined = " ".join(str(line) for line in lines)
+    blocked_markers = ("原文タイトル:", "要点候補:", "Article URL", "http://", "https://")
+    if any(marker in joined for marker in blocked_markers):
+        return True
+    if not joined.strip():
+        return True
+    return not has_japanese_text(joined)
+
+
+def usable_ai_dev_translation(article: dict) -> bool:
+    translated_title = str(article.get("translated_title") or "")
+    translated_summary = article.get("translated_summary") or article.get("summary") or []
+    impact = str(article.get("impact") or "")
+    return (
+        bool(translated_title)
+        and has_japanese_text(translated_title)
+        and not is_generic_ai_dev_title(translated_title)
+        and not looks_like_untranslated_summary(translated_summary)
+        and has_japanese_text(impact)
+        and "AI and developer topic translated" not in impact
+    )
+
+
 def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
     model = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
     headers = {
@@ -325,7 +349,11 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         '{"id":"...","translated_title":"...","translated_summary":["...","...","..."],"impact":"..."}. '
         "Return one item for every input id and preserve the input ids exactly. "
         "All values must be natural Japanese. Do not output English boilerplate. "
-        "translated_summary must contain three concise Japanese bullet-style points. "
+        "translated_title must reflect the specific meaning of the original title; do not use generic titles "
+        "such as AIモデルとLLM活用のアップデート or AIエージェント活用の新しい動き. "
+        "If the article text is only a URL or thin metadata, infer the Japanese title and summary from the title. "
+        "translated_summary must contain exactly three concise Japanese bullet-style points and must not include "
+        "原文タイトル, 要点候補, Article URL, or raw English summary text. "
         "impact must be a practical Japanese comment about how this can inform AI workflow design, "
         "developer operations, product planning, or newsroom automation.\n"
         f"Articles JSON: {json.dumps(article_payload, ensure_ascii=False)}\n"
@@ -352,11 +380,15 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
             for x in item.get("translated_summary", [])[:3]
             if str(x).strip()
         ]
-        translations[str(item["id"])] = {
+        article_translation = {
             "translated_title": str(item.get("translated_title") or "")[:160],
             "translated_summary": translated_summary,
             "impact": str(item.get("impact") or "")[:180],
         }
+        if usable_ai_dev_translation(article_translation):
+            translations[str(item["id"])] = article_translation
+        else:
+            print(f"[anthropic] discarded weak ai_dev translation for id={item['id']}")
     return translations
 
 
@@ -404,7 +436,7 @@ def log_anthropic_http_error(exc: requests.HTTPError, model: str, headers: dict[
 
 def existing_translated_article(article_id_value: str) -> dict | None:
     article = existing_articles_by_id.get(article_id_value)
-    if article and article.get("translated_title"):
+    if article and article.get("translated_title") and usable_ai_dev_translation(article):
         return article
     return None
 
@@ -495,6 +527,7 @@ def normalize_entry(
         "id": article_id_value,
         "title": translated_title,
         "original_title": original_title,
+        "display_title": translated_title,
         "translated_title": translated_title,
         "translated_summary": translated_summary,
         "url": url,
