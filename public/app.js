@@ -114,11 +114,19 @@ function renderArticles() {
     const title = node.querySelector(".title");
     title.textContent = article.title;
     title.href = article.url;
+    const originalTitle = node.querySelector(".original-title");
+    if (article.original_title && article.original_title !== article.title) {
+      originalTitle.textContent = `原文: ${article.original_title}`;
+    } else {
+      originalTitle.remove();
+    }
     node.querySelector(".source").textContent = article.source;
     node.querySelector(".score").textContent = `${article.score}`;
     node.querySelector(".category").textContent = article.category_label;
     const summary = node.querySelector(".summary");
-    article.summary.slice(0, 3).forEach((line) => {
+    const translatedSummary = (article.translated_summary || []).filter(Boolean);
+    const summaryLines = translatedSummary.length ? translatedSummary : article.summary;
+    summaryLines.filter(Boolean).slice(0, 3).forEach((line) => {
       const li = document.createElement("li");
       li.textContent = line;
       summary.appendChild(li);

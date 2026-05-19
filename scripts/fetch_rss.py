@@ -301,7 +301,7 @@ def is_english_article(title: str, description: str) -> bool:
     return len(re.findall(r"[A-Za-z]{3,}", text)) >= 3
 
 
-def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str]]:
+def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str], str]:
     model = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
     headers = {
         "x-api-key": os.environ["ANTHROPIC_API_KEY"],
@@ -309,11 +309,14 @@ def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str]]:
         "content-type": "application/json",
     }
     prompt = (
-        "Translate and summarize this English AI/developer news article for a Japanese reader. "
+        "Translate, summarize, and explain the impact of this English AI/developer news article "
+        "for a Japanese reader building personal news and AI workflow tools. "
         "Return only JSON with this shape: "
-        '{"translated_title":"...","translated_summary":["...","...","..."]}. '
-        "The translated_title and translated_summary values must be natural Japanese. "
-        "Keep each summary line concise.\n"
+        '{"translated_title":"...","translated_summary":["...","...","..."],"impact":"..."}. '
+        "All values must be natural Japanese. Do not output English boilerplate. "
+        "translated_summary must contain three concise Japanese bullet-style points. "
+        "impact must be a practical Japanese comment about how this can inform AI workflow design, "
+        "developer operations, product planning, or newsroom automation.\n"
         f"Title: {title}\n"
         f"Article text: {description[:1500]}\n"
     )
@@ -336,7 +339,8 @@ def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str]]:
     parsed = parse_ai_json(content)
     translated_title = str(parsed.get("translated_title") or title)[:160]
     translated_summary = [str(x)[:140] for x in parsed.get("translated_summary", [])[:3] if str(x).strip()]
-    return translated_title, translated_summary
+    impact = str(parsed.get("impact") or "")[:180]
+    return translated_title, translated_summary, impact
 
 
 def log_anthropic_http_error(exc: requests.HTTPError, model: str, headers: dict[str, str]) -> None:
@@ -370,13 +374,14 @@ def maybe_translate_ai_dev_with_haiku(
     title: str,
     description: str,
     category_key: str,
-) -> tuple[str, list[str]] | None:
+) -> tuple[str, list[str], str] | None:
     global anthropic_translation_count
 
     existing_article = existing_translated_article(article_id_value)
     if category_key == "ai_dev" and existing_article:
         translated_summary = existing_article.get("translated_summary") or existing_article.get("summary") or []
-        return str(existing_article["translated_title"]), [str(x) for x in translated_summary[:3]]
+        impact = str(existing_article.get("impact") or "")
+        return str(existing_article["translated_title"]), [str(x) for x in translated_summary[:3]], impact
     if category_key != "ai_dev":
         return None
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -387,10 +392,10 @@ def maybe_translate_ai_dev_with_haiku(
         return None
 
     try:
-        translated_title, translated_summary = call_anthropic_haiku(title, description)
+        translated_title, translated_summary, impact = call_anthropic_haiku(title, description)
         anthropic_translation_count += 1
         print(f"[anthropic] ai_dev translated {anthropic_translation_count}/{ANTHROPIC_TRANSLATION_LIMIT}: {title[:80]}")
-        return translated_title, translated_summary
+        return translated_title, translated_summary, impact
     except Exception as exc:
         print(f"[anthropic] ai_dev translation fallback: {exc}")
         return None
@@ -410,11 +415,12 @@ def ai_translate_and_summarize(
         category_key,
     )
     if haiku_translation:
-        translated_title, translated_summary = haiku_translation
+        translated_title, translated_summary, impact = haiku_translation
         summary = translated_summary if translated_summary else [description or title]
         while len(summary) < 3:
             summary.append("")
-        impact = "AI and developer topic translated for Japanese review."
+        if not impact:
+            impact = "自社向けAIワークフロー設計やニュースアプリの自動化改善に応用余地があります。"
         return translated_title, summary[:3], translated_summary[:3], impact, ""
 
     if category_key == "ai_dev":
