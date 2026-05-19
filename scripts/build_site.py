@@ -57,6 +57,7 @@ def main() -> None:
         <span class="score"></span>
       </div>
       <h2><a class="title" target="_blank" rel="noopener noreferrer"></a></h2>
+      <p class="original-title"></p>
       <p class="category"></p>
       <ul class="summary"></ul>
       <p class="impact"></p>
