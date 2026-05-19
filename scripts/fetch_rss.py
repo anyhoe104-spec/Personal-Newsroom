@@ -18,12 +18,29 @@ from collectors import COLLECTORS
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "articles.json"
 SOURCES_PATH = ROOT / "config" / "sources.yaml"
+ANTHROPIC_TRANSLATION_LIMIT = 10
+DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest"
 socket.setdefaulttimeout(20)
+anthropic_translation_count = 0
 
 
 def load_yaml(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
+
+
+def load_json(path: Path, default):
+    if not path.exists():
+        return default
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+existing_articles_by_id: dict[str, dict] = {
+    article.get("id"): article
+    for article in load_json(DATA_PATH, [])
+    if isinstance(article, dict) and article.get("id")
+}
 
 
 def clean_text(value: str) -> str:
@@ -247,6 +264,7 @@ def sample_articles(category_key: str, category_label: str, count: int = 10) -> 
                 "title": translated_title,
                 "original_title": original_title,
                 "translated_title": translated_title,
+                "translated_summary": summary if category_key == "ai_dev" else [],
                 "url": url,
                 "source": "Fallback Sample",
                 "source_type": "fallback",
@@ -262,6 +280,152 @@ def sample_articles(category_key: str, category_label: str, count: int = 10) -> 
             }
         )
     return articles
+
+
+def has_japanese_text(text: str) -> bool:
+    return bool(re.search(r"[\u3040-\u30ff\u3400-\u9fff]", text or ""))
+
+
+def is_english_article(title: str, description: str) -> bool:
+    text = f"{title} {description}"
+    if has_japanese_text(text):
+        return False
+    return len(re.findall(r"[A-Za-z]{3,}", text)) >= 3
+
+
+def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str]]:
+    prompt = (
+        "Translate and summarize this English AI/developer news article for a Japanese reader. "
+        "Return only JSON with this shape: "
+        '{"translated_title":"...","translated_summary":["...","...","..."]}. '
+        "The translated_title and translated_summary values must be natural Japanese. "
+        "Keep each summary line concise.\n"
+        f"Title: {title}\n"
+        f"Article text: {description[:1500]}\n"
+    )
+    response = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": os.environ["ANTHROPIC_API_KEY"],
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL,
+            "max_tokens": 700,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=25,
+    )
+    response.raise_for_status()
+    content = response.json()["content"][0]["text"]
+    parsed = parse_ai_json(content)
+    translated_title = str(parsed.get("translated_title") or title)[:160]
+    translated_summary = [str(x)[:140] for x in parsed.get("translated_summary", [])[:3] if str(x).strip()]
+    return translated_title, translated_summary
+
+
+def existing_translated_article(article_id_value: str) -> dict | None:
+    article = existing_articles_by_id.get(article_id_value)
+    if article and article.get("translated_title"):
+        return article
+    return None
+
+
+def maybe_translate_ai_dev_with_haiku(
+    article_id_value: str,
+    title: str,
+    description: str,
+    category_key: str,
+) -> tuple[str, list[str]] | None:
+    global anthropic_translation_count
+
+    existing_article = existing_translated_article(article_id_value)
+    if category_key == "ai_dev" and existing_article:
+        translated_summary = existing_article.get("translated_summary") or existing_article.get("summary") or []
+        return str(existing_article["translated_title"]), [str(x) for x in translated_summary[:3]]
+    if category_key != "ai_dev":
+        return None
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        return None
+    if anthropic_translation_count >= ANTHROPIC_TRANSLATION_LIMIT:
+        return None
+    if not is_english_article(title, description):
+        return None
+
+    try:
+        translated_title, translated_summary = call_anthropic_haiku(title, description)
+        anthropic_translation_count += 1
+        print(f"[anthropic] ai_dev translated {anthropic_translation_count}/{ANTHROPIC_TRANSLATION_LIMIT}: {title[:80]}")
+        return translated_title, translated_summary
+    except Exception as exc:
+        print(f"[anthropic] ai_dev translation fallback: {exc}")
+        return None
+
+
+def ai_translate_and_summarize(
+    title: str,
+    description: str,
+    category_key: str,
+    category_label: str,
+    article_id_value: str,
+) -> tuple[str, list[str], list[str], str, str]:
+    haiku_translation = maybe_translate_ai_dev_with_haiku(
+        article_id_value,
+        title,
+        description,
+        category_key,
+    )
+    if haiku_translation:
+        translated_title, translated_summary = haiku_translation
+        summary = translated_summary if translated_summary else [description or title]
+        while len(summary) < 3:
+            summary.append("")
+        impact = "AI and developer topic translated for Japanese review."
+        return translated_title, summary[:3], translated_summary[:3], impact, ""
+
+    if category_key == "ai_dev":
+        translated_title, summary, impact = fallback_ai_dev_localize(title, description)
+        return translated_title, summary, summary, impact, ""
+
+    summary, impact, egg_insight = fallback_summary(title, description, category_label)
+    return title, summary, [], impact, egg_insight
+
+
+def normalize_entry(entry: dict, source: dict, category_key: str, category_label: str) -> dict | None:
+    original_title = clean_text(entry.get("title", ""))
+    url = entry.get("link", "")
+    if not original_title or not url:
+        return None
+    description = clean_text(entry.get("summary", "") or entry.get("description", ""))
+    article_id_value = article_id(url, original_title)
+    translated_title, summary, translated_summary, impact, egg_insight = ai_translate_and_summarize(
+        original_title,
+        description,
+        category_key,
+        category_label,
+        article_id_value,
+    )
+    source_type = source.get("source_type", "rss")
+    return {
+        "id": article_id_value,
+        "title": translated_title,
+        "original_title": original_title,
+        "translated_title": translated_title,
+        "translated_summary": translated_summary,
+        "url": url,
+        "source": source["name"],
+        "source_type": source_type,
+        "source_region": source.get("region", "jp"),
+        "category": category_key,
+        "category_label": category_label,
+        "published_at": parse_date(entry),
+        "raw_summary": description,
+        "summary": summary,
+        "impact": impact,
+        "egg_insight": egg_insight if category_key == "egg" else "",
+        "score": 0,
+    }
 
 
 def main() -> None:
