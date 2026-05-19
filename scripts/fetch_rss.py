@@ -19,7 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "articles.json"
 SOURCES_PATH = ROOT / "config" / "sources.yaml"
 ANTHROPIC_TRANSLATION_LIMIT = 10
-DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest"
+ANTHROPIC_MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 socket.setdefaulttimeout(20)
 anthropic_translation_count = 0
 
@@ -159,21 +161,27 @@ def ai_translate_and_summarize(
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
         else:
+            model = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
+            headers = {
+                "x-api-key": anthropic_key,
+                "anthropic-version": ANTHROPIC_VERSION,
+                "content-type": "application/json",
+            }
             response = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": anthropic_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json",
-                },
+                ANTHROPIC_MESSAGES_ENDPOINT,
+                headers=headers,
                 json={
-                    "model": os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-latest"),
+                    "model": model,
                     "max_tokens": 700,
                     "messages": [{"role": "user", "content": prompt}],
                 },
                 timeout=25,
             )
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as exc:
+                log_anthropic_http_error(exc, model, headers)
+                raise
             content = response.json()["content"][0]["text"]
         parsed = parse_ai_json(content)
         translated_title = str(parsed.get("translated_title") or title)[:160]
@@ -294,6 +302,12 @@ def is_english_article(title: str, description: str) -> bool:
 
 
 def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str]]:
+    model = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
+    headers = {
+        "x-api-key": os.environ["ANTHROPIC_API_KEY"],
+        "anthropic-version": ANTHROPIC_VERSION,
+        "content-type": "application/json",
+    }
     prompt = (
         "Translate and summarize this English AI/developer news article for a Japanese reader. "
         "Return only JSON with this shape: "
@@ -304,25 +318,44 @@ def call_anthropic_haiku(title: str, description: str) -> tuple[str, list[str]]:
         f"Article text: {description[:1500]}\n"
     )
     response = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": os.environ["ANTHROPIC_API_KEY"],
-            "anthropic-version": "2023-06-01",
-            "Content-Type": "application/json",
-        },
+        ANTHROPIC_MESSAGES_ENDPOINT,
+        headers=headers,
         json={
-            "model": os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL,
+            "model": model,
             "max_tokens": 700,
             "messages": [{"role": "user", "content": prompt}],
         },
         timeout=25,
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        log_anthropic_http_error(exc, model, headers)
+        raise
     content = response.json()["content"][0]["text"]
     parsed = parse_ai_json(content)
     translated_title = str(parsed.get("translated_title") or title)[:160]
     translated_summary = [str(x)[:140] for x in parsed.get("translated_summary", [])[:3] if str(x).strip()]
     return translated_title, translated_summary
+
+
+def log_anthropic_http_error(exc: requests.HTTPError, model: str, headers: dict[str, str]) -> None:
+    response = exc.response
+    status_code = response.status_code if response is not None else "unknown"
+    response_url = response.url if response is not None else ANTHROPIC_MESSAGES_ENDPOINT
+    header_names = ", ".join(sorted(headers.keys()))
+    print(
+        "[anthropic] api error: "
+        f"status={status_code}, endpoint={response_url}, model={model}, "
+        f"headers=[{header_names}], api_key_present={bool(os.getenv('ANTHROPIC_API_KEY'))}"
+    )
+    if status_code == 404:
+        print(
+            "[anthropic] 404 diagnostic: endpoint should be "
+            f"{ANTHROPIC_MESSAGES_ENDPOINT}; check model availability/access for "
+            f"{model} and required headers x-api-key, anthropic-version, content-type. "
+            "API key value was not logged."
+        )
 
 
 def existing_translated_article(article_id_value: str) -> dict | None:
