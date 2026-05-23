@@ -86,38 +86,55 @@ def fallback_summary(title: str, description: str, category_label: str) -> tuple
 
 
 def fallback_ai_dev_title(title: str) -> str:
-    lowered = title.lower()
-    keyword_titles = [
-        (("voice", "audio"), "音声AIモデルとAPI活用のアップデート"),
-        (("agent", "agents"), "AIエージェント活用の新しい動き"),
-        (("codex",), "Codexと開発支援ワークフローのアップデート"),
-        (("model", "gpt", "llm"), "AIモデルとLLM活用のアップデート"),
-        (("privacy", "trusted", "cyber"), "AIの安全性・プライバシー関連アップデート"),
-        (("api",), "AI API活用のアップデート"),
-        (("developer", "language", "go", "python"), "開発者向けツールと実装トピック"),
-    ]
-    for keywords, label in keyword_titles:
-        if any(keyword in lowered for keyword in keywords):
-            return label
-    return "AI・開発ニュースの注目アップデート"
+    return f"翻訳未取得: {title[:120]}"
 
 
 def fallback_ai_dev_localize(title: str, description: str) -> tuple[str, list[str], str]:
-    base = clean_text(description) or title
-    clipped = base[:100] + ("..." if len(base) > 100 else "")
     translated_title = fallback_ai_dev_title(title)
     summary = [
-        "AI・開発領域の新しい動きとして確認したい記事です。",
-        f"原文タイトル: {title}",
-        f"要点候補: {clipped}",
+        "翻訳未取得のため、原文情報をもとに仮表示しています。",
+        "Claude翻訳に成功すると、ここに日本語の要約3点が表示されます。",
+        "詳細は記事リンク先の原文を確認してください。",
     ]
-    impact = "モデル、開発ツール、API活用の判断材料として後で深掘りできます。"
+    impact = "翻訳未取得です。APIキー、モデル名、Anthropic APIの応答状況を確認してください。"
     return translated_title, summary, impact
 
 
-def parse_ai_json(content: str) -> dict[str, Any]:
-    cleaned = content.strip().strip("`").removeprefix("json").strip()
-    return json.loads(cleaned)
+def strip_code_fences(content: str) -> str:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    return cleaned.strip()
+
+
+def remove_control_chars(content: str) -> str:
+    return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", content)
+
+
+def extract_json_array(content: str) -> str:
+    start = content.find("[")
+    end = content.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("No JSON array found in Anthropic response")
+    return content[start : end + 1]
+
+
+def log_json_parse_failure(content: str, exc: Exception) -> None:
+    preview = remove_control_chars(strip_code_fences(content)).replace("\n", " ")[:300]
+    print(f"[anthropic] json parse failed: {exc}; response_preview={preview!r}")
+
+
+def parse_ai_json(content: str) -> Any:
+    cleaned = remove_control_chars(strip_code_fences(content))
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        try:
+            return json.loads(extract_json_array(cleaned))
+        except Exception as exc:
+            log_json_parse_failure(content, exc)
+            raise
 
 
 def ai_translate_and_summarize(
@@ -273,6 +290,7 @@ def sample_articles(category_key: str, category_label: str, count: int = 10) -> 
                 "id": article_id(url, original_title),
                 "title": translated_title,
                 "original_title": original_title,
+                "display_title": translated_title,
                 "translated_title": translated_title,
                 "translated_summary": summary if category_key == "ai_dev" else [],
                 "url": url,
@@ -303,6 +321,44 @@ def is_english_article(title: str, description: str) -> bool:
     return len(re.findall(r"[A-Za-z]{3,}", text)) >= 3
 
 
+def is_generic_ai_dev_title(title: str) -> bool:
+    generic_titles = (
+        "音声AIモデルとAPI活用のアップデート",
+        "AIエージェント活用の新しい動き",
+        "Codexと開発支援ワークフローのアップデート",
+        "AIモデルとLLM活用のアップデート",
+        "AIの安全性・プライバシー関連アップデート",
+        "AI API活用のアップデート",
+        "開発者向けツールと実装トピック",
+        "AI・開発ニュースの注目アップデート",
+    )
+    return title in generic_titles or title.startswith("翻訳未取得:")
+
+
+def looks_like_untranslated_summary(lines: list) -> bool:
+    joined = " ".join(str(line) for line in lines)
+    blocked_markers = ("原文タイトル:", "要点候補:", "Article URL", "http://", "https://")
+    if any(marker in joined for marker in blocked_markers):
+        return True
+    if not joined.strip():
+        return True
+    return not has_japanese_text(joined)
+
+
+def usable_ai_dev_translation(article: dict) -> bool:
+    translated_title = str(article.get("translated_title") or "")
+    translated_summary = article.get("translated_summary") or article.get("summary") or []
+    impact = str(article.get("impact") or "")
+    return (
+        bool(translated_title)
+        and has_japanese_text(translated_title)
+        and not is_generic_ai_dev_title(translated_title)
+        and not looks_like_untranslated_summary(translated_summary)
+        and has_japanese_text(impact)
+        and "AI and developer topic translated" not in impact
+    )
+
+
 def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
     model = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
     headers = {
@@ -321,12 +377,18 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     prompt = (
         "Translate, summarize, and explain the impact of these English AI/developer news articles "
         "for a Japanese reader building personal news and AI workflow tools. "
-        "Return only a JSON array. Each array item must have this shape: "
+        "Use the save_ai_dev_translations tool. If tool use is unavailable, return only a JSON array "
+        "with no markdown, comments, or surrounding text. Each array item must have this shape: "
         '{"id":"...","translated_title":"...","translated_summary":["...","...","..."],"impact":"..."}. '
         "Return one item for every input id and preserve the input ids exactly. "
         "All values must be natural Japanese. Do not output English boilerplate. "
-        "translated_summary must contain three concise Japanese bullet-style points. "
-        "impact must be a practical Japanese comment about how this can inform AI workflow design, "
+        "translated_title must reflect the specific meaning of the original title; do not use generic titles "
+        "such as AIモデルとLLM活用のアップデート or AIエージェント活用の新しい動き. "
+        "If the article text is only a URL or thin metadata, infer the Japanese title and summary from the title. "
+        "translated_title must be 80 Japanese characters or fewer. "
+        "translated_summary must contain exactly three concise Japanese bullet-style points, each 70 Japanese characters or fewer, and must not include "
+        "原文タイトル, 要点候補, Article URL, or raw English summary text. "
+        "impact must be 90 Japanese characters or fewer and must be a practical Japanese comment about how this can inform AI workflow design, "
         "developer operations, product planning, or newsroom automation.\n"
         f"Articles JSON: {json.dumps(article_payload, ensure_ascii=False)}\n"
     )
@@ -334,30 +396,90 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         "model": model,
         "max_tokens": 2400,
         "messages": [{"role": "user", "content": prompt}],
+        "tools": [anthropic_translation_tool_schema()],
+        "tool_choice": {"type": "tool", "name": "save_ai_dev_translations"},
     }
     response = post_anthropic_with_backoff(headers, request_body, model)
-    content = response.json()["content"][0]["text"]
-    parsed = parse_ai_json(content)
-    if isinstance(parsed, dict) and isinstance(parsed.get("articles"), list):
-        parsed = parsed["articles"]
-    if not isinstance(parsed, list):
-        raise ValueError("Anthropic batch response was not a JSON array")
+    parsed = extract_batch_items_from_anthropic_response(response)
 
     translations: dict[str, dict[str, Any]] = {}
+    parse_failures = 0
     for item in parsed:
         if not isinstance(item, dict) or not item.get("id"):
+            parse_failures += 1
             continue
         translated_summary = [
             str(x)[:140]
             for x in item.get("translated_summary", [])[:3]
             if str(x).strip()
         ]
-        translations[str(item["id"])] = {
+        article_translation = {
             "translated_title": str(item.get("translated_title") or "")[:160],
             "translated_summary": translated_summary,
             "impact": str(item.get("impact") or "")[:180],
         }
+        if usable_ai_dev_translation(article_translation):
+            translations[str(item["id"])] = article_translation
+        else:
+            parse_failures += 1
+            print(f"[anthropic] discarded weak ai_dev translation for id={item['id']}")
+    print(
+        "[anthropic] ai_dev parse results: "
+        f"success={len(translations)}, parse_failed={parse_failures}, fallback={len(items) - len(translations)}"
+    )
     return translations
+
+
+def anthropic_translation_tool_schema() -> dict:
+    return {
+        "name": "save_ai_dev_translations",
+        "description": "Save Japanese translations for AI/developer news articles.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "articles": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "translated_title": {"type": "string", "maxLength": 80},
+                            "translated_summary": {
+                                "type": "array",
+                                "items": {"type": "string", "maxLength": 70},
+                                "minItems": 3,
+                                "maxItems": 3,
+                            },
+                            "impact": {"type": "string", "maxLength": 90},
+                        },
+                        "required": ["id", "translated_title", "translated_summary", "impact"],
+                    },
+                }
+            },
+            "required": ["articles"],
+        },
+    }
+
+
+def extract_batch_items_from_anthropic_response(response: requests.Response) -> list:
+    payload = response.json()
+    text_parts: list[str] = []
+    for block in payload.get("content", []):
+        if block.get("type") == "tool_use" and block.get("name") == "save_ai_dev_translations":
+            tool_input = block.get("input") or {}
+            articles = tool_input.get("articles")
+            if isinstance(articles, list):
+                return articles
+        if block.get("type") == "text" and block.get("text"):
+            text_parts.append(str(block["text"]))
+
+    content = "\n".join(text_parts)
+    parsed = parse_ai_json(content)
+    if isinstance(parsed, dict) and isinstance(parsed.get("articles"), list):
+        return parsed["articles"]
+    if isinstance(parsed, list):
+        return parsed
+    raise ValueError("Anthropic batch response was not a JSON array or tool input")
 
 
 def post_anthropic_with_backoff(headers: dict[str, str], request_body: dict, model: str) -> requests.Response:
@@ -404,7 +526,7 @@ def log_anthropic_http_error(exc: requests.HTTPError, model: str, headers: dict[
 
 def existing_translated_article(article_id_value: str) -> dict | None:
     article = existing_articles_by_id.get(article_id_value)
-    if article and article.get("translated_title"):
+    if article and article.get("translated_title") and usable_ai_dev_translation(article):
         return article
     return None
 
@@ -495,6 +617,7 @@ def normalize_entry(
         "id": article_id_value,
         "title": translated_title,
         "original_title": original_title,
+        "display_title": translated_title,
         "translated_title": translated_title,
         "translated_summary": translated_summary,
         "url": url,
@@ -558,7 +681,11 @@ def batch_translate_ai_dev_entries(entries: list[dict], category_key: str) -> di
         )
         return translations
     except Exception as exc:
-        print(f"[anthropic] ai_dev batch translation fallback: {exc}")
+        print(f"[anthropic] ai_dev batch unavailable: {exc}")
+        print(
+            "[anthropic] ai_dev parse results: "
+            f"success=0, parse_failed={len(candidates)}, fallback={len(candidates)}"
+        )
         return {}
 
 

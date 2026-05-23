@@ -112,10 +112,11 @@ function renderArticles() {
     const node = template.content.cloneNode(true);
     const card = node.querySelector(".card");
     const title = node.querySelector(".title");
-    title.textContent = article.title;
+    const displayTitle = article.translated_title || article.display_title || article.title;
+    title.textContent = displayTitle;
     title.href = article.url;
     const originalTitle = node.querySelector(".original-title");
-    if (article.original_title && article.original_title !== article.title) {
+    if (article.original_title && article.original_title !== displayTitle) {
       originalTitle.textContent = `原文: ${article.original_title}`;
     } else {
       originalTitle.remove();
