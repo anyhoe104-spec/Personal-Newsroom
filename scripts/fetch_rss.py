@@ -100,9 +100,41 @@ def fallback_ai_dev_localize(title: str, description: str) -> tuple[str, list[st
     return translated_title, summary, impact
 
 
-def parse_ai_json(content: str) -> dict[str, Any]:
-    cleaned = content.strip().strip("`").removeprefix("json").strip()
-    return json.loads(cleaned)
+def strip_code_fences(content: str) -> str:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    return cleaned.strip()
+
+
+def remove_control_chars(content: str) -> str:
+    return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", content)
+
+
+def extract_json_array(content: str) -> str:
+    start = content.find("[")
+    end = content.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("No JSON array found in Anthropic response")
+    return content[start : end + 1]
+
+
+def log_json_parse_failure(content: str, exc: Exception) -> None:
+    preview = remove_control_chars(strip_code_fences(content)).replace("\n", " ")[:300]
+    print(f"[anthropic] json parse failed: {exc}; response_preview={preview!r}")
+
+
+def parse_ai_json(content: str) -> Any:
+    cleaned = remove_control_chars(strip_code_fences(content))
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        try:
+            return json.loads(extract_json_array(cleaned))
+        except Exception as exc:
+            log_json_parse_failure(content, exc)
+            raise
 
 
 def ai_translate_and_summarize(
@@ -345,16 +377,18 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     prompt = (
         "Translate, summarize, and explain the impact of these English AI/developer news articles "
         "for a Japanese reader building personal news and AI workflow tools. "
-        "Return only a JSON array. Each array item must have this shape: "
+        "Use the save_ai_dev_translations tool. If tool use is unavailable, return only a JSON array "
+        "with no markdown, comments, or surrounding text. Each array item must have this shape: "
         '{"id":"...","translated_title":"...","translated_summary":["...","...","..."],"impact":"..."}. '
         "Return one item for every input id and preserve the input ids exactly. "
         "All values must be natural Japanese. Do not output English boilerplate. "
         "translated_title must reflect the specific meaning of the original title; do not use generic titles "
         "such as AIモデルとLLM活用のアップデート or AIエージェント活用の新しい動き. "
         "If the article text is only a URL or thin metadata, infer the Japanese title and summary from the title. "
-        "translated_summary must contain exactly three concise Japanese bullet-style points and must not include "
+        "translated_title must be 80 Japanese characters or fewer. "
+        "translated_summary must contain exactly three concise Japanese bullet-style points, each 70 Japanese characters or fewer, and must not include "
         "原文タイトル, 要点候補, Article URL, or raw English summary text. "
-        "impact must be a practical Japanese comment about how this can inform AI workflow design, "
+        "impact must be 90 Japanese characters or fewer and must be a practical Japanese comment about how this can inform AI workflow design, "
         "developer operations, product planning, or newsroom automation.\n"
         f"Articles JSON: {json.dumps(article_payload, ensure_ascii=False)}\n"
     )
@@ -362,18 +396,17 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         "model": model,
         "max_tokens": 2400,
         "messages": [{"role": "user", "content": prompt}],
+        "tools": [anthropic_translation_tool_schema()],
+        "tool_choice": {"type": "tool", "name": "save_ai_dev_translations"},
     }
     response = post_anthropic_with_backoff(headers, request_body, model)
-    content = response.json()["content"][0]["text"]
-    parsed = parse_ai_json(content)
-    if isinstance(parsed, dict) and isinstance(parsed.get("articles"), list):
-        parsed = parsed["articles"]
-    if not isinstance(parsed, list):
-        raise ValueError("Anthropic batch response was not a JSON array")
+    parsed = extract_batch_items_from_anthropic_response(response)
 
     translations: dict[str, dict[str, Any]] = {}
+    parse_failures = 0
     for item in parsed:
         if not isinstance(item, dict) or not item.get("id"):
+            parse_failures += 1
             continue
         translated_summary = [
             str(x)[:140]
@@ -388,8 +421,65 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         if usable_ai_dev_translation(article_translation):
             translations[str(item["id"])] = article_translation
         else:
+            parse_failures += 1
             print(f"[anthropic] discarded weak ai_dev translation for id={item['id']}")
+    print(
+        "[anthropic] ai_dev parse results: "
+        f"success={len(translations)}, parse_failed={parse_failures}, fallback={len(items) - len(translations)}"
+    )
     return translations
+
+
+def anthropic_translation_tool_schema() -> dict:
+    return {
+        "name": "save_ai_dev_translations",
+        "description": "Save Japanese translations for AI/developer news articles.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "articles": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "translated_title": {"type": "string", "maxLength": 80},
+                            "translated_summary": {
+                                "type": "array",
+                                "items": {"type": "string", "maxLength": 70},
+                                "minItems": 3,
+                                "maxItems": 3,
+                            },
+                            "impact": {"type": "string", "maxLength": 90},
+                        },
+                        "required": ["id", "translated_title", "translated_summary", "impact"],
+                    },
+                }
+            },
+            "required": ["articles"],
+        },
+    }
+
+
+def extract_batch_items_from_anthropic_response(response: requests.Response) -> list:
+    payload = response.json()
+    text_parts: list[str] = []
+    for block in payload.get("content", []):
+        if block.get("type") == "tool_use" and block.get("name") == "save_ai_dev_translations":
+            tool_input = block.get("input") or {}
+            articles = tool_input.get("articles")
+            if isinstance(articles, list):
+                return articles
+        if block.get("type") == "text" and block.get("text"):
+            text_parts.append(str(block["text"]))
+
+    content = "\n".join(text_parts)
+    parsed = parse_ai_json(content)
+    if isinstance(parsed, dict) and isinstance(parsed.get("articles"), list):
+        return parsed["articles"]
+    if isinstance(parsed, list):
+        return parsed
+    raise ValueError("Anthropic batch response was not a JSON array or tool input")
 
 
 def post_anthropic_with_backoff(headers: dict[str, str], request_body: dict, model: str) -> requests.Response:
@@ -591,7 +681,11 @@ def batch_translate_ai_dev_entries(entries: list[dict], category_key: str) -> di
         )
         return translations
     except Exception as exc:
-        print(f"[anthropic] ai_dev batch translation fallback: {exc}")
+        print(f"[anthropic] ai_dev batch unavailable: {exc}")
+        print(
+            "[anthropic] ai_dev parse results: "
+            f"success=0, parse_failed={len(candidates)}, fallback={len(candidates)}"
+        )
         return {}
 
 
