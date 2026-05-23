@@ -379,7 +379,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     }
     article_payload = [
         {
-            "id": item["id"],
+            "stable_id": item["stable_id"],
             "title": item["title"],
             "text": item["description"][:1200],
         }
@@ -390,8 +390,8 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         "for a Japanese reader building personal news and AI workflow tools. "
         "Use the save_ai_dev_translations tool. If tool use is unavailable, return only a JSON array "
         "with no markdown, comments, or surrounding text. Each array item must have this shape: "
-        '{"id":"...","translated_title":"...","translated_summary":["...","...","..."],"impact":"..."}. '
-        "Return one item for every input id and preserve the input ids exactly. "
+        '{"stable_id":"ai_dev_0","translated_title":"...","translated_summary":["...","...","..."],"impact":"..."}. '
+        "Return one item for every input stable_id and preserve each stable_id exactly. "
         "All values must be natural Japanese. Do not output English boilerplate. "
         "translated_title must reflect the specific meaning of the original title; do not use generic titles "
         "such as AIモデルとLLM活用のアップデート or AIエージェント活用の新しい動き. "
@@ -416,7 +416,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     translations: dict[str, dict[str, Any]] = {}
     parse_failures = 0
     for item in parsed:
-        if not isinstance(item, dict) or not item.get("id"):
+        if not isinstance(item, dict) or not item.get("stable_id"):
             parse_failures += 1
             continue
         translated_summary = [
@@ -430,10 +430,10 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
             "impact": str(item.get("impact") or "")[:180],
         }
         if usable_ai_dev_translation(article_translation):
-            translations[str(item["id"])] = article_translation
+            translations[str(item["stable_id"])] = article_translation
         else:
             parse_failures += 1
-            print(f"[anthropic] discarded weak ai_dev translation for id={item['id']}")
+            print(f"[anthropic] discarded weak ai_dev translation for stable_id={item['stable_id']}")
     print(
         "[anthropic] ai_dev parse results: "
         f"success={len(translations)}, parse_failed={parse_failures}, fallback={len(items) - len(translations)}"
@@ -453,7 +453,7 @@ def anthropic_translation_tool_schema() -> dict:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "id": {"type": "string"},
+                            "stable_id": {"type": "string"},
                             "translated_title": {"type": "string", "maxLength": 80},
                             "translated_summary": {
                                 "type": "array",
@@ -463,7 +463,7 @@ def anthropic_translation_tool_schema() -> dict:
                             },
                             "impact": {"type": "string", "maxLength": 90},
                         },
-                        "required": ["id", "translated_title", "translated_summary", "impact"],
+                        "required": ["stable_id", "translated_title", "translated_summary", "impact"],
                     },
                 }
             },
@@ -704,6 +704,7 @@ def batch_translate_ai_dev_entries(entries: list[dict], category_key: str) -> di
         return {}
 
     candidates: list[dict[str, str]] = []
+    stable_to_article_id: dict[str, str] = {}
     for entry in entries:
         original_title = clean_text(entry.get("title", ""))
         url = entry.get("link", "")
@@ -715,8 +716,11 @@ def batch_translate_ai_dev_entries(entries: list[dict], category_key: str) -> di
             continue
         if not is_english_article(original_title, description):
             continue
+        stable_id = f"ai_dev_{len(candidates)}"
+        stable_to_article_id[stable_id] = article_id_value
         candidates.append(
             {
+                "stable_id": stable_id,
                 "id": article_id_value,
                 "title": original_title,
                 "description": description,
@@ -730,20 +734,39 @@ def batch_translate_ai_dev_entries(entries: list[dict], category_key: str) -> di
 
     anthropic_batch_requested = True
     try:
-        translations = call_anthropic_haiku_batch(candidates)
-        anthropic_translation_count = len(translations)
+        stable_translations = call_anthropic_haiku_batch(candidates)
+        translations = {
+            stable_to_article_id[stable_id]: translation
+            for stable_id, translation in stable_translations.items()
+            if stable_id in stable_to_article_id
+        }
+        response_count = len(stable_translations)
+        matched_count = len(translations)
+        unmatched_count = max(0, response_count - matched_count)
+        fallback_count = len(candidates) - matched_count
+        anthropic_translation_count = matched_count
         print(
             "[anthropic] ai_dev batch translated "
             f"{anthropic_translation_count}/{len(candidates)} requested articles"
         )
         print(
+            "[anthropic] ai_dev stable_id match: "
+            f"requested_count={len(candidates)}, response_count={response_count}, "
+            f"matched_count={matched_count}, unmatched_count={unmatched_count}, fallback_count={fallback_count}"
+        )
+        print(
             "[anthropic] ai_dev batch totals: "
-            f"api_success=1, api_failed=0, parse_success={len(translations)}, "
-            f"parse_failed={len(candidates) - len(translations)}, fallback={len(candidates) - len(translations)}"
+            f"api_success=1, api_failed=0, parse_success={matched_count}, "
+            f"parse_failed={fallback_count}, fallback={fallback_count}"
         )
         return translations
     except Exception as exc:
         print(f"[anthropic] ai_dev batch unavailable: {exc}")
+        print(
+            "[anthropic] ai_dev stable_id match: "
+            f"requested_count={len(candidates)}, response_count=0, matched_count=0, "
+            f"unmatched_count=0, fallback_count={len(candidates)}"
+        )
         print(
             "[anthropic] ai_dev batch totals: "
             f"api_success=0, api_failed=1, parse_success=0, parse_failed={len(candidates)}, fallback={len(candidates)}"
