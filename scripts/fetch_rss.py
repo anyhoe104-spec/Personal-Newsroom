@@ -120,8 +120,19 @@ def extract_json_array(content: str) -> str:
     return content[start : end + 1]
 
 
-def log_json_parse_failure(content: str, exc: Exception) -> None:
+def response_preview_from_payload(payload: dict) -> str:
+    preview_source = json.dumps(payload, ensure_ascii=False)
+    return remove_control_chars(preview_source).replace("\n", " ")[:300]
+
+
+def response_content_types(payload: dict) -> list[str]:
+    return [str(block.get("type", "unknown")) for block in payload.get("content", []) if isinstance(block, dict)]
+
+
+def log_json_parse_failure(content: str, exc: Exception, payload: dict | None = None) -> None:
     preview = remove_control_chars(strip_code_fences(content)).replace("\n", " ")[:300]
+    if not preview and payload is not None:
+        preview = response_preview_from_payload(payload)
     print(f"[anthropic] json parse failed: {exc}; response_preview={preview!r}")
 
 
@@ -463,23 +474,69 @@ def anthropic_translation_tool_schema() -> dict:
 
 def extract_batch_items_from_anthropic_response(response: requests.Response) -> list:
     payload = response.json()
+    content_types = response_content_types(payload)
+    print(f"[anthropic] response content types: {content_types}")
+    stop_reason = payload.get("stop_reason")
     text_parts: list[str] = []
     for block in payload.get("content", []):
+        if not isinstance(block, dict):
+            continue
         if block.get("type") == "tool_use" and block.get("name") == "save_ai_dev_translations":
+            print(f"[anthropic] tool_use name: {block.get('name')}")
             tool_input = block.get("input") or {}
-            articles = tool_input.get("articles")
-            if isinstance(articles, list):
-                return articles
+            items = extract_tool_items(tool_input)
+            if items:
+                return items
         if block.get("type") == "text" and block.get("text"):
             text_parts.append(str(block["text"]))
 
     content = "\n".join(text_parts)
-    parsed = parse_ai_json(content)
+    if not content.strip():
+        exc = ValueError("No text content or usable tool input in Anthropic response")
+        log_anthropic_response_failure(response, payload, content_types, stop_reason, exc)
+        raise exc
+    try:
+        parsed = parse_ai_json(content)
+    except Exception as exc:
+        log_anthropic_response_failure(response, payload, content_types, stop_reason, exc)
+        raise
     if isinstance(parsed, dict) and isinstance(parsed.get("articles"), list):
         return parsed["articles"]
+    if isinstance(parsed, dict) and isinstance(parsed.get("translations"), list):
+        return parsed["translations"]
     if isinstance(parsed, list):
         return parsed
-    raise ValueError("Anthropic batch response was not a JSON array or tool input")
+    exc = ValueError("Anthropic batch response was not a JSON array or tool input")
+    log_anthropic_response_failure(response, payload, content_types, stop_reason, exc)
+    raise exc
+
+
+def extract_tool_items(tool_input: Any) -> list:
+    if isinstance(tool_input, list):
+        return tool_input
+    if not isinstance(tool_input, dict):
+        return []
+    for key in ("articles", "translations"):
+        items = tool_input.get(key)
+        if isinstance(items, list):
+            return items
+    return []
+
+
+def log_anthropic_response_failure(
+    response: requests.Response,
+    payload: dict,
+    content_types: list[str],
+    stop_reason: str | None,
+    exc: Exception,
+) -> None:
+    print(
+        "[anthropic] response parse failure: "
+        f"status_code={response.status_code}, model={payload.get('model', os.getenv('ANTHROPIC_MODEL') or DEFAULT_ANTHROPIC_MODEL)}, "
+        f"content_types={content_types}, stop_reason={stop_reason}, "
+        f"api_key_present={bool(os.getenv('ANTHROPIC_API_KEY'))}, "
+        f"response_preview={response_preview_from_payload(payload)!r}, error={exc}"
+    )
 
 
 def post_anthropic_with_backoff(headers: dict[str, str], request_body: dict, model: str) -> requests.Response:
@@ -679,12 +736,17 @@ def batch_translate_ai_dev_entries(entries: list[dict], category_key: str) -> di
             "[anthropic] ai_dev batch translated "
             f"{anthropic_translation_count}/{len(candidates)} requested articles"
         )
+        print(
+            "[anthropic] ai_dev batch totals: "
+            f"api_success=1, api_failed=0, parse_success={len(translations)}, "
+            f"parse_failed={len(candidates) - len(translations)}, fallback={len(candidates) - len(translations)}"
+        )
         return translations
     except Exception as exc:
         print(f"[anthropic] ai_dev batch unavailable: {exc}")
         print(
-            "[anthropic] ai_dev parse results: "
-            f"success=0, parse_failed={len(candidates)}, fallback={len(candidates)}"
+            "[anthropic] ai_dev batch totals: "
+            f"api_success=0, api_failed=1, parse_success=0, parse_failed={len(candidates)}, fallback={len(candidates)}"
         )
         return {}
 
