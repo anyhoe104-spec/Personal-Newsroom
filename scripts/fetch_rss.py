@@ -26,6 +26,7 @@ ANTHROPIC_TRANSLATION_LIMIT = 10
 ANTHROPIC_MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_ANTHROPIC_MAX_TOKENS = 6000
 socket.setdefaulttimeout(20)
 anthropic_translation_count = 0
 anthropic_batch_requested = False
@@ -155,6 +156,16 @@ def response_preview_from_payload(payload: dict) -> str:
 
 def response_content_types(payload: dict) -> list[str]:
     return [str(block.get("type", "unknown")) for block in payload.get("content", []) if isinstance(block, dict)]
+
+
+def anthropic_max_tokens() -> int:
+    raw_value = os.getenv("ANTHROPIC_MAX_TOKENS")
+    if not raw_value:
+        return DEFAULT_ANTHROPIC_MAX_TOKENS
+    try:
+        return max(2400, int(raw_value))
+    except ValueError:
+        return DEFAULT_ANTHROPIC_MAX_TOKENS
 
 
 def log_json_parse_failure(content: str, exc: Exception, payload: dict | None = None) -> None:
@@ -488,7 +499,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         {
             "stable_id": item["stable_id"],
             "title": item["title"],
-            "text": item["description"][:1200],
+            "text": item["description"][:700],
         }
         for item in items
     ]
@@ -528,10 +539,20 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         "- impact must state an article-specific implication; avoid fixed generic comments.\n"
         "- Every returned field must be Japanese. Product names such as OpenAI, Codex, Gemini, and GPT may remain as names.\n"
     )
+    prompt = (
+        "Use the save_ai_dev_translations tool to return Japanese translations for every article in Articles JSON. "
+        "Preserve each stable_id exactly and return exactly one tool article per input article. "
+        "translated_title: concrete Japanese localization of the original title, 80 Japanese characters or fewer. "
+        "Do not use generic or fallback titles such as AI・開発ニュースの注目アップデート, 翻訳未取得, or 要確認. "
+        "translated_summary: exactly three concise Japanese points based on the article, 70 Japanese characters or fewer each. "
+        "impact: article-specific Japanese implication for AI workflow, developer operations, product planning, or newsroom automation, 90 Japanese characters or fewer. "
+        "All fields must be Japanese except product/company names such as OpenAI, Codex, Gemini, GPT, Warp, and CUDA.\n"
+        f"Articles JSON: {json.dumps(article_payload, ensure_ascii=False)}\n"
+    )
     tool_schema = anthropic_translation_tool_schema()
     request_body = {
         "model": model,
-        "max_tokens": 2400,
+        "max_tokens": anthropic_max_tokens(),
         "messages": [{"role": "user", "content": prompt}],
         "tools": [tool_schema],
         "tool_choice": {"type": "tool", "name": "save_ai_dev_translations"},
@@ -1126,6 +1147,24 @@ def log_ai_dev_save_readiness(articles: list[dict]) -> None:
         )
 
 
+def call_anthropic_with_chunk_retry(candidates: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
+    try:
+        return call_anthropic_haiku_batch(candidates)
+    except Exception as exc:
+        if len(candidates) <= 5:
+            raise
+        print(f"[anthropic] ai_dev full batch failed; retrying in chunks of 5: {exc}")
+    translations: dict[str, dict[str, Any]] = {}
+    for index in range(0, len(candidates), 5):
+        chunk = candidates[index : index + 5]
+        print(
+            "[anthropic] ai_dev chunk retry: "
+            f"chunk_start={index}, chunk_size={len(chunk)}"
+        )
+        translations.update(call_anthropic_haiku_batch(chunk))
+    return translations
+
+
 def translate_final_ai_dev_articles(articles: list[dict]) -> None:
     global anthropic_batch_requested
 
@@ -1140,7 +1179,7 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
     anthropic_batch_requested = True
     stable_to_article_id = {candidate["stable_id"]: candidate["id"] for candidate in candidates}
     try:
-        stable_translations = call_anthropic_haiku_batch(candidates)
+        stable_translations = call_anthropic_with_chunk_retry(candidates)
     except Exception as exc:
         print(f"[anthropic] ai_dev final batch unavailable: {exc}")
         print(
@@ -1156,10 +1195,10 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
         for stable_id, translation in stable_translations.items()
         if stable_id in stable_to_article_id
     }
-    response_count = anthropic_last_response_count
-    matched_count = anthropic_last_matched_count
+    response_count = max(anthropic_last_response_count, len(stable_translations))
+    matched_count = max(anthropic_last_matched_count, len(stable_translations))
     meaningful_translation_count = len(translations)
-    generic_translation_count = anthropic_last_generic_translation_count
+    generic_translation_count = max(0, matched_count - meaningful_translation_count)
     unmatched_count = max(0, response_count - matched_count)
     fallback_count = len(candidates) - meaningful_translation_count
     print(
