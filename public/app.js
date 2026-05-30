@@ -112,7 +112,7 @@ function renderArticles() {
     const node = template.content.cloneNode(true);
     const card = node.querySelector(".card");
     const title = node.querySelector(".title");
-    const displayTitle = article.translated_title || article.display_title || article.title;
+    const displayTitle = article.translated_title || article.fallback_title || article.display_title || article.title;
     title.textContent = displayTitle;
     title.href = article.url;
     const originalTitle = node.querySelector(".original-title");
