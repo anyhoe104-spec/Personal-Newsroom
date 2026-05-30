@@ -19,6 +19,23 @@ def load_articles() -> list[dict]:
 
 def main() -> None:
     articles = load_articles()
+    ai_dev_articles = [
+        article
+        for article in sorted(
+            [article for article in articles if article.get("category") == "ai_dev"],
+            key=lambda item: item.get("score", 0),
+            reverse=True,
+        )[:10]
+    ]
+    for article in ai_dev_articles:
+        print(
+            {
+                "build_article_id": article.get("id"),
+                "translated_title_exists": bool(article.get("translated_title")),
+                "translated_summary_exists": bool(article.get("translated_summary")),
+                "impact_exists": bool(article.get("impact")),
+            }
+        )
     category_order = ["business", "food", "ai_dev", "egg"]
     categories = {
         key: next((a["category_label"] for a in articles if a["category"] == key), key)
