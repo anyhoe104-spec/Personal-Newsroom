@@ -33,6 +33,24 @@ anthropic_batch_requested = False
 anthropic_last_response_count = 0
 anthropic_last_matched_count = 0
 anthropic_last_generic_translation_count = 0
+RUN_STATS: dict[str, Any] = {
+    "rss_sources": [],
+    "fallback_by_category": {},
+    "ai_translation": {
+        "api_key_present": False,
+        "model": DEFAULT_ANTHROPIC_MODEL,
+        "request_count": 0,
+        "response_count": 0,
+        "matched_count": 0,
+        "meaningful_translation_count": 0,
+        "generic_translation_count": 0,
+        "fallback_count": 0,
+        "api_success": 0,
+        "final_display_translated_count": 0,
+        "final_display_untranslated_count": 0,
+        "request_display_match_count": 0,
+    },
+}
 
 
 def load_yaml(path: Path) -> dict:
@@ -62,6 +80,47 @@ def clean_text(value: str) -> str:
 
 def console_safe(value: str) -> str:
     return value.encode("cp932", errors="backslashreplace").decode("cp932")
+
+
+def log_safe(value: str) -> None:
+    print(console_safe(value))
+
+
+def summarize_exception(exc: Exception) -> str:
+    response = getattr(exc, "response", None)
+    if response is not None and getattr(response, "status_code", None):
+        status_code = response.status_code
+        reason = getattr(response, "reason", "") or ""
+        return f"{status_code} {reason}".strip()
+    message = str(exc).strip()
+    return message[:160] if message else exc.__class__.__name__
+
+
+def record_source_result(category: str, source: dict, fetched_count: int, failed_reason: str = "") -> None:
+    source_name = source.get("name", source.get("url", "unknown"))
+    source_type = source.get("source_type", source.get("type", "rss"))
+    result = {
+        "category": category,
+        "source": source_name,
+        "source_type": source_type,
+        "fetched_count": fetched_count,
+        "failed_reason": failed_reason,
+    }
+    RUN_STATS["rss_sources"].append(result)
+    if failed_reason:
+        log_safe(f"[rss_failure] {category} / {source_name} / {source_type}: {failed_reason}")
+    elif fetched_count == 0:
+        log_safe(f"[rss_zero] {category} / {source_name} / {source_type}: 0 articles")
+    else:
+        log_safe(f"[rss_summary] {category} / {source_name} / {source_type}: fetched={fetched_count}")
+
+
+def count_by_category(articles: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for article in articles:
+        category = str(article.get("category", "unknown"))
+        counts[category] = counts.get(category, 0) + 1
+    return counts
 
 
 def article_id(url: str, title: str) -> str:
@@ -1120,6 +1179,9 @@ def log_final_ai_dev_display_status(articles: list[dict], requested_article_ids:
     untranslated_count = len(ai_dev_articles) - translated_count
     requested_article_ids = requested_article_ids or set()
     request_display_match_count = len(set(display_article_ids) & requested_article_ids)
+    RUN_STATS["ai_translation"]["final_display_translated_count"] = translated_count
+    RUN_STATS["ai_translation"]["final_display_untranslated_count"] = untranslated_count
+    RUN_STATS["ai_translation"]["request_display_match_count"] = request_display_match_count
     log_value_list("final_ai_dev_display_article_ids", display_article_ids)
     print(
         "[anthropic] ai_dev request/display id match: "
@@ -1170,10 +1232,23 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
 
     candidates = select_final_ai_dev_translation_candidates(articles)
     requested_article_ids = {candidate["id"] for candidate in candidates}
+    RUN_STATS["ai_translation"]["api_key_present"] = bool(os.getenv("ANTHROPIC_API_KEY"))
+    RUN_STATS["ai_translation"]["model"] = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
+    RUN_STATS["ai_translation"]["request_count"] = len(candidates)
     if not candidates:
         log_final_ai_dev_display_status(articles, requested_article_ids)
         return
     if not os.getenv("ANTHROPIC_API_KEY"):
+        RUN_STATS["ai_translation"].update(
+            {
+                "api_success": 0,
+                "response_count": 0,
+                "matched_count": 0,
+                "meaningful_translation_count": 0,
+                "generic_translation_count": 0,
+                "fallback_count": len(candidates),
+            }
+        )
         log_final_ai_dev_display_status(articles, requested_article_ids)
         return
     anthropic_batch_requested = True
@@ -1186,6 +1261,16 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
             "[anthropic] ai_dev batch totals: "
             f"api_success=0, matched_count=0, meaningful_translation_count=0, "
             f"generic_translation_count=0, fallback_count={len(candidates)}"
+        )
+        RUN_STATS["ai_translation"].update(
+            {
+                "api_success": 0,
+                "response_count": 0,
+                "matched_count": 0,
+                "meaningful_translation_count": 0,
+                "generic_translation_count": 0,
+                "fallback_count": len(candidates),
+            }
         )
         log_final_ai_dev_display_status(articles, requested_article_ids)
         return
@@ -1201,6 +1286,16 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
     generic_translation_count = max(0, matched_count - meaningful_translation_count)
     unmatched_count = max(0, response_count - matched_count)
     fallback_count = len(candidates) - meaningful_translation_count
+    RUN_STATS["ai_translation"].update(
+        {
+            "api_success": 1,
+            "response_count": response_count,
+            "matched_count": matched_count,
+            "meaningful_translation_count": meaningful_translation_count,
+            "generic_translation_count": generic_translation_count,
+            "fallback_count": fallback_count,
+        }
+    )
     print(
         "[anthropic] ai_dev stable_id match: "
         f"requested_count={len(candidates)}, response_count={response_count}, "
@@ -1222,6 +1317,59 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
     log_final_ai_dev_display_status(articles, requested_article_ids)
 
 
+def print_fetch_run_summary(articles: list[dict]) -> None:
+    display_articles = provisional_display_articles(articles)
+    fetched_counts: dict[str, int] = {}
+    for result in RUN_STATS["rss_sources"]:
+        if result.get("failed_reason"):
+            continue
+        category = str(result["category"])
+        fetched_counts[category] = fetched_counts.get(category, 0) + int(result.get("fetched_count", 0))
+    displayed_counts = count_by_category(display_articles)
+    fallback_counts = {
+        category: int(RUN_STATS["fallback_by_category"].get(category, 0))
+        for category in sorted({*fetched_counts.keys(), *displayed_counts.keys(), *RUN_STATS["fallback_by_category"].keys()})
+    }
+
+    print("=== Personal Newsroom Run Summary ===")
+    for category in ("business", "food", "ai_dev", "egg"):
+        print(
+            f"{category}: fetched={fetched_counts.get(category, 0)}, "
+            f"scored={displayed_counts.get(category, 0)}, "
+            f"displayed={displayed_counts.get(category, 0)}, "
+            f"fallback={fallback_counts.get(category, 0)}"
+        )
+
+    print("RSS failures:")
+    failures = [result for result in RUN_STATS["rss_sources"] if result.get("failed_reason")]
+    if failures:
+        for result in failures:
+            print(f"- {result['source']}: {result['failed_reason']}")
+    else:
+        print("- none")
+
+    zero_sources = [result for result in RUN_STATS["rss_sources"] if not result.get("failed_reason") and result.get("fetched_count") == 0]
+    if zero_sources:
+        print("RSS zero_count_sources:")
+        for result in zero_sources:
+            print(f"- {result['category']} / {result['source']} / {result['source_type']}")
+
+    ai = RUN_STATS["ai_translation"]
+    print("AI translation:")
+    print(f"api_key_present={ai['api_key_present']}")
+    print(f"model={ai['model']}")
+    print(f"request_count={ai['request_count']}")
+    print(f"api_success={ai['api_success']}")
+    print(f"response_count={ai['response_count']}")
+    print(f"matched_count={ai['matched_count']}")
+    print(f"meaningful_translation_count={ai['meaningful_translation_count']}")
+    print(f"generic_translation_count={ai['generic_translation_count']}")
+    print(f"fallback_count={ai['fallback_count']}")
+    print(f"request_display_match_count={ai['request_display_match_count']}")
+    print(f"final_display_translated_count={ai['final_display_translated_count']}")
+    print(f"final_display_untranslated_count={ai['final_display_untranslated_count']}")
+
+
 def main() -> None:
     sources = load_yaml(SOURCES_PATH)["categories"]
     all_articles: list[dict] = []
@@ -1233,14 +1381,17 @@ def main() -> None:
                 source_articles = fetch_source(source, category_key, category["label"])
                 source_type = source.get("source_type", "rss")
                 print(f"[{source_type}] {category_key} / {source['name']}: fetched {len(source_articles)} articles")
+                record_source_result(category_key, source, len(source_articles))
                 category_articles.extend(source_articles)
             except Exception as exc:
                 source_name = source.get("name", source.get("url", "unknown"))
                 print(f"[source] {category_key} / {source_name}: failed: {exc}")
+                record_source_result(category_key, source, 0, summarize_exception(exc))
                 continue
         if len(category_articles) < 10:
             missing = 10 - len(category_articles)
             print(f"[fallback] {category_key} / {category['label']}: adding {missing} sample articles")
+            RUN_STATS["fallback_by_category"][category_key] = RUN_STATS["fallback_by_category"].get(category_key, 0) + missing
             category_articles.extend(sample_articles(category_key, category["label"], missing))
         for article in category_articles:
             seen_key = f"{article['category']}:{article['id']}"
@@ -1251,6 +1402,7 @@ def main() -> None:
 
     translate_final_ai_dev_articles(all_articles)
     log_ai_dev_save_readiness(all_articles)
+    print_fetch_run_summary(all_articles)
 
     DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
     DATA_PATH.write_text(json.dumps(all_articles, ensure_ascii=False, indent=2), encoding="utf-8")
