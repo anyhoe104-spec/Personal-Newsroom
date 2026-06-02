@@ -119,13 +119,44 @@ def enforce_category_limits(articles: list[dict], per_category: int = 10) -> lis
     return unique
 
 
+def count_by_category(articles: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for article in articles:
+        category = str(article.get("category", "unknown"))
+        counts[category] = counts.get(category, 0) + 1
+    return counts
+
+
+def fallback_count_by_category(articles: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for article in articles:
+        if article.get("source_type") != "fallback" and not article.get("fallback_title"):
+            continue
+        category = str(article.get("category", "unknown"))
+        counts[category] = counts.get(category, 0) + 1
+    return counts
+
+
 def main() -> None:
     articles = load_json(ARTICLES_PATH, [])
     prefs = load_yaml(PREFERENCES_PATH)
     feedback = load_json(FEEDBACK_PATH, {})
+    input_counts = count_by_category(articles)
     for article in articles:
         article["score"] = score_article(article, prefs, feedback)
     articles = enforce_category_limits(articles, 10)
+    display_counts = count_by_category(articles)
+    fallback_counts = fallback_count_by_category(articles)
+    for category in ("business", "food", "ai_dev", "egg"):
+        print(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
+    print("=== Personal Newsroom Score Summary ===")
+    for category in ("business", "food", "ai_dev", "egg"):
+        print(
+            f"{category}: input={input_counts.get(category, 0)}, "
+            f"scored={display_counts.get(category, 0)}, "
+            f"displayed={display_counts.get(category, 0)}, "
+            f"fallback={fallback_counts.get(category, 0)}"
+        )
     ARTICLES_PATH.write_text(json.dumps(articles, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Scored {len(articles)} articles")
 

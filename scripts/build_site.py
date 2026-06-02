@@ -17,8 +17,19 @@ def load_articles() -> list[dict]:
     return json.loads(ARTICLES_PATH.read_text(encoding="utf-8"))
 
 
+def count_by_category(articles: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for article in articles:
+        category = str(article.get("category", "unknown"))
+        counts[category] = counts.get(category, 0) + 1
+    return counts
+
+
 def main() -> None:
     articles = load_articles()
+    display_counts = count_by_category(articles)
+    for category in ("business", "food", "ai_dev", "egg"):
+        print(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
     ai_dev_articles = [
         article
         for article in sorted(
@@ -36,6 +47,19 @@ def main() -> None:
                 "impact_exists": bool(article.get("impact")),
             }
         )
+    translated_ai_dev = sum(
+        1
+        for article in ai_dev_articles
+        if article.get("translated_title") and article.get("translated_summary") and article.get("impact")
+    )
+    print("=== Personal Newsroom Build Summary ===")
+    for category in ("business", "food", "ai_dev", "egg"):
+        print(f"{category}: displayed={display_counts.get(category, 0)}")
+    print(
+        "AI translation render check: "
+        f"final_display_translated_count={translated_ai_dev}, "
+        f"final_display_untranslated_count={len(ai_dev_articles) - translated_ai_dev}"
+    )
     category_order = ["business", "food", "ai_dev", "egg"]
     categories = {
         key: next((a["category_label"] for a in articles if a["category"] == key), key)

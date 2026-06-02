@@ -93,3 +93,38 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `public/app.js`: タブ表示とフィードバックUI
 - `data/articles.json`: 記事データ
 - `data/feedback.json`: 次回スコア反映用フィードバック
+
+## Actionsログの見方
+
+GitHub Actions の `Fetch RSS`、`Score articles`、`Build site` のログを見ると、Daily Personal Newsroom の実行状態を確認できます。
+
+RSS取得:
+
+- `[rss_summary] category / source / source_type: fetched=N` は、そのRSSソースから記事を取得できたことを示します。
+- `[rss_failure] category / source / source_type: reason` は、取得に失敗したソースです。
+- `[rss_zero] category / source / source_type: 0 articles` は、接続はできたが記事が0件だったソースです。
+- `=== Personal Newsroom Run Summary ===` のカテゴリ行で `fetched`、`displayed`、`fallback` を確認できます。
+
+AI翻訳:
+
+- `api_key_present=True` なら Anthropic API キーがActions環境にあります。キー値はログに出しません。
+- `request_count=10` はAI・開発の最終表示候補10件を翻訳対象にしたことを示します。
+- `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
+- `translation_request_article_ids` と `final_ai_dev_display_article_ids`、および `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。
+- `final_display_translated_count` が8以上なら概ね成功です。10なら理想状態です。
+- `fallback_count` が多い場合は、API失敗、レスポンス解析失敗、汎用翻訳判定、またはAPIキー未設定の可能性があります。
+
+HTTPステータスの目安:
+
+- `401`: 認証失敗。APIキーや権限を確認します。
+- `402`: 支払い・クレジット不足の可能性があります。
+- `403`: アクセス禁止。RSS側の拒否や権限不足です。
+- `404`: URLまたはエンドポイントが見つかりません。
+- `429`: レート制限です。時間を置くか上限を確認します。
+- `504`: ゲートウェイタイムアウトです。外部サービス側の一時的な遅延の可能性があります。
+- `529`: Anthropic の過負荷です。再試行で回復することがあります。
+
+表示件数:
+
+- `Score articles` と `Build site` の `[display_summary] category: displayed=10` を確認します。
+- 4カテゴリすべてが `displayed=10` なら、UIに各カテゴリ10件を表示できます。
