@@ -41,6 +41,9 @@ jobs:
       - name: Build site
         run: python scripts/build_site.py
 
+      - name: Validate newsroom output
+        run: python scripts/validate_newsroom.py
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 

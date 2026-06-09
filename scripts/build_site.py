@@ -25,6 +25,13 @@ def count_by_category(articles: list[dict]) -> dict[str, int]:
     return counts
 
 
+def ai_dev_translation_usable(article: dict) -> bool:
+    if article.get("source_type") == "fallback" or article.get("fallback_title"):
+        return False
+    translated_summary = [line for line in article.get("translated_summary", []) if str(line).strip()]
+    return bool(article.get("translated_title") and len(translated_summary) == 3 and article.get("impact"))
+
+
 def main() -> None:
     articles = load_articles()
     display_counts = count_by_category(articles)
@@ -45,12 +52,13 @@ def main() -> None:
                 "translated_title_exists": bool(article.get("translated_title")),
                 "translated_summary_exists": bool(article.get("translated_summary")),
                 "impact_exists": bool(article.get("impact")),
+                "translation_usable": ai_dev_translation_usable(article),
             }
         )
     translated_ai_dev = sum(
         1
         for article in ai_dev_articles
-        if article.get("translated_title") and article.get("translated_summary") and article.get("impact")
+        if ai_dev_translation_usable(article)
     )
     print("=== Personal Newsroom Build Summary ===")
     for category in ("business", "food", "ai_dev", "egg"):
