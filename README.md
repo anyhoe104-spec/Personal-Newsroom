@@ -2,6 +2,8 @@
 
 自分専用のスマホ向けニュースMVPです。カテゴリ別RSSを取得し、要約、スコアリング、カテゴリ別10件表示、いいね / バッドのフィードバックUIを提供します。
 
+要件と現在の改修方針は [`docs/requirements.md`](docs/requirements.md) に整理しています。
+
 ## カテゴリ
 
 - 経済・ビジネス
@@ -86,6 +88,7 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `scripts/fetch_rss.py`: RSS取得と要約
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
 - `scripts/build_site.py`: 静的HTML生成
+- `scripts/validate_newsroom.py`: 生成結果の件数・fallback・AI翻訳状態チェック
 - `scripts/update_preferences.py`: `feedback.json` から好み設定を更新
 - `scripts/collectors/`: RSS、GoogleアラートRSS、将来API取得の入口
 - `public/index.html`: GitHub Pages用HTML
@@ -128,3 +131,9 @@ HTTPステータスの目安:
 
 - `Score articles` と `Build site` の `[display_summary] category: displayed=10` を確認します。
 - 4カテゴリすべてが `displayed=10` なら、UIに各カテゴリ10件を表示できます。
+
+生成結果チェック:
+
+- `Validate newsroom output` の `[validation_summary] category: displayed=10` を確認します。
+- `[validation_warning]` はActionsを失敗させない注意ログです。卵カテゴリのfallback過多やAI翻訳不足を見ます。
+- `[validation_error]` はActionsを失敗させる構造エラーです。カテゴリ件数不足や生成ファイル不足を見ます。

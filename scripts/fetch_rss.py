@@ -14,7 +14,7 @@ from typing import Any
 import requests
 import yaml
 from collectors import COLLECTORS
-from score_articles import enforce_category_limits, score_article
+from score_articles import egg_article_is_relevant, enforce_category_limits, score_article
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,6 +121,29 @@ def count_by_category(articles: list[dict]) -> dict[str, int]:
         category = str(article.get("category", "unknown"))
         counts[category] = counts.get(category, 0) + 1
     return counts
+
+
+def normalize_source(source: dict) -> dict:
+    normalized = dict(source)
+    normalized["source_type"] = normalized.get("source_type") or normalized.pop("type", "rss")
+    return normalized
+
+
+def normalized_categories(config: dict) -> dict[str, dict]:
+    categories = config.get("categories", {}) or {}
+    normalized = {
+        category_key: {**category, "sources": [normalize_source(source) for source in category.get("sources", [])]}
+        for category_key, category in categories.items()
+    }
+    for source in config.get("sources", []) or []:
+        category_key = source.get("category")
+        if category_key not in normalized:
+            print(f"[source_config] ignored uncategorized source: {source.get('name', source.get('url', 'unknown'))}")
+            continue
+        normalized_source = normalize_source({k: v for k, v in source.items() if k != "category"})
+        normalized[category_key].setdefault("sources", []).append(normalized_source)
+        print(f"[source_config] migrated top-level source into {category_key}: {normalized_source.get('name')}")
+    return normalized
 
 
 def article_id(url: str, title: str) -> str:
@@ -404,11 +427,16 @@ def sample_articles(category_key: str, category_label: str, count: int = 10) -> 
         original_title = f"{category_label} サンプル記事 {i}: {examples[category_key]}"
         url = f"https://example.com/personal-newsroom/{category_key}/{i}"
         if category_key == "ai_dev":
-            translated_title, summary, impact = fallback_ai_dev_localize(original_title, examples[category_key])
+            _, summary, impact = fallback_ai_dev_localize(original_title, examples[category_key])
+            translated_title = original_title
+            translated_summary = []
+            fallback_title = ai_dev_fallback_title(original_title)
             egg_insight = ""
         else:
             translated_title = original_title
             summary, impact, egg_insight = fallback_summary(original_title, examples[category_key], category_label)
+            translated_summary = []
+            fallback_title = ""
         articles.append(
             {
                 "id": article_id(url, original_title),
@@ -416,7 +444,8 @@ def sample_articles(category_key: str, category_label: str, count: int = 10) -> 
                 "original_title": original_title,
                 "display_title": translated_title,
                 "translated_title": translated_title,
-                "translated_summary": summary if category_key == "ai_dev" else [],
+                "translated_summary": translated_summary,
+                "fallback_title": fallback_title,
                 "url": url,
                 "source": "Fallback Sample",
                 "source_type": "fallback",
@@ -492,6 +521,50 @@ def is_generic_ai_dev_title(title: str) -> bool:
     return title in generic_titles or title.startswith("翻訳未取得:")
 
 
+def significant_ascii_tokens(text: str) -> set[str]:
+    stop_words = {
+        "about",
+        "after",
+        "ahead",
+        "article",
+        "builds",
+        "class",
+        "come",
+        "comes",
+        "frontier",
+        "future",
+        "futures",
+        "learns",
+        "models",
+        "new",
+        "news",
+        "pulling",
+        "running",
+        "safely",
+        "service",
+        "smarter",
+        "trusted",
+        "want",
+        "while",
+        "with",
+        "world",
+    }
+    tokens = {
+        token.lower()
+        for token in re.findall(r"[A-Za-z][A-Za-z0-9.+#-]{2,}", text or "")
+        if token.lower() not in stop_words
+    }
+    return tokens
+
+
+def title_preserves_original_subject(translated_title: str, original_title: str) -> bool:
+    original_tokens = significant_ascii_tokens(original_title)
+    if not original_tokens:
+        return True
+    translated_lower = translated_title.lower()
+    return any(token in translated_lower for token in original_tokens)
+
+
 def is_generic_ai_dev_impact(impact: str) -> bool:
     normalized = re.sub(r"\s+", "", impact or "")
     generic_markers = (
@@ -533,10 +606,12 @@ def usable_ai_dev_translation(article: dict) -> bool:
     translated_title = str(article.get("translated_title") or "")
     translated_summary = article.get("translated_summary") or article.get("summary") or []
     impact = str(article.get("impact") or "")
+    original_title = str(article.get("original_title") or "")
     return (
         bool(translated_title)
         and has_japanese_text(translated_title)
         and not is_generic_ai_dev_title(translated_title)
+        and title_preserves_original_subject(translated_title, original_title)
         and not looks_like_untranslated_summary(translated_summary)
         and has_japanese_text(impact)
         and not is_generic_ai_dev_impact(impact)
@@ -632,6 +707,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     parse_failures = 0
     matched_count = 0
     requested_stable_ids = {item["stable_id"] for item in items}
+    original_title_by_stable_id = {item["stable_id"]: item.get("title", "") for item in items}
     for item in parsed:
         if not isinstance(item, dict) or not item.get("stable_id"):
             parse_failures += 1
@@ -651,6 +727,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
             "translated_title": str(item.get("translated_title") or "")[:160],
             "translated_summary": translated_summary,
             "impact": str(item.get("impact") or "")[:180],
+            "original_title": original_title_by_stable_id.get(stable_id, ""),
         }
         if usable_ai_dev_translation(article_translation):
             translations[stable_id] = article_translation
@@ -870,6 +947,7 @@ def ai_translate_and_summarize(
             "translated_title": translated_title,
             "translated_summary": translated_summary,
             "impact": impact,
+            "original_title": title,
         }
         if not usable_ai_dev_translation(candidate_translation):
             print(f"[anthropic] save validation fallback: article_id={article_id_value}")
@@ -1137,7 +1215,13 @@ def apply_ai_dev_translation(article: dict, translation: dict[str, Any]) -> None
         if str(x).strip()
     ]
     impact = str(translation.get("impact") or article.get("impact") or "")
-    if not translated_title or not translated_summary or not impact:
+    candidate_translation = {
+        "translated_title": translated_title,
+        "translated_summary": translated_summary,
+        "impact": impact,
+        "original_title": str(article.get("original_title") or article.get("title") or ""),
+    }
+    if not usable_ai_dev_translation(candidate_translation):
         print(f"[anthropic] final save validation fallback: article_id={article.get('id')}")
         _, translated_summary, impact = article_level_ai_dev_fallback(
             str(article.get("original_title") or article.get("title") or ""),
@@ -1174,7 +1258,7 @@ def log_final_ai_dev_display_status(articles: list[dict], requested_article_ids:
     translated_count = sum(
         1
         for article in ai_dev_articles
-        if article.get("translated_title") and article.get("translated_summary") and article.get("impact")
+        if article.get("source_type") != "fallback" and usable_ai_dev_translation(article)
     )
     untranslated_count = len(ai_dev_articles) - translated_count
     requested_article_ids = requested_article_ids or set()
@@ -1205,6 +1289,7 @@ def log_ai_dev_save_readiness(articles: list[dict]) -> None:
                 "translated_title_exists": bool(article.get("translated_title")),
                 "translated_summary_exists": bool(article.get("translated_summary")),
                 "impact_exists": bool(article.get("impact")),
+                "translation_usable": article.get("source_type") != "fallback" and usable_ai_dev_translation(article),
             }
         )
 
@@ -1370,8 +1455,21 @@ def print_fetch_run_summary(articles: list[dict]) -> None:
     print(f"final_display_untranslated_count={ai['final_display_untranslated_count']}")
 
 
+def filter_category_articles(category_key: str, articles: list[dict]) -> list[dict]:
+    if category_key != "egg":
+        return articles
+    relevant = [article for article in articles if egg_article_is_relevant(article)]
+    removed_count = len(articles) - len(relevant)
+    if removed_count:
+        print(
+            "[category_filter] egg relevance: "
+            f"kept={len(relevant)}, removed={removed_count}, input={len(articles)}"
+        )
+    return relevant
+
+
 def main() -> None:
-    sources = load_yaml(SOURCES_PATH)["categories"]
+    sources = normalized_categories(load_yaml(SOURCES_PATH))
     all_articles: list[dict] = []
     seen: set[str] = set()
     for category_key, category in sources.items():
@@ -1388,6 +1486,7 @@ def main() -> None:
                 print(f"[source] {category_key} / {source_name}: failed: {exc}")
                 record_source_result(category_key, source, 0, summarize_exception(exc))
                 continue
+        category_articles = filter_category_articles(category_key, category_articles)
         if len(category_articles) < 10:
             missing = 10 - len(category_articles)
             print(f"[fallback] {category_key} / {category['label']}: adding {missing} sample articles")

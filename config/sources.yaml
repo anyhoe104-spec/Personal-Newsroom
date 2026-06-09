@@ -25,6 +25,12 @@ categories:
       - name: "えん食べ"
         source_type: "rss"
         url: "https://entabe.jp/news/feed.rss"
+      - name: "Google Alert: スイーツ 新商品"
+        source_type: "google_alert"
+        url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
+      - name: "Google Alert: 外食 トレンド"
+        source_type: "google_alert"
+        url: "https://www.google.com/alerts/feeds/14991717492503514582/6074943813560512715"
   ai_dev:
     label: "AI・開発"
     sources:
@@ -37,17 +43,16 @@ categories:
       - name: "Hacker News"
         source_type: "rss"
         url: "https://hnrss.org/frontpage"
-      # GoogleアラートRSSを追加する場合の例:
-      # - name: "Google Alert: AI agents"
-      #   source_type: "google_alert"
-      #   url: "https://www.google.com/alerts/feeds/xxxxxxxx/yyyyyyyy"
+      - name: "Google Alert: 生成AI 開発"
+        source_type: "google_alert"
+        url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
       # 将来API取得を追加する場合の予約例:
       # - name: "Example API"
       #   source_type: "api_stub"
       #   url: "https://api.example.com/news"
   egg:
-    label: "卵"
-    focus: "卵加工品、商品開発、製造技術、業務用途、食品産業動向"
+    label: "卵・食品開発"
+    focus: "卵加工品、食品の商品開発、共同開発、コラボ、製造技術、素材設計、業務用途、食品産業動向"
     domestic_ratio: 0.8
     sources:
       - name: "食品産業新聞社"
@@ -70,23 +75,20 @@ categories:
         source_type: "rss"
         url: "https://www.foodnavigator.com/Info/Latest-News/RSS"
         region: "global"
-sources:
-  - name: "Google Alert: スイーツ 新商品"
-    type: "google_alert"
-    url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
-    category: "food"
-
-  - name: "Google Alert: 外食 トレンド"
-    type: "google_alert"
-    url: "https://www.google.com/alerts/feeds/14991717492503514582/6074943813560512715"
-    category: "food"
-
-  - name: "Google Alert: 卵 加工品"
-    type: "google_alert"
-    url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
-    category: "egg"
-
-  - name: "Google Alert: 生成AI 開発"
-    type: "google_alert"
-    url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
-    category: "ai_dev"
+      - name: "Google Alert: 卵 加工品"
+        source_type: "google_alert"
+        url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
+        region: "jp"
+      # 卵専用ソースだけでは不足しやすいため、以下のようなGoogle Alertを追加候補にします。
+      # - name: "Google Alert: 食品 商品開発"
+      #   source_type: "google_alert"
+      #   url: "https://www.google.com/alerts/feeds/xxxxxxxx/yyyyyyyy"
+      #   region: "jp"
+      # - name: "Google Alert: 食品 共同開発 コラボ"
+      #   source_type: "google_alert"
+      #   url: "https://www.google.com/alerts/feeds/xxxxxxxx/yyyyyyyy"
+      #   region: "jp"
+      # - name: "Google Alert: 食品 開発背景 製法"
+      #   source_type: "google_alert"
+      #   url: "https://www.google.com/alerts/feeds/xxxxxxxx/yyyyyyyy"
+      #   region: "jp"
