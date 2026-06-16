@@ -42,18 +42,40 @@ categories:
       - 業務用
   ai_dev:
     boost_keywords:
+      # 活用・ユースケース寄り（追加）
+      - 活用事例
+      - 導入事例
+      - ビジネス活用
+      - 業務効率化
+      - 使い方
+      - プロンプト
+      - ツール
+      - 自動化
+      - ワークフロー
+      - 話題
+      - SNS
+      # モデル名（一次情報もある程度拾う）
+      - ChatGPT
+      - Claude
+      - Gemini
+      - 生成AI
+      # 英語（Reddit・海外ブログ対応）
       - AI
       - LLM
+      - use case
+      - productivity
+      - workflow
+      - prompt
       - agent
-      - developer
-      - Python
-      - API
-      - model
-      - research
-      - inference
     downrank_keywords:
       - 炎上
       - 噂
+      - 株価
+      # 純粋な研究論文・開発者向けを下げる
+      - inference speed
+      - benchmark
+      - fine-tuning
+      - training loss
   egg:
     boost_keywords:
       - 卵
