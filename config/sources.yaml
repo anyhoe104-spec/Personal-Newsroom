@@ -56,11 +56,9 @@ categories:
       - name: "Reddit r/artificial"
         source_type: "rss"
         url: "https://www.reddit.com/r/artificial/.rss"
-      # Google Alert: 生成AI 開発 → 正しいURLに差し替えが必要
-      # Google AlertsページでRSSアイコンをクリックして取得したURLを入れてください
-      # - name: "Google Alert: 生成AI 開発"
-      #   source_type: "google_alert"
-      #   url: "https://www.google.com/alerts/feeds/14991717492503514582/[正しいID]"
+      - name: "Google Alert: 生成AI 開発"
+        source_type: "google_alert"
+        url: "https://www.google.co.jp/alerts/feeds/14991717492503514582/8777567104038062054"
   egg:
     label: "卵・食品開発"
     focus: "卵加工品、食品の商品開発、共同開発、コラボ、製造技術、素材設計、業務用途、食品産業動向"
@@ -86,13 +84,11 @@ categories:
         source_type: "rss"
         url: "https://www.foodnavigator.com/Info/Latest-News/RSS"
         region: "global"
-      # 以下3つのGoogle AlertはURLが重複していたため一時コメントアウト
-      # Google AlertsページでRSSアイコン(📡)をクリックして正しいURLを取得してください
-      # - name: "Google Alert: 卵 加工品"
-      #   source_type: "google_alert"
-      #   url: "https://www.google.com/alerts/feeds/14991717492503514582/[正しいID]"
-      #   region: "jp"
-      # - name: "Google Alert: 食品業界 ニュース"
-      #   source_type: "google_alert"
-      #   url: "https://www.google.com/alerts/feeds/14991717492503514582/[正しいID]"
-      #   region: "jp"
+      - name: "Google Alert: 卵 加工品"
+        source_type: "google_alert"
+        url: "https://www.google.co.jp/alerts/feeds/14991717492503514582/13176854682763196238"
+        region: "jp"
+      - name: "Google Alert: 食品業界 ニュース"
+        source_type: "google_alert"
+        url: "https://www.google.co.jp/alerts/feeds/14991717492503514582/12390725358265639448"
+        region: "jp"
