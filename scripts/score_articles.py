@@ -121,6 +121,160 @@ RELEASE_ONLY_KEYWORDS = (
     "福袋",
     "まとめ",
 )
+AI_TECH_BOOST_KEYWORDS = (
+    "ai agent",
+    "agentic",
+    "llm",
+    "rag",
+    "api",
+    "sdk",
+    "codex",
+    "claude code",
+    "github copilot",
+    "openai",
+    "anthropic",
+    "gemini",
+    "model",
+    "inference",
+    "eval",
+    "benchmark",
+    "developer",
+    "workflow",
+    "automation",
+    "security",
+    "observability",
+    "オープンソース",
+    "推論",
+    "評価",
+    "開発者",
+    "自動化",
+    "生成ai",
+    "aiエージェント",
+    "モデル",
+)
+AI_COMMERCE_DOWNRANK_KEYWORDS = (
+    "sale",
+    "summer sale",
+    "kindle",
+    "campaign",
+    "coupon",
+    "discount",
+    "price",
+    "new product",
+    "book",
+    "books",
+    "発売",
+    "新商品",
+    "セール",
+    "割引",
+    "キャンペーン",
+    "クーポン",
+    "価格",
+    "最大",
+    "書籍",
+    "本",
+    "円",
+    "off",
+)
+FOOD_TREND_KEYWORDS = (
+    "スイーツ",
+    "カフェ",
+    "レストラン",
+    "新商品",
+    "期間限定",
+    "発売",
+    "メニュー",
+    "dessert",
+    "restaurant",
+    "bakery",
+    "cafe",
+)
+FOOD_DEV_DOWNRANK_KEYWORDS = (
+    "商品開発",
+    "共同開発",
+    "加工技術",
+    "製法",
+    "原料",
+    "品質",
+    "工場",
+    "研究",
+    "food tech",
+    "formulation",
+)
+EGG_TECH_DEV_KEYWORDS = (
+    "卵",
+    "たまご",
+    "玉子",
+    "商品開発",
+    "技術開発",
+    "共同開発",
+    "加工技術",
+    "製法",
+    "原料",
+    "品質",
+    "工場",
+    "研究",
+    "新規事業",
+    "海外展開",
+    "代替卵",
+    "卵加工",
+    "液卵",
+    "ゆで卵",
+    "温泉卵",
+    "加工卵",
+    "plant-based",
+    "formulation",
+    "processing",
+    "co-developed",
+    "product development",
+    "food",
+    "food tech",
+    "food technology",
+    "manufacturing",
+    "r&d",
+    "research and development",
+    "innovation",
+    "ingredient",
+    "ingredients",
+    "supply chain",
+    "automation",
+    "plant",
+    "protein",
+    "cultivated",
+    "cell-based",
+    "fermentation",
+    "packaging",
+)
+EGG_SWEETS_ONLY_DOWNRANK_KEYWORDS = (
+    "スイーツ",
+    "カフェ",
+    "アイス",
+    "ケーキ",
+    "チョコ",
+    "キャンペーン",
+    "セール",
+    "値引き",
+    "dessert",
+    "cafe",
+    "ice cream",
+)
+EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS = (
+    "レシピ",
+    "作って",
+    "食べ方",
+    "ランチョンセミナー",
+    "フェア",
+    "ホテル",
+    "駅",
+    "開店",
+    "ピザ",
+    "ドーナツ",
+    "アイス",
+    "パン",
+    "ワイン",
+    "recipe",
+)
+CROSS_CATEGORY_DUPLICATE_KEY_FIELDS = ("url", "original_title", "title")
 
 
 def load_yaml(path: Path) -> dict:
@@ -173,6 +327,47 @@ def article_text(article: dict) -> str:
     ).lower()
 
 
+def keyword_hits(text: str, keywords: tuple[str, ...]) -> int:
+    return sum(1 for keyword in keywords if keyword.lower() in text)
+
+
+def normalized_duplicate_key(article: dict) -> str:
+    for field in CROSS_CATEGORY_DUPLICATE_KEY_FIELDS:
+        value = str(article.get(field, "")).strip().lower()
+        if value:
+            return re.sub(r"\s+", " ", value)
+    return str(article.get("id", ""))
+
+
+def category_quality_adjustment(article: dict) -> float:
+    category = article.get("category")
+    text = article_text(article)
+    if category == "ai_dev":
+        tech_hits = keyword_hits(text, AI_TECH_BOOST_KEYWORDS)
+        commerce_hits = keyword_hits(text, AI_COMMERCE_DOWNRANK_KEYWORDS)
+        adjustment = min(0.18, tech_hits * 0.035) - min(0.36, commerce_hits * 0.09)
+        if commerce_hits and tech_hits == 0:
+            adjustment -= 0.12
+        elif commerce_hits >= 2:
+            adjustment -= 0.08
+        return adjustment
+    if category == "food":
+        trend_hits = keyword_hits(text, FOOD_TREND_KEYWORDS)
+        dev_hits = keyword_hits(text, FOOD_DEV_DOWNRANK_KEYWORDS)
+        return min(0.12, trend_hits * 0.025) - min(0.12, dev_hits * 0.035)
+    if category == "egg":
+        tech_hits = keyword_hits(text, EGG_TECH_DEV_KEYWORDS)
+        sweets_hits = keyword_hits(text, EGG_SWEETS_ONLY_DOWNRANK_KEYWORDS)
+        consumer_hits = keyword_hits(text, EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS)
+        adjustment = min(0.24, tech_hits * 0.045) - min(0.26, sweets_hits * 0.07)
+        if sweets_hits and tech_hits == 0:
+            adjustment -= 0.16
+        if consumer_hits and tech_hits <= 1:
+            adjustment -= min(0.2, consumer_hits * 0.08)
+        return adjustment
+    return 0.0
+
+
 def egg_article_relevance(article: dict) -> float:
     text = article_text(article)
     required_hits = sum(1 for kw in EGG_REQUIRED_KEYWORDS if kw.lower() in text)
@@ -181,8 +376,30 @@ def egg_article_relevance(article: dict) -> float:
     product_context_hits = sum(1 for kw in FOOD_PRODUCT_DEV_CONTEXT_KEYWORDS if kw.lower() in text)
     off_topic_hits = sum(1 for kw in EGG_OFF_TOPIC_KEYWORDS if kw.lower() in text)
     release_only_hits = sum(1 for kw in RELEASE_ONLY_KEYWORDS if kw.lower() in text)
+    readable_tech_hits = keyword_hits(text, EGG_TECH_DEV_KEYWORDS)
+    consumer_only_hits = keyword_hits(text, EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS)
+    sweets_only_hits = keyword_hits(text, EGG_SWEETS_ONLY_DOWNRANK_KEYWORDS)
+    if consumer_only_hits and readable_tech_hits <= 2:
+        return 0.25
+    if sweets_only_hits and product_dev_hits == 0 and readable_tech_hits <= 1:
+        return 0.25
     if required_hits:
-        return max(0.2, min(1.0, 0.65 + (0.12 * required_hits) + (0.06 * context_hits) - (0.1 * off_topic_hits)))
+        return max(
+            0.2,
+            min(
+                1.0,
+                0.65
+                + (0.12 * required_hits)
+                + (0.06 * context_hits)
+                + (0.06 * readable_tech_hits)
+                - (0.1 * off_topic_hits)
+                - (0.08 * consumer_only_hits),
+            ),
+        )
+    if readable_tech_hits >= 2 and consumer_only_hits == 0:
+        return max(0.52, min(0.9, 0.48 + (0.08 * readable_tech_hits) + (0.03 * product_context_hits)))
+    if readable_tech_hits >= 1 and product_dev_hits >= 1 and consumer_only_hits == 0:
+        return 0.5
     if context_hits >= 2 and off_topic_hits == 0:
         return 0.45
     if product_dev_hits >= 2:
@@ -193,7 +410,7 @@ def egg_article_relevance(article: dict) -> float:
 
 
 def egg_article_is_relevant(article: dict) -> bool:
-    return egg_article_relevance(article) >= 0.45
+    return egg_article_relevance(article) >= 0.5
 
 
 def score_article(article: dict, prefs: dict, feedback: dict) -> float:
@@ -221,17 +438,68 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
     if category == "egg":
         egg_relevance = egg_article_relevance(article)
         article["category_relevance"] = egg_relevance
+    category_adjustment = category_quality_adjustment(article)
+    article["category_quality_adjustment"] = round(category_adjustment, 3)
 
     score = (
         weights["keyword_weight"] * keyword
         + weights["source_weight"] * source
         + weights["recency_weight"] * recency
         + weights["feedback_weight"] * learned
+        + category_adjustment
         - egg_price_penalty
     )
     if category == "egg":
         score *= egg_relevance
-    return round(max(0, min(100, score * 100)), 1)
+    score_value = round(max(0, min(100, score * 100)), 1)
+    if article.get("source_type") == "fallback":
+        score_value = min(score_value, 25.0)
+    return score_value
+
+
+def source_limit_for_category(category: str) -> int | None:
+    if category == "ai_dev":
+        return 4
+    if category == "egg":
+        return 5
+    if category == "food":
+        return 6
+    return None
+
+
+def select_category_articles(
+    category: str,
+    items: list[dict],
+    per_category: int,
+    used_duplicate_keys: set[str],
+) -> list[dict]:
+    selected: list[dict] = []
+    selected_ids: set[str] = set()
+    source_counts: dict[str, int] = {}
+    source_limit = source_limit_for_category(category)
+
+    def can_add(item: dict, enforce_source_limit: bool) -> bool:
+        duplicate_key = normalized_duplicate_key(item)
+        if duplicate_key in used_duplicate_keys or item["id"] in selected_ids:
+            return False
+        if enforce_source_limit and source_limit is not None:
+            source = str(item.get("source", "unknown"))
+            if source_counts.get(source, 0) >= source_limit:
+                return False
+        return True
+
+    for enforce_source_limit in (True, False):
+        for item in items:
+            if len(selected) >= per_category:
+                break
+            if not can_add(item, enforce_source_limit):
+                continue
+            selected.append(item)
+            selected_ids.add(item["id"])
+            used_duplicate_keys.add(normalized_duplicate_key(item))
+            source = str(item.get("source", "unknown"))
+            source_counts[source] = source_counts.get(source, 0) + 1
+    return selected
 
 
 def enforce_category_limits(articles: list[dict], per_category: int = 10) -> list[dict]:
@@ -240,22 +508,15 @@ def enforce_category_limits(articles: list[dict], per_category: int = 10) -> lis
         grouped.setdefault(article["category"], []).append(article)
 
     selected = []
-    for category, items in grouped.items():
+    used_duplicate_keys: set[str] = set()
+    category_order = ["business", "ai_dev", "egg", "food"]
+    category_order.extend(category for category in grouped if category not in category_order)
+    for category in category_order:
+        items = grouped.get(category, [])
+        if not items:
+            continue
         items.sort(key=lambda x: x.get("score", 0), reverse=True)
-        if category == "egg":
-            domestic = [x for x in items if x.get("source_region") != "global"]
-            global_items = [x for x in items if x.get("source_region") == "global"]
-            egg_selection = domestic[:8] + global_items[:2]
-            selected_ids = {x["id"] for x in egg_selection}
-            for item in items:
-                if len(egg_selection) >= per_category:
-                    break
-                if item["id"] not in selected_ids:
-                    egg_selection.append(item)
-                    selected_ids.add(item["id"])
-            selected.extend(egg_selection[:per_category])
-        else:
-            selected.extend(items[:per_category])
+        selected.extend(select_category_articles(category, items, per_category, used_duplicate_keys))
     unique = []
     seen = set()
     for article in selected:
