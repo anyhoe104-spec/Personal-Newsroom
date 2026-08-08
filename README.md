@@ -112,6 +112,8 @@ AI翻訳:
 
 - `api_key_present=True` なら Anthropic API キーがActions環境にあります。キー値はログに出しません。
 - `request_count=10` はAI・開発の最終表示候補10件を翻訳対象にしたことを示します。
+- `source_japanese_count` はAI・開発の表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
+- `japanese_passthrough_count` は日本語原文記事に3点要約とimpactを補って表示可能にした件数です。
 - `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
 - `translation_request_article_ids` と `final_ai_dev_display_article_ids`、および `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。
 - `final_display_translated_count` が8以上なら概ね成功です。10なら理想状態です。
