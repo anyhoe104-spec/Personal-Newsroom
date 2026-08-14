@@ -1,0 +1,4 @@
+interface:
+  display_name: "作業を再開"
+  short_description: "Gitと作業報告書を確認し、安全に前回の続きから再開します"
+  default_prompt: "Use $resume-project to inspect the shared work report and safely resume this project."
