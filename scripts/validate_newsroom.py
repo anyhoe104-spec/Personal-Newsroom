@@ -39,6 +39,42 @@ def ai_dev_translation_usable(article: dict) -> bool:
     return bool(article.get("translated_title") and len(translated_summary) == 3 and article.get("impact"))
 
 
+def category_quality_metrics(articles: list[dict], category: str) -> dict[str, float | int]:
+    category_articles = [article for article in articles if article.get("category") == category]
+    displayed = len(category_articles)
+    synthetic_fallback = sum(1 for article in category_articles if article.get("source_type") == "fallback")
+    localization_fallback = sum(
+        1 for article in category_articles
+        if article.get("source_type") != "fallback" and article.get("fallback_title")
+    )
+    real_articles = displayed - synthetic_fallback
+    source_counts = Counter(
+        str(article.get("source") or "unknown")
+        for article in category_articles
+        if article.get("source_type") != "fallback"
+    )
+    largest_source = max(source_counts.values(), default=0)
+    return {
+        "displayed": displayed,
+        "real_articles": real_articles,
+        "synthetic_fallback": synthetic_fallback,
+        "localization_fallback": localization_fallback,
+        "real_article_rate": real_articles / displayed if displayed else 0.0,
+        "unique_sources": len(source_counts),
+        "max_source_share": largest_source / real_articles if real_articles else 0.0,
+    }
+
+
+def cross_category_duplicate_count(articles: list[dict]) -> int:
+    categories_by_key: dict[str, set[str]] = {}
+    for article in articles:
+        key = str(article.get("url") or article.get("original_title") or article.get("title") or "").strip().lower()
+        if not key:
+            continue
+        categories_by_key.setdefault(key, set()).add(str(article.get("category") or "unknown"))
+    return sum(1 for categories in categories_by_key.values() if len(categories) > 1)
+
+
 def validate() -> int:
     errors: list[str] = []
     warnings: list[str] = []
@@ -55,12 +91,27 @@ def validate() -> int:
         print(f"[validation_summary] {category}: displayed={displayed}, fallback={fallback}")
         if displayed != 10:
             errors.append(f"{category} displayed={displayed}; expected 10")
+        metrics = category_quality_metrics(articles, category)
+        print(
+            f"[quality_metrics] {category}: real_articles={metrics['real_articles']}, "
+            f"real_article_rate={metrics['real_article_rate']:.0%}, "
+            f"synthetic_fallback={metrics['synthetic_fallback']}, "
+            f"localization_fallback={metrics['localization_fallback']}, "
+            f"unique_sources={metrics['unique_sources']}, "
+            f"max_source_share={metrics['max_source_share']:.0%}"
+        )
+
+    duplicate_count = cross_category_duplicate_count(articles)
+    print(f"[quality_duplicates] cross_category_duplicates={duplicate_count}")
+    if duplicate_count:
+        warnings.append(f"カテゴリ横断の重複記事が{duplicate_count}件あります。")
 
     ai_dev_articles = [article for article in articles if article.get("category") == "ai_dev"]
     translated_ai_dev = sum(1 for article in ai_dev_articles if ai_dev_translation_usable(article))
     print(
         "[validation_ai_dev] "
-        f"usable_translations={translated_ai_dev}, untranslated={len(ai_dev_articles) - translated_ai_dev}"
+        f"usable_translations={translated_ai_dev}, untranslated={len(ai_dev_articles) - translated_ai_dev}, "
+        f"translation_rate={translated_ai_dev / len(ai_dev_articles) if ai_dev_articles else 0:.0%}"
     )
     if ai_dev_articles and translated_ai_dev < 8:
         warnings.append(
@@ -69,7 +120,18 @@ def validate() -> int:
 
     egg_articles = [article for article in articles if article.get("category") == "egg"]
     egg_fallback = fallback_counts.get("egg", 0)
-    print(f"[validation_egg] real_articles={len(egg_articles) - egg_fallback}, fallback={egg_fallback}")
+    strong_relevance = sum(
+        1 for article in egg_articles
+        if article.get("source_type") != "fallback" and float(article.get("category_relevance", 0)) >= 0.5
+    )
+    borderline_relevance = sum(
+        1 for article in egg_articles
+        if article.get("source_type") != "fallback" and 0.45 <= float(article.get("category_relevance", 0)) < 0.5
+    )
+    print(
+        f"[validation_egg] real_articles={len(egg_articles) - egg_fallback}, fallback={egg_fallback}, "
+        f"strong_relevance={strong_relevance}, borderline_relevance={borderline_relevance}"
+    )
     if egg_articles and egg_fallback >= 8:
         warnings.append(
             "卵カテゴリのfallbackが8件以上です。現在のソースでは卵関連の実記事が不足している可能性があります。"

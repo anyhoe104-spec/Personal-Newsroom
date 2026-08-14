@@ -7,6 +7,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import fetch_rss  # noqa: E402
 import score_articles  # noqa: E402
+import validate_newsroom  # noqa: E402
 
 
 def article(article_id: str, category: str, **overrides) -> dict:
@@ -83,6 +84,17 @@ class ScoringRegressionTests(unittest.TestCase):
         self.assertEqual(sum(item["url"] == shared_url for item in selected), 1)
         self.assertIn("business-1", {item["id"] for item in selected})
 
+    def test_borderline_egg_development_article_is_kept(self):
+        item = article(
+            "egg-borderline",
+            "egg",
+            title="食品工場の製造技術と品質管理",
+            raw_summary="食品産業の加工技術と製造工程を解説する",
+        )
+
+        self.assertGreaterEqual(score_articles.egg_article_relevance(item), 0.45)
+        self.assertTrue(score_articles.egg_article_is_relevant(item))
+
 
 class TranslationRegressionTests(unittest.TestCase):
     def test_specific_japanese_translation_is_usable(self):
@@ -135,6 +147,47 @@ class TranslationRegressionTests(unittest.TestCase):
         self.assertEqual(item["translated_title"], item["original_title"])
         self.assertEqual(len(item["translated_summary"]), 3)
         self.assertTrue(item["impact"])
+
+
+class QualityMetricsRegressionTests(unittest.TestCase):
+    def test_quality_metrics_report_real_rate_and_source_concentration(self):
+        items = [
+            article("real-1", "egg", source="source-a"),
+            article("real-2", "egg", source="source-a"),
+            article("fallback", "egg", source="sample", source_type="fallback"),
+        ]
+
+        metrics = validate_newsroom.category_quality_metrics(items, "egg")
+
+        self.assertEqual(metrics["real_articles"], 2)
+        self.assertAlmostEqual(metrics["real_article_rate"], 2 / 3)
+        self.assertEqual(metrics["synthetic_fallback"], 1)
+        self.assertEqual(metrics["localization_fallback"], 0)
+        self.assertEqual(metrics["unique_sources"], 1)
+        self.assertEqual(metrics["max_source_share"], 1.0)
+
+    def test_translation_fallback_remains_a_real_article(self):
+        item = article(
+            "ai-real",
+            "ai_dev",
+            fallback_title="翻訳未取得: Original title",
+        )
+
+        metrics = validate_newsroom.category_quality_metrics([item], "ai_dev")
+
+        self.assertEqual(metrics["real_articles"], 1)
+        self.assertEqual(metrics["synthetic_fallback"], 0)
+        self.assertEqual(metrics["localization_fallback"], 1)
+
+    def test_cross_category_duplicate_metric(self):
+        shared_url = "https://example.com/shared"
+        items = [
+            article("business", "business", url=shared_url),
+            article("ai", "ai_dev", url=shared_url),
+            article("egg", "egg"),
+        ]
+
+        self.assertEqual(validate_newsroom.cross_category_duplicate_count(items), 1)
 
 
 if __name__ == "__main__":

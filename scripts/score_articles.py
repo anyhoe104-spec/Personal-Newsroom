@@ -410,7 +410,9 @@ def egg_article_relevance(article: dict) -> float:
 
 
 def egg_article_is_relevant(article: dict) -> bool:
-    return egg_article_relevance(article) >= 0.5
+    # Keep borderline food-development articles when egg-specific coverage is thin.
+    # Scores below 0.45 remain too broad or consumer-oriented for this category.
+    return egg_article_relevance(article) >= 0.45
 
 
 def score_article(article: dict, prefs: dict, feedback: dict) -> float:
