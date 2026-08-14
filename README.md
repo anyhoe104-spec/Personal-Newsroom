@@ -25,6 +25,12 @@ python scripts/score_articles.py
 python scripts/build_site.py
 ```
 
+回帰テストは次のコマンドで実行します。
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
 生成後、`public/index.html` をブラウザで開くと確認できます。
 
 `scripts/fetch_rss.py` はRSSごとの取得件数を表示します。取得できないRSSがあっても処理は続行し、カテゴリ内の記事が10件に満たない場合はfallback sampleを追加したカテゴリ名と不足件数をログに表示します。
