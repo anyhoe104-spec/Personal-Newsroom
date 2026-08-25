@@ -47,6 +47,9 @@ jobs:
       - name: Validate newsroom output
         run: python scripts/validate_newsroom.py
 
+      - name: Analyze source feedback
+        run: python scripts/analyze_source_feedback.py
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 

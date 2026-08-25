@@ -4,21 +4,72 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- Updated: 2026-08-14 15:33:56 +09:00
+- Updated: 2026-08-25 08:45:14 +09:00
 - Agent: Codex
-- Branch: codex/pr8-category-relevance-tuning
-- Revision: c087561 before this checkpoint commit
-- Objective: Install and checkpoint the shared agent project workflow.
-- Completed: Cloned `agent-project-workflow` beside this repository and installed `AGENTS.md`, `WORKLOG.md`, and local `.agents/skills` into this project.
-- In progress: Workflow adoption files are staged for commit and push after this checkpoint update.
-- Blockers and risks: No blockers. The current branch does not show an upstream in `git status --branch`, though `origin/codex/pr8-category-relevance-tuning` exists at the current base revision.
+- Branch: codex/pr11-feedback-history-source-learning
+- Revision: 9dad82f before this checkpoint update
+- Objective: Improve daily newsroom reliability around AI/egg translations, food duplicate visibility, feedback export, and source replacement analysis.
+- Completed: Added egg category English translation support through the final Anthropic translation path; added feedback JSON copy/download UI; added source feedback/history analysis JSON generation; added near-duplicate validation logs; updated Actions, README, and requirements.
+- In progress: Changes are implemented and validated locally but not committed or pushed.
+- Blockers and risks: No blocker. Current validation still warns on the checked-in sample/current data because API keys were not used locally, so AI・開発 and egg translated-summary coverage is low until the GitHub Actions run with `ANTHROPIC_API_KEY`.
 - Next actions:
-  1. Commit the workflow adoption files.
-  2. Push `codex/pr8-category-relevance-tuning` to `origin`.
-  3. Open or update the PR for the workflow adoption branch as needed.
-- Validation: `syntax ok`; `scripts/validate_newsroom.py` passed with warnings for AI・開発 translations because API keys were not present.
+  1. Review the PR11 diff, especially `scripts/fetch_rss.py` translation generalization and `scripts/analyze_source_feedback.py`.
+  2. Commit the PR11 files if acceptable.
+  3. Push `codex/pr11-feedback-history-source-learning` and open a PR.
+  4. After merge, run Daily Personal Newsroom manually and inspect `[anthropic]`, `[quality_near_duplicates]`, and `[source_feedback]` logs.
+- Validation: Python syntax check passed; unit tests passed (`12 tests`); `scripts/build_site.py` passed; `scripts/validate_newsroom.py` passed with API-key-related translation warnings; `scripts/analyze_source_feedback.py` passed and repeated runs kept the same article snapshot to one history entry.
 
 ## Dated work reports
+
+### 2026-08-25 08:45 +09:00 - Codex
+
+- Objective: Implement the next reliability improvements for translation coverage, feedback accumulation, source replacement analysis, and food duplicate visibility.
+- Completed work:
+  - Created branch `codex/pr11-feedback-history-source-learning` from `main` at `9dad82f`.
+  - Generalized final Anthropic translation candidate selection from AI・開発 only to AI・開発 plus 卵・食品開発.
+  - Added category-aware translation prompt guidance so egg/food-development English articles are summarized for product-development use, not AI workflow use.
+  - Added browser feedback export controls for copying or downloading the localStorage feedback JSON.
+  - Added `scripts/analyze_source_feedback.py` to append stable article snapshots and generate source-level keep/promote/watch/replace recommendations.
+  - Added initial `data/run_history.json`, `data/source_recommendations.json`, `public/run_history.json`, and `public/source_recommendations.json`.
+  - Added Actions step to generate source feedback artifacts.
+  - Added near-duplicate pair logging in `scripts/validate_newsroom.py`, with a food-specific warning threshold.
+  - Updated README and requirements to describe feedback export, source analysis, egg translation, and new validation logs.
+- Affected areas:
+  - `.github/workflows/daily_news.yml`
+  - `scripts/fetch_rss.py`
+  - `scripts/build_site.py`
+  - `scripts/validate_newsroom.py`
+  - `scripts/analyze_source_feedback.py`
+  - `public/index.html`
+  - `public/app.js`
+  - `public/style.css`
+  - `data/run_history.json`
+  - `data/source_recommendations.json`
+  - `public/run_history.json`
+  - `public/source_recommendations.json`
+  - `README.md`
+  - `docs/requirements.md`
+- Validation:
+  - `python -m py_compile scripts/fetch_rss.py scripts/score_articles.py scripts/validate_newsroom.py scripts/analyze_source_feedback.py scripts/build_site.py`: passed using the bundled Codex Python runtime.
+  - `python -m unittest discover -s tests -v`: passed, 12 tests.
+  - `python scripts/build_site.py`: passed.
+  - `python scripts/validate_newsroom.py`: passed with warnings for existing checked-in data where API-backed translations were not present.
+  - `python scripts/analyze_source_feedback.py` twice: passed; same article snapshot remained at `history_runs=1`.
+  - `node --check public/app.js`: passed.
+  - `git diff --check`: passed; Git reported expected LF-to-CRLF working-copy warnings only.
+- Decisions:
+  - Kept source replacement as recommendation output, not automatic source mutation, to avoid silently changing editorial coverage.
+  - Kept run history initialized empty in tracked files; Actions and local runs generate current recommendation JSON from the latest article set.
+  - Reused the existing Anthropic tool schema name to minimize API integration churn while making the prompt category-aware.
+- Unresolved issues:
+  - Local validation cannot prove Anthropic translation quality without `ANTHROPIC_API_KEY`; verify in GitHub Actions after push/merge.
+  - `data/feedback.json` is still empty until browser-exported feedback is copied into the repo.
+  - Food duplicate detection currently logs near-duplicate pairs; it does not yet suppress or diversify those articles automatically.
+- Exact next actions:
+  1. Review `git status --short` and the changed files.
+  2. Commit the PR11 implementation if the scope is acceptable.
+  3. Push `codex/pr11-feedback-history-source-learning` and open a PR.
+  4. After the first Actions run, inspect `public/source_recommendations.json`, `public/run_history.json`, and Actions logs for translation and duplicate metrics.
 
 ### 2026-08-14 15:33 +09:00 - Codex
 

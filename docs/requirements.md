@@ -74,8 +74,10 @@ MVPでは、RSSを中心にニュースを取得し、カテゴリ別に10件ず
 ### 4.5 フィードバック
 
 - ブラウザ上の「いいね」「バッド」は `localStorage` に保存する。
+- ブラウザからフィードバックJSONをコピーまたは保存できるようにする。
 - 次回スコアへ反映したい場合は、同形式のデータを `data/feedback.json` に反映し、`scripts/update_preferences.py` を実行する。
 - フィードバック学習はカテゴリ内で行う。
+- スコアとフィードバックをソース別に蓄積し、維持・強化・監視・差し替え候補を機械可読なJSONで確認できるようにする。
 
 ### 4.6 静的サイト生成
 
@@ -87,16 +89,17 @@ MVPでは、RSSを中心にニュースを取得し、カテゴリ別に10件ず
 
 - `scripts/validate_newsroom.py` で生成結果を検証する。
 - 4カテゴリすべてが10件表示されていない場合はエラーとする。
-- 卵カテゴリのfallback過多、AI・開発カテゴリの翻訳不足は警告としてログに出す。
+- 卵カテゴリのfallback過多、AI・開発カテゴリと卵・食品開発カテゴリの翻訳不足は警告としてログに出す。
+- 食品カテゴリの記事内容被りは、同一URLだけでなく近似重複ペア数としてログに出す。
 - 警告はActionsを失敗させず、次回のソース改善・翻訳改善の判断材料にする。
 
 ### 4.7 GitHub Actions
 
 - `.github/workflows/daily_news.yml` は毎日実行される。
-- 実行順は `fetch_rss.py`、`score_articles.py`、`build_site.py` とする。
+- 実行順は `fetch_rss.py`、`score_articles.py`、`build_site.py`、`validate_newsroom.py`、`analyze_source_feedback.py` とする。
 - `build_site.py` 後に `validate_newsroom.py` を実行し、生成結果を確認する。
 - 成功時は Pages artifact をアップロードし、GitHub Pages にデプロイする。
-- Actions ログには、RSS取得状況、カテゴリ別表示件数、fallback数、AI翻訳状況を出力する。
+- Actions ログには、RSS取得状況、カテゴリ別表示件数、fallback数、翻訳状況、近似重複、ソース評価状況を出力する。
 
 ## 5. 非機能要件
 
