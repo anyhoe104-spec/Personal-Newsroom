@@ -103,6 +103,33 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `data/articles.json`: 記事データ
 - `data/feedback.json`: 次回スコア反映用フィードバック
 
+## ログ設定
+
+ログは Python 標準の `logging` に統一しています。出力形式は従来どおり `[タグ] 本文` のままです。
+
+| 環境変数 | 既定値 | 説明 |
+| --- | --- | --- |
+| `NEWSROOM_LOG_LEVEL` | `INFO` | コンソール出力レベル。`DEBUG` にすると記事単位の翻訳診断ログが復活します（`LOG_LEVEL` でも可）。 |
+| `NEWSROOM_LOG_FILE` | `logs/newsroom.log` | ログファイルの出力先。空文字を指定するとファイル出力を止めます。 |
+| `NEWSROOM_LOG_FILE_LEVEL` | `DEBUG` | ファイル出力レベル。コンソールに出さない詳細もファイルには残ります。 |
+| `NEWSROOM_LOG_MAX_BYTES` | `1048576`（1MiB） | 1ファイルあたりの上限。超えるとローテーションします。 |
+| `NEWSROOM_LOG_BACKUP_COUNT` | `3` | 保持する世代数。上限に達した古いファイルから削除されます。 |
+
+`logs/` は `.gitignore` 済みです。ローカル実行では最大 4MiB（1MiB × 4世代）でログの増加が止まります。
+
+GitHub Actions は既定で `NEWSROOM_LOG_LEVEL=INFO`、ファイル出力なしで実行します。詳細を見たいときは `daily_news.yml` の `NEWSROOM_LOG_LEVEL` を `DEBUG` にして手動実行してください。
+
+記事単位で繰り返し出るログには1実行あたりの件数上限があり、上限に達した場合は `[log_capped] グループ名: emitted=N, suppressed=M` を最後に出力します。ログが黙って欠けることはありません。
+
+デバッグ時のみ出力されるログ（`NEWSROOM_LOG_LEVEL=DEBUG` が必要）:
+
+- `[anthropic] request articles before prompt` / `request messages payload`
+- `[anthropic] response content types` / `tool_use name` / `tool_use.input item`
+- `[anthropic] translation_request_titles` / `translation_request_article_ids` / `final_ai_dev_display_article_ids`
+- `[anthropic] ai_dev japanese passthrough` / `applied translation to article`
+- 記事ごとの翻訳可否ダンプ（`article_id` / `translation_usable`）
+- `[rss] 名称: parse warning`（feedparser の bozo 判定は誤検知が多いため）
+
 ## Actionsログの見方
 
 GitHub Actions の `Fetch RSS`、`Score articles`、`Build site` のログを見ると、Daily Personal Newsroom の実行状態を確認できます。
@@ -121,7 +148,7 @@ AI翻訳:
 - `source_japanese_count` はAI・開発の表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
 - `japanese_passthrough_count` は日本語原文記事に3点要約とimpactを補って表示可能にした件数です。
 - `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
-- `translation_request_article_ids` と `final_ai_dev_display_article_ids`、および `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。
+- `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。内訳の `translation_request_article_ids` と `final_ai_dev_display_article_ids` は DEBUG レベルです（「ログ設定」を参照）。
 - `final_display_translated_count` が8以上なら概ね成功です。10なら理想状態です。
 - `fallback_count` が多い場合は、API失敗、レスポンス解析失敗、汎用翻訳判定、またはAPIキー未設定の可能性があります。
 

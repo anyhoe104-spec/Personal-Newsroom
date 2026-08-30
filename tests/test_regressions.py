@@ -1,3 +1,4 @@
+import logging
 import sys
 import unittest
 from pathlib import Path
@@ -6,6 +7,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import fetch_rss  # noqa: E402
+import newsroom_logging  # noqa: E402
 import score_articles  # noqa: E402
 import validate_newsroom  # noqa: E402
 
@@ -188,6 +190,79 @@ class QualityMetricsRegressionTests(unittest.TestCase):
         ]
 
         self.assertEqual(validate_newsroom.cross_category_duplicate_count(items), 1)
+
+
+class EggPriceKeywordRegressionTests(unittest.TestCase):
+    def test_price_keywords_are_readable_japanese(self):
+        # These were double-encoded through cp932 and could never match an article.
+        for keyword in score_articles.EGG_PRICE_KEYWORDS:
+            self.assertTrue(keyword.isprintable())
+        self.assertIn("価格", score_articles.EGG_PRICE_KEYWORDS)
+        self.assertIn("卵価", score_articles.EGG_PRICE_KEYWORDS)
+
+    def test_price_article_is_penalised(self):
+        prefs = {
+            "categories": {"egg": {"boost_keywords": [], "downrank_keywords": []}},
+            "preferred_sources": {"egg": []},
+            "scoring": {
+                "keyword_weight": 0.0,
+                "source_weight": 0.0,
+                "recency_weight": 0.0,
+                "feedback_weight": 0.0,
+                "egg_price_weight": 0.05,
+            },
+        }
+        priced = article("priced", "egg", title="鶏卵の卵価が上昇、加工技術で商品開発を継続")
+        plain = article("plain", "egg", title="鶏卵の加工技術で商品開発を継続")
+
+        self.assertLess(
+            score_articles.score_article(priced, prefs, {}),
+            score_articles.score_article(plain, prefs, {}),
+        )
+
+
+class LoggingRegressionTests(unittest.TestCase):
+    def setUp(self):
+        newsroom_logging.reset_caps()
+        self.logger = newsroom_logging.get_logger()
+        self.records: list[logging.LogRecord] = []
+
+        class Collector(logging.Handler):
+            def emit(inner, record):
+                self.records.append(record)
+
+        self.handler = Collector(level=logging.DEBUG)
+        self.logger.addHandler(self.handler)
+        self.previous_level = self.logger.level
+        self.logger.setLevel(logging.DEBUG)
+
+    def tearDown(self):
+        self.logger.removeHandler(self.handler)
+        self.logger.setLevel(self.previous_level)
+        newsroom_logging.reset_caps()
+
+    def test_log_capped_stops_after_the_limit(self):
+        for index in range(12):
+            newsroom_logging.log_capped(logging.DEBUG, "unit_test_group", f"line {index}", limit=3)
+
+        messages = [record.getMessage() for record in self.records]
+        self.assertEqual(messages[:3], ["line 0", "line 1", "line 2"])
+        self.assertEqual(len(messages), 4)
+        self.assertIn("suppressing the rest", messages[3])
+
+    def test_suppression_summary_reports_dropped_messages(self):
+        for index in range(8):
+            newsroom_logging.log_capped(logging.DEBUG, "unit_test_group", f"line {index}", limit=2)
+        self.records.clear()
+
+        newsroom_logging.log_suppression_summary()
+
+        messages = [record.getMessage() for record in self.records]
+        self.assertTrue(any("emitted=2, suppressed=6" in message for message in messages))
+
+    def test_console_safe_keeps_japanese_on_utf8_consoles(self):
+        # The cp932 round trip is what produced the unreadable egg price keywords.
+        self.assertEqual(fetch_rss.console_safe("卵価と価格の相場"), "卵価と価格の相場")
 
 
 if __name__ == "__main__":

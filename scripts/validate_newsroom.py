@@ -5,11 +5,14 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from newsroom_logging import get_logger
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTICLES_PATH = ROOT / "data" / "articles.json"
 INDEX_PATH = ROOT / "public" / "index.html"
 CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
+LOG = get_logger()
 
 
 def load_articles() -> list[dict]:
@@ -88,11 +91,11 @@ def validate() -> int:
     for category in CATEGORY_ORDER:
         displayed = category_counts.get(category, 0)
         fallback = fallback_counts.get(category, 0)
-        print(f"[validation_summary] {category}: displayed={displayed}, fallback={fallback}")
+        LOG.info(f"[validation_summary] {category}: displayed={displayed}, fallback={fallback}")
         if displayed != 10:
             errors.append(f"{category} displayed={displayed}; expected 10")
         metrics = category_quality_metrics(articles, category)
-        print(
+        LOG.info(
             f"[quality_metrics] {category}: real_articles={metrics['real_articles']}, "
             f"real_article_rate={metrics['real_article_rate']:.0%}, "
             f"synthetic_fallback={metrics['synthetic_fallback']}, "
@@ -102,13 +105,13 @@ def validate() -> int:
         )
 
     duplicate_count = cross_category_duplicate_count(articles)
-    print(f"[quality_duplicates] cross_category_duplicates={duplicate_count}")
+    LOG.info(f"[quality_duplicates] cross_category_duplicates={duplicate_count}")
     if duplicate_count:
         warnings.append(f"カテゴリ横断の重複記事が{duplicate_count}件あります。")
 
     ai_dev_articles = [article for article in articles if article.get("category") == "ai_dev"]
     translated_ai_dev = sum(1 for article in ai_dev_articles if ai_dev_translation_usable(article))
-    print(
+    LOG.info(
         "[validation_ai_dev] "
         f"usable_translations={translated_ai_dev}, untranslated={len(ai_dev_articles) - translated_ai_dev}, "
         f"translation_rate={translated_ai_dev / len(ai_dev_articles) if ai_dev_articles else 0:.0%}"
@@ -128,7 +131,7 @@ def validate() -> int:
         1 for article in egg_articles
         if article.get("source_type") != "fallback" and 0.45 <= float(article.get("category_relevance", 0)) < 0.5
     )
-    print(
+    LOG.info(
         f"[validation_egg] real_articles={len(egg_articles) - egg_fallback}, fallback={egg_fallback}, "
         f"strong_relevance={strong_relevance}, borderline_relevance={borderline_relevance}"
     )
@@ -138,14 +141,14 @@ def validate() -> int:
         )
 
     for warning in warnings:
-        print(f"[validation_warning] {warning}")
+        LOG.warning(f"[validation_warning] {warning}")
     for error in errors:
-        print(f"[validation_error] {error}")
+        LOG.error(f"[validation_error] {error}")
 
     if errors:
-        print("Newsroom validation failed")
+        LOG.error("Newsroom validation failed")
         return 1
-    print("Newsroom validation passed")
+    LOG.info("Newsroom validation passed")
     return 0
 
 

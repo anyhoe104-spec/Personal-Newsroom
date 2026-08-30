@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
+
+from newsroom_logging import get_logger, log_capped, log_suppression_summary
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTICLES_PATH = ROOT / "data" / "articles.json"
 PUBLIC_DIR = ROOT / "public"
 INDEX_PATH = PUBLIC_DIR / "index.html"
+LOG = get_logger()
 
 
 def load_articles() -> list[dict]:
@@ -36,7 +40,7 @@ def main() -> None:
     articles = load_articles()
     display_counts = count_by_category(articles)
     for category in ("business", "food", "ai_dev", "egg"):
-        print(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
+        LOG.info(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
     ai_dev_articles = [
         article
         for article in sorted(
@@ -46,31 +50,39 @@ def main() -> None:
         )[:10]
     ]
     for article in ai_dev_articles:
-        print(
-            {
-                "build_article_id": article.get("id"),
-                "translated_title_exists": bool(article.get("translated_title")),
-                "translated_summary_exists": bool(article.get("translated_summary")),
-                "impact_exists": bool(article.get("impact")),
-                "translation_usable": ai_dev_translation_usable(article),
-            }
+        log_capped(
+            logging.DEBUG,
+            "build_ai_dev_article",
+            str(
+                {
+                    "build_article_id": article.get("id"),
+                    "translated_title_exists": bool(article.get("translated_title")),
+                    "translated_summary_exists": bool(article.get("translated_summary")),
+                    "impact_exists": bool(article.get("impact")),
+                    "translation_usable": ai_dev_translation_usable(article),
+                }
+            ),
+            limit=10,
         )
     translated_ai_dev = sum(
         1
         for article in ai_dev_articles
         if ai_dev_translation_usable(article)
     )
-    print("=== Personal Newsroom Build Summary ===")
+    LOG.info("=== Personal Newsroom Build Summary ===")
     for category in ("business", "food", "ai_dev", "egg"):
-        print(f"{category}: displayed={display_counts.get(category, 0)}")
-    print(
+        LOG.info(f"{category}: displayed={display_counts.get(category, 0)}")
+    LOG.info(
         "AI translation render check: "
         f"final_display_translated_count={translated_ai_dev}, "
         f"final_display_untranslated_count={len(ai_dev_articles) - translated_ai_dev}"
     )
     category_order = ["business", "food", "ai_dev", "egg"]
     categories = {
-        key: next((a["category_label"] for a in articles if a["category"] == key), key)
+        key: next(
+            (a.get("category_label") or key for a in articles if a.get("category") == key),
+            key,
+        )
         for key in category_order
     }
     payload = {
@@ -124,7 +136,8 @@ def main() -> None:
 </html>
 """
     INDEX_PATH.write_text(html, encoding="utf-8")
-    print(f"Built {INDEX_PATH}")
+    log_suppression_summary()
+    LOG.info(f"Built {INDEX_PATH}")
 
 
 if __name__ == "__main__":
