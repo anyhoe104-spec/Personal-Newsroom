@@ -8,7 +8,7 @@
 
 - 経済・ビジネス
 - スイーツ・飲食
-- AI・開発
+- AI・活用
 - 卵（加工品・ゆで卵・温泉卵・煮卵・商品開発・技術トレンド）
 
 ## ローカル実行手順（PowerShell）
@@ -80,7 +80,7 @@ categories:
 - `google_alert`: GoogleアラートRSSです。通常RSSとして取得し、記事には `source_type: google_alert` を保存します。
 - `api_stub`: 将来API取得を追加するための予約枠です。現時点では記事を追加せず、既存処理を止めません。
 
-記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・開発カテゴリでは、APIキーがある場合はOpenAIまたはAnthropicで日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
+記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・活用カテゴリでは、APIキーがある場合はOpenAIまたはAnthropicで日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
 
 ## GitHub Pages
 
@@ -100,8 +100,37 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `public/index.html`: GitHub Pages用HTML
 - `public/style.css`: スマホ優先CSS
 - `public/app.js`: タブ表示とフィードバックUI
+- `public/i18n.js`: UI固定文言の翻訳キー辞書と `t()` フック
 - `data/articles.json`: 記事データ
 - `data/feedback.json`: 次回スコア反映用フィードバック
+
+## UI文言の翻訳フック（i18n）
+
+画面に出る固定文言は `public/i18n.js` の辞書に集約し、`i18n.t('キー')` 経由で取得します。記事タイトル・要約・impact などの記事本文は対象外で、従来どおり `data/articles.json` の値をそのまま表示します（AI・活用カテゴリのClaude翻訳パイプラインには一切手を入れていません）。
+
+デフォルト言語は日本語（`ja`）で、現時点で辞書は `ja` のみです。表示は従来と同一です。
+
+使い方:
+
+```js
+i18n.t("feedback.like");                                  // "いいね"
+i18n.t("nav.tab_label", { label: "AI・活用", count: 10 }); // "AI・活用 10"
+i18n.tList("fallback.themes.egg");                        // 文字列配列
+i18n.setLocale("en");                                     // 未登録ロケールは ja にフォールバック
+```
+
+HTML側は属性で指定し、`i18n.applyStaticText()` が差し替えます。日本語のテキストはマークアップにも残してあるため、`i18n.js` の読み込みに失敗しても画面は日本語で読めます。
+
+```html
+<h1 data-i18n="header.headline">今日読むべき40本</h1>
+<nav data-i18n-attr="aria-label:nav.categories_aria_label" aria-label="カテゴリ"></nav>
+```
+
+キーが辞書にない場合はキー文字列をそのまま返すため、タイプミスが画面上で見つかります。
+
+多言語ファイルの追加は次段階です。`i18n.js` の `MESSAGES` に `en` などのオブジェクトを足し、`i18n.setLocale()` を呼ぶだけで切り替わります。コンポーネント側の変更は不要です。
+
+カテゴリ名は `config/sources.yaml` が正です。記事データにラベルが入っている場合はそちらを使い、記事0件時のフォールバック表示でのみ `i18n.js` の `category.*` を使います。
 
 ## ログ設定
 
@@ -144,8 +173,8 @@ RSS取得:
 AI翻訳:
 
 - `api_key_present=True` なら Anthropic API キーがActions環境にあります。キー値はログに出しません。
-- `request_count=10` はAI・開発の最終表示候補10件を翻訳対象にしたことを示します。
-- `source_japanese_count` はAI・開発の表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
+- `request_count=10` はAI・活用の最終表示候補10件を翻訳対象にしたことを示します。
+- `source_japanese_count` はAI・活用の表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
 - `japanese_passthrough_count` は日本語原文記事に3点要約とimpactを補って表示可能にした件数です。
 - `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
 - `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。内訳の `translation_request_article_ids` と `final_ai_dev_display_article_ids` は DEBUG レベルです（「ログ設定」を参照）。

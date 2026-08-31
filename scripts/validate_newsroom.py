@@ -118,7 +118,7 @@ def validate() -> int:
     )
     if ai_dev_articles and translated_ai_dev < 8:
         warnings.append(
-            "AI・開発カテゴリの翻訳済み表示が8件未満です。APIキー未設定、API失敗、または汎用翻訳判定の可能性があります。"
+            "AI・活用カテゴリの翻訳済み表示が8件未満です。APIキー未設定、API失敗、または汎用翻訳判定の可能性があります。"
         )
 
     egg_articles = [article for article in articles if article.get("category") == "egg"]

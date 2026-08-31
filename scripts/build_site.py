@@ -96,19 +96,19 @@ def main() -> None:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Personal-Newsroom</title>
+  <title data-i18n="app.title">Personal-Newsroom</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="app-header">
     <div>
-      <p class="eyebrow">Personal-Newsroom</p>
-      <h1>今日読むべき40本</h1>
+      <p class="eyebrow" data-i18n="app.name">Personal-Newsroom</p>
+      <h1 data-i18n="header.headline">今日読むべき40本</h1>
     </div>
-    <p class="updated">更新: <time id="generatedAt"></time></p>
+    <p class="updated"><span data-i18n="header.updated_label">更新:</span> <time id="generatedAt"></time></p>
   </header>
 
-  <nav class="tabs" id="tabs" aria-label="カテゴリ"></nav>
+  <nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav>
   <main id="app" class="article-list"></main>
 
   <template id="articleTemplate">
@@ -124,13 +124,14 @@ def main() -> None:
       <p class="impact"></p>
       <p class="egg-insight"></p>
       <div class="actions">
-        <button class="feedback like" type="button" data-value="like">いいね</button>
-        <button class="feedback bad" type="button" data-value="bad">バッド</button>
+        <button class="feedback like" type="button" data-value="like" data-i18n="feedback.like">いいね</button>
+        <button class="feedback bad" type="button" data-value="bad" data-i18n="feedback.bad">バッド</button>
       </div>
     </article>
   </template>
 
   <script id="newsData" type="application/json">{json.dumps(payload, ensure_ascii=False)}</script>
+  <script src="./i18n.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
