@@ -1586,6 +1586,10 @@ def main() -> None:
                 record_source_result(category_key, source, len(source_articles))
                 category_articles.extend(source_articles)
             except Exception as exc:
+                LOG.debug(
+                    f"[source] {category_key} / {source.get('name', source.get('url', 'unknown'))}: failed",
+                    exc_info=True,
+                )
                 record_source_result(category_key, source, 0, summarize_exception(exc))
                 continue
         category_articles = filter_category_articles(category_key, category_articles)
