@@ -565,6 +565,15 @@ def significant_ascii_tokens(text: str) -> set[str]:
     return tokens
 
 
+# title_preserves_original_subject() asks that an ASCII token from the English
+# headline survives into the Japanese title. AI/developer headlines keep vendor,
+# product and API names, so it is a useful guard there. Food and egg headlines are
+# normally translated in full ("Company launches plant-based egg product" ->
+# "企業が植物由来の卵商品を発売"), leaving no ASCII token, so applying the same rule
+# to them rejects correct translations. Only ai_dev opts in.
+SUBJECT_PRESERVING_CATEGORIES = ("ai_dev",)
+
+
 def title_preserves_original_subject(translated_title: str, original_title: str) -> bool:
     original_tokens = significant_ascii_tokens(original_title)
     if not original_tokens:
@@ -610,20 +619,29 @@ def looks_like_untranslated_summary(lines: list) -> bool:
     return not has_japanese_text(joined)
 
 
-def usable_ai_dev_translation(article: dict) -> bool:
+def usable_newsroom_translation(article: dict, category: str | None = None) -> bool:
     translated_title = str(article.get("translated_title") or "")
     translated_summary = article.get("translated_summary") or article.get("summary") or []
     impact = str(article.get("impact") or "")
     original_title = str(article.get("original_title") or "")
-    return (
+    if not (
         bool(translated_title)
         and has_japanese_text(translated_title)
         and not is_generic_ai_dev_title(translated_title)
-        and title_preserves_original_subject(translated_title, original_title)
         and not looks_like_untranslated_summary(translated_summary)
         and has_japanese_text(impact)
         and not is_generic_ai_dev_impact(impact)
-    )
+    ):
+        return False
+    resolved_category = str(category or article.get("category") or "ai_dev")
+    if resolved_category not in SUBJECT_PRESERVING_CATEGORIES:
+        return True
+    return title_preserves_original_subject(translated_title, original_title)
+
+
+def usable_ai_dev_translation(article: dict) -> bool:
+    """Validate a translation using the article's own category rules."""
+    return usable_newsroom_translation(article)
 
 
 def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
@@ -720,6 +738,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     matched_count = 0
     requested_stable_ids = {item["stable_id"] for item in items}
     original_title_by_stable_id = {item["stable_id"]: item.get("title", "") for item in items}
+    category_by_stable_id = {item["stable_id"]: item.get("category", "ai_dev") for item in items}
     for item in parsed:
         if not isinstance(item, dict) or not item.get("stable_id"):
             parse_failures += 1
@@ -740,8 +759,9 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
             "translated_summary": translated_summary,
             "impact": str(item.get("impact") or "")[:180],
             "original_title": original_title_by_stable_id.get(stable_id, ""),
+            "category": category_by_stable_id.get(stable_id, "ai_dev"),
         }
-        if usable_ai_dev_translation(article_translation):
+        if usable_newsroom_translation(article_translation):
             translations[stable_id] = article_translation
         else:
             parse_failures += 1
@@ -960,8 +980,9 @@ def ai_translate_and_summarize(
             "translated_summary": translated_summary,
             "impact": impact,
             "original_title": title,
+            "category": category_key,
         }
-        if not usable_ai_dev_translation(candidate_translation):
+        if not usable_newsroom_translation(candidate_translation):
             print(f"[anthropic] save validation fallback: article_id={article_id_value}")
             translated_title, summary, impact = article_level_ai_dev_fallback(title, description)
             return translated_title, summary, summary, impact, ""
@@ -1323,8 +1344,9 @@ def apply_newsroom_translation(article: dict, translation: dict[str, Any]) -> No
         "translated_summary": translated_summary,
         "impact": impact,
         "original_title": str(article.get("original_title") or article.get("title") or ""),
+        "category": str(article.get("category") or "ai_dev"),
     }
-    if not usable_ai_dev_translation(candidate_translation):
+    if not usable_newsroom_translation(candidate_translation):
         print(f"[anthropic] final save validation fallback: article_id={article.get('id')}")
         original_title = str(article.get("original_title") or article.get("title") or "")
         if article.get("category") == "ai_dev":

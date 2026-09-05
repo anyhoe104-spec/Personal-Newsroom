@@ -99,12 +99,14 @@ def merge_history(history: list[dict], snapshot: dict, limit: int = 90) -> list[
 
 
 def source_recommendation(metrics: dict) -> str:
-    displayed = int(metrics.get("displayed") or 0)
+    # displayed and fallback_count arrive as per-run averages, so compare them as
+    # floats: every displayed article being a fallback is the replace signal.
+    displayed = float(metrics.get("displayed") or 0)
     average_score = float(metrics.get("average_score") or 0)
     likes = int(metrics.get("likes") or 0)
     bads = int(metrics.get("bads") or 0)
-    fallback_count = int(metrics.get("fallback_count") or 0)
-    if fallback_count and fallback_count == displayed:
+    fallback_count = float(metrics.get("fallback_count") or 0)
+    if fallback_count and fallback_count >= displayed:
         return "replace_candidate"
     if bads >= likes + 2:
         return "replace_candidate"
@@ -121,12 +123,18 @@ def build_recommendations(history: list[dict]) -> dict:
         for category, category_metrics in snapshot.get("categories", {}).items():
             for source, metrics in category_metrics.get("sources", {}).items():
                 key = (category, source)
+                # Per-run measurements accumulate so they can be averaged.
                 aggregate[key]["runs"] += 1
                 aggregate[key]["displayed"] += float(metrics.get("displayed") or 0)
                 aggregate[key]["score_total"] += float(metrics.get("average_score") or 0)
-                aggregate[key]["likes"] += float(metrics.get("likes") or 0)
-                aggregate[key]["bads"] += float(metrics.get("bads") or 0)
-                aggregate[key]["fallback_count"] += float(metrics.get("fallback_count") or 0)
+                aggregate[key]["fallback_total"] += float(metrics.get("fallback_count") or 0)
+                # likes and bads are not per-run measurements: build_snapshot writes
+                # the running total of the whole feedback file every time, so the
+                # newest snapshot already contains every vote. Adding them up would
+                # count the same like once per run. Overwrite instead, and because
+                # history is ordered oldest to newest the newest value wins.
+                aggregate[key]["likes"] = float(metrics.get("likes") or 0)
+                aggregate[key]["bads"] = float(metrics.get("bads") or 0)
 
     categories: dict[str, dict[str, dict]] = defaultdict(dict)
     for (category, source), metrics in sorted(aggregate.items()):
@@ -135,10 +143,10 @@ def build_recommendations(history: list[dict]) -> dict:
             "runs_seen": int(metrics["runs"]),
             "average_displayed": round(metrics["displayed"] / runs, 1),
             "average_score": round(metrics["score_total"] / runs, 1),
+            "average_fallback": round(metrics["fallback_total"] / runs, 1),
             "likes": int(metrics["likes"]),
             "bads": int(metrics["bads"]),
             "net_feedback": int(metrics["likes"] - metrics["bads"]),
-            "fallback_count": int(metrics["fallback_count"]),
         }
         summarized["recommendation"] = source_recommendation(
             {
@@ -146,7 +154,7 @@ def build_recommendations(history: list[dict]) -> dict:
                 "average_score": summarized["average_score"],
                 "likes": summarized["likes"],
                 "bads": summarized["bads"],
-                "fallback_count": summarized["fallback_count"],
+                "fallback_count": summarized["average_fallback"],
             }
         )
         categories[category][source] = summarized

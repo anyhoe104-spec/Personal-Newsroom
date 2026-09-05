@@ -21,6 +21,35 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Dated work reports
 
+### 2026-09-05 10:45 +09:00 - Claude Code
+
+- Objective: Act on the Codex review findings posted on PR #11.
+- Completed work:
+  - Reproduced all three findings against the branch code before changing anything.
+  - Finding 1: `usable_ai_dev_translation` applied `title_preserves_original_subject` to every category. A fully translated food or egg headline keeps no ASCII token from the English original, so correct translations were rejected. Split the rule into `usable_newsroom_translation(article, category)` gated by `SUBJECT_PRESERVING_CATEGORIES = ("ai_dev",)`, and passed the category at the three candidate-building sites. Every other guard (generic titles, English summaries, boilerplate impact) still applies to all categories.
+  - Finding 2: the workflow ran `analyze_source_feedback.py` but never restored the previous `data/run_history.json`, so a clean checkout meant `history_runs=1` forever. Added an `actions/cache@v4` step keyed `newsroom-run-history-${{ github.run_id }}` with a `newsroom-run-history-` restore prefix, so each run restores the newest previous history and always writes a new cache.
+  - Finding 3: `build_snapshot` stores the running total of the whole feedback file in every snapshot, and `build_recommendations` summed those totals across runs, so one like was counted once per run. Likes and bads now take the newest snapshot's value; per-run measurements (displayed, score, fallback) are averaged. `fallback_count` became `average_fallback` and `source_recommendation` compares it to `average_displayed` as floats with `>=` instead of `==`, which only worked while history held a single run.
+- Affected areas:
+  - `scripts/fetch_rss.py`
+  - `scripts/analyze_source_feedback.py`
+  - `.github/workflows/daily_news.yml`
+  - `tests/test_regressions.py`
+- Validation:
+  - `python -m unittest discover -s tests`: 21 tests, all pass (12 existing plus 9 new covering all three findings).
+  - Finding 1, measured: "Company launches plant-based egg product" -> "企業が植物由来の卵商品を発売" was rejected before and is accepted now, while the same translation judged as ai_dev is still rejected and generic or English output is still rejected in both categories.
+  - Finding 3, measured: 30 runs over a feedback file holding 3 likes and 1 bad reported 90 likes and 30 bads before, and reports 3 and 1 now. A vote added on the newest run is still picked up, and an all-fallback source is still a replace candidate after 12 runs.
+  - Finding 2, measured: running `analyze_source_feedback.py` three times with the history file preserved reports `history_runs=1`, then 2, then 3.
+  - `python scripts/score_articles.py` and `python scripts/build_site.py` exit 0.
+- Decisions:
+  - Chose `actions/cache` over committing the history back to the repository, because the workflow keeps `contents: read` and a daily run keeps the cache warm. History loss to cache eviction resets learning depth but does not break a run.
+  - Kept `usable_ai_dev_translation` as a wrapper so existing callers and tests are unchanged.
+- Unresolved issues:
+  - `validate_newsroom.py` reports `food displayed=9; expected 10` on the committed `data/articles.json` snapshot. This reproduces identically on this branch without these changes and is not related to them.
+  - The cache path has not been exercised in a real Actions run.
+- Exact next actions:
+  1. Run `Daily Personal Newsroom` and confirm the cache step restores history and `history_runs` grows past 1.
+  2. Confirm egg translation coverage improves once an Anthropic API key is present.
+
 ### 2026-08-25 08:45 +09:00 - Codex
 
 - Objective: Implement the next reliability improvements for translation coverage, feedback accumulation, source replacement analysis, and food duplicate visibility.
