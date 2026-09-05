@@ -5,6 +5,7 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import analyze_source_feedback  # noqa: E402
 import fetch_rss  # noqa: E402
 import score_articles  # noqa: E402
 import validate_newsroom  # noqa: E402
@@ -188,6 +189,117 @@ class QualityMetricsRegressionTests(unittest.TestCase):
         ]
 
         self.assertEqual(validate_newsroom.cross_category_duplicate_count(items), 1)
+
+
+class CategoryTranslationRegressionTests(unittest.TestCase):
+    """A fully translated food/egg headline keeps no ASCII token from the original,
+    so the ai_dev subject-preservation rule must not be applied to it."""
+
+    EGG_TRANSLATION = {
+        "original_title": "Company launches plant-based egg product",
+        "translated_title": "企業が植物由来の卵商品を発売",
+        "translated_summary": [
+            "食品メーカーが植物由来の卵代替商品を発売した",
+            "大豆由来タンパクの加工技術を用いている",
+            "国内の卵加工品の商品開発にも応用余地がある",
+        ],
+        "impact": "卵加工品の代替素材動向として確認する価値がある。",
+    }
+
+    def test_fully_translated_egg_title_is_accepted(self):
+        self.assertTrue(
+            fetch_rss.usable_newsroom_translation(self.EGG_TRANSLATION, "egg")
+        )
+
+    def test_ai_dev_still_requires_the_original_subject(self):
+        self.assertFalse(
+            fetch_rss.usable_newsroom_translation(self.EGG_TRANSLATION, "ai_dev")
+        )
+
+    def test_category_is_read_from_the_article_when_not_passed(self):
+        item = dict(self.EGG_TRANSLATION, category="egg")
+        self.assertTrue(fetch_rss.usable_newsroom_translation(item))
+
+    def test_generic_egg_title_is_still_rejected(self):
+        item = dict(self.EGG_TRANSLATION, translated_title="要確認: Something happened")
+        self.assertFalse(fetch_rss.usable_newsroom_translation(item, "egg"))
+
+    def test_english_egg_summary_is_still_rejected(self):
+        item = dict(
+            self.EGG_TRANSLATION,
+            translated_summary=[
+                "Company launches a plant based egg product line.",
+                "It targets foodservice customers.",
+                "The rollout starts in June.",
+            ],
+        )
+        self.assertFalse(fetch_rss.usable_newsroom_translation(item, "egg"))
+
+
+class SourceFeedbackHistoryRegressionTests(unittest.TestCase):
+    @staticmethod
+    def snapshot(run: int, likes: int, bads: int, displayed: int = 5, fallback: int = 0) -> dict:
+        return {
+            "generated_at": f"run-{run}",
+            "categories": {
+                "egg": {
+                    "displayed": displayed,
+                    "unique_sources": 1,
+                    "sources": {
+                        "Food Dive": {
+                            "displayed": displayed,
+                            "average_score": 60.0,
+                            "fallback_count": fallback,
+                            "likes": likes,
+                            "bads": bads,
+                            "net_feedback": likes - bads,
+                        }
+                    },
+                }
+            },
+        }
+
+    def test_repeated_runs_do_not_re_add_the_same_feedback(self):
+        # Each snapshot stores the running total of the whole feedback file, so
+        # summing across runs counted one like once per run.
+        history = [self.snapshot(index, 3, 1) for index in range(30)]
+
+        metrics = analyze_source_feedback.build_recommendations(history)["categories"]["egg"]["Food Dive"]
+
+        self.assertEqual(metrics["runs_seen"], 30)
+        self.assertEqual(metrics["likes"], 3)
+        self.assertEqual(metrics["bads"], 1)
+        self.assertEqual(metrics["net_feedback"], 2)
+
+    def test_new_votes_on_the_newest_run_are_picked_up(self):
+        history = [self.snapshot(index, 3, 1) for index in range(5)]
+        history.append(self.snapshot(5, 5, 1))
+
+        metrics = analyze_source_feedback.build_recommendations(history)["categories"]["egg"]["Food Dive"]
+
+        self.assertEqual(metrics["likes"], 5)
+        self.assertEqual(metrics["bads"], 1)
+
+    def test_all_fallback_source_is_still_a_replace_candidate_over_many_runs(self):
+        history = [self.snapshot(index, 0, 0, displayed=4, fallback=4) for index in range(12)]
+
+        metrics = analyze_source_feedback.build_recommendations(history)["categories"]["egg"]["Food Dive"]
+
+        self.assertEqual(metrics["average_fallback"], 4.0)
+        self.assertEqual(metrics["average_displayed"], 4.0)
+        self.assertEqual(metrics["recommendation"], "replace_candidate")
+
+    def test_merge_history_keeps_earlier_runs(self):
+        # The Actions cache restores this list; merging must extend it, not reset it.
+        history = [self.snapshot(index, 1, 0) for index in range(3)]
+
+        merged = analyze_source_feedback.merge_history(history, self.snapshot(3, 1, 0))
+
+        self.assertEqual(len(merged), 4)
+        self.assertEqual(
+            [item["generated_at"] for item in merged],
+            ["run-0", "run-1", "run-2", "run-3"],
+        )
 
 
 if __name__ == "__main__":
