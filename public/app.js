@@ -11,6 +11,9 @@ const tabs = document.getElementById("tabs");
 const app = document.getElementById("app");
 const template = document.getElementById("articleTemplate");
 const generatedAt = document.getElementById("generatedAt");
+const copyFeedbackButton = document.getElementById("copyFeedback");
+const downloadFeedbackButton = document.getElementById("downloadFeedback");
+const feedbackStatus = document.getElementById("feedbackStatus");
 const feedbackKey = "personal-newsroom-feedback-v1";
 
 let activeCategory = categoryKeys[0];
@@ -56,6 +59,37 @@ function createFallbackData() {
 
 function saveFeedback() {
   localStorage.setItem(feedbackKey, JSON.stringify(feedback));
+}
+
+function normalizedFeedbackExport() {
+  return categoryKeys.reduce((payload, category) => {
+    payload[category] = feedback[category] || [];
+    return payload;
+  }, {});
+}
+
+function setFeedbackStatus(message) {
+  feedbackStatus.textContent = message;
+  window.setTimeout(() => {
+    if (feedbackStatus.textContent === message) feedbackStatus.textContent = "";
+  }, 3200);
+}
+
+async function copyFeedback() {
+  const json = JSON.stringify(normalizedFeedbackExport(), null, 2);
+  await navigator.clipboard.writeText(json);
+  setFeedbackStatus("コピーしました");
+}
+
+function downloadFeedback() {
+  const json = JSON.stringify(normalizedFeedbackExport(), null, 2);
+  const blob = new Blob([`${json}\n`], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "feedback.json";
+  link.click();
+  URL.revokeObjectURL(link.href);
+  setFeedbackStatus("保存しました");
 }
 
 function articleKeywords(article) {
@@ -152,3 +186,8 @@ function renderArticles() {
 
 renderTabs();
 renderArticles();
+
+copyFeedbackButton.addEventListener("click", () => {
+  copyFeedback().catch(() => setFeedbackStatus("コピーに失敗しました"));
+});
+downloadFeedbackButton.addEventListener("click", downloadFeedback);

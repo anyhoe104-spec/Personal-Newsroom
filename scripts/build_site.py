@@ -29,7 +29,7 @@ def count_by_category(articles: list[dict]) -> dict[str, int]:
     return counts
 
 
-def ai_dev_translation_usable(article: dict) -> bool:
+def translation_usable(article: dict) -> bool:
     if article.get("source_type") == "fallback" or article.get("fallback_title"):
         return False
     translated_summary = [line for line in article.get("translated_summary", []) if str(line).strip()]
@@ -41,41 +41,42 @@ def main() -> None:
     display_counts = count_by_category(articles)
     for category in ("business", "food", "ai_dev", "egg"):
         LOG.info(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
-    ai_dev_articles = [
+    translation_articles = [
         article
         for article in sorted(
-            [article for article in articles if article.get("category") == "ai_dev"],
+            [article for article in articles if article.get("category") in {"ai_dev", "egg"}],
             key=lambda item: item.get("score", 0),
             reverse=True,
-        )[:10]
+        )[:20]
     ]
-    for article in ai_dev_articles:
+    for article in translation_articles:
         log_capped(
             logging.DEBUG,
-            "build_ai_dev_article",
+            "build_translation_article",
             str(
                 {
                     "build_article_id": article.get("id"),
+                    "category": article.get("category"),
                     "translated_title_exists": bool(article.get("translated_title")),
                     "translated_summary_exists": bool(article.get("translated_summary")),
                     "impact_exists": bool(article.get("impact")),
-                    "translation_usable": ai_dev_translation_usable(article),
+                    "translation_usable": translation_usable(article),
                 }
             ),
-            limit=10,
+            limit=20,
         )
-    translated_ai_dev = sum(
+    translated_articles = sum(
         1
-        for article in ai_dev_articles
-        if ai_dev_translation_usable(article)
+        for article in translation_articles
+        if translation_usable(article)
     )
     LOG.info("=== Personal Newsroom Build Summary ===")
     for category in ("business", "food", "ai_dev", "egg"):
         LOG.info(f"{category}: displayed={display_counts.get(category, 0)}")
     LOG.info(
-        "AI translation render check: "
-        f"final_display_translated_count={translated_ai_dev}, "
-        f"final_display_untranslated_count={len(ai_dev_articles) - translated_ai_dev}"
+        "Translation render check: "
+        f"final_display_translated_count={translated_articles}, "
+        f"final_display_untranslated_count={len(translation_articles) - translated_articles}"
     )
     category_order = ["business", "food", "ai_dev", "egg"]
     categories = {
@@ -109,6 +110,11 @@ def main() -> None:
   </header>
 
   <nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav>
+  <section class="feedback-tools" aria-label="フィードバック管理" data-i18n-attr="aria-label:feedback_tools.aria_label">
+    <button id="copyFeedback" type="button" data-i18n="feedback_tools.copy">フィードバックをコピー</button>
+    <button id="downloadFeedback" type="button" data-i18n="feedback_tools.download">JSON保存</button>
+    <span id="feedbackStatus" aria-live="polite"></span>
+  </section>
   <main id="app" class="article-list"></main>
 
   <template id="articleTemplate">

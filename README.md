@@ -51,15 +51,16 @@ $env:ANTHROPIC_API_KEY="..."
 
 ## フィードバック
 
-ブラウザ上のいいね / バッドは、まず `localStorage` に保存されます。次回スコアに反映したい場合は、同じ形式の内容を `data/feedback.json` に反映してから以下を実行します。
+ブラウザ上のいいね / バッドは、まず `localStorage` に保存されます。画面上部の「フィードバックをコピー」または「JSON保存」から `data/feedback.json` に反映し、次回スコアに反映したい場合は以下を実行します。
 
 ```powershell
 python scripts/update_preferences.py
 python scripts/score_articles.py
 python scripts/build_site.py
+python scripts/analyze_source_feedback.py
 ```
 
-学習はカテゴリ内だけで行います。いいねは類似キーワードと同一ソースを上げ、バッドは下げます。
+学習はカテゴリ内だけで行います。いいねは類似キーワードと同一ソースを上げ、バッドは下げます。`scripts/analyze_source_feedback.py` は `data/run_history.json` と `data/source_recommendations.json` を更新し、ソース差し替え候補を確認できるJSONも `public/` に出力します。
 
 ## GoogleアラートRSSの追加方法
 
@@ -80,7 +81,7 @@ categories:
 - `google_alert`: GoogleアラートRSSです。通常RSSとして取得し、記事には `source_type: google_alert` を保存します。
 - `api_stub`: 将来API取得を追加するための予約枠です。現時点では記事を追加せず、既存処理を止めません。
 
-記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・活用カテゴリでは、APIキーがある場合はOpenAIまたはAnthropicで日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
+記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・活用カテゴリと卵・食品開発カテゴリでは、APIキーがある場合はAnthropicで英語記事の日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
 
 ## GitHub Pages
 
@@ -94,7 +95,8 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `scripts/fetch_rss.py`: RSS取得と要約
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
 - `scripts/build_site.py`: 静的HTML生成
-- `scripts/validate_newsroom.py`: 生成結果の件数・fallback・AI翻訳状態チェック
+- `scripts/validate_newsroom.py`: 生成結果の件数・fallback・翻訳状態・近似重複チェック
+- `scripts/analyze_source_feedback.py`: スコアとフィードバック履歴からソース別の差し替え候補を集計
 - `scripts/update_preferences.py`: `feedback.json` から好み設定を更新
 - `scripts/collectors/`: RSS、GoogleアラートRSS、将来API取得の入口
 - `public/index.html`: GitHub Pages用HTML
@@ -103,6 +105,8 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `public/i18n.js`: UI固定文言の翻訳キー辞書と `t()` フック
 - `data/articles.json`: 記事データ
 - `data/feedback.json`: 次回スコア反映用フィードバック
+- `data/run_history.json`: ソース別表示状況の蓄積
+- `data/source_recommendations.json`: ソース別の維持・強化・監視・差し替え候補
 
 ## UI文言の翻訳フック（i18n）
 
@@ -173,8 +177,8 @@ RSS取得:
 AI翻訳:
 
 - `api_key_present=True` なら Anthropic API キーがActions環境にあります。キー値はログに出しません。
-- `request_count=10` はAI・活用の最終表示候補10件を翻訳対象にしたことを示します。
-- `source_japanese_count` はAI・活用の表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
+- `request_count` はAI・活用と卵・食品開発の最終表示候補のうち、英語記事を翻訳対象にした件数です。
+- `source_japanese_count` は対象カテゴリの表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
 - `japanese_passthrough_count` は日本語原文記事に3点要約とimpactを補って表示可能にした件数です。
 - `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
 - `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。内訳の `translation_request_article_ids` と `final_ai_dev_display_article_ids` は DEBUG レベルです（「ログ設定」を参照）。

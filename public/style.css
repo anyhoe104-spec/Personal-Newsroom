@@ -68,6 +68,30 @@ h1 {
   border-bottom: 1px solid var(--line);
 }
 
+.feedback-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+.feedback-tools button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.feedback-tools span {
+  min-width: 96px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .tab {
   flex: 0 0 auto;
   min-height: 38px;

@@ -48,6 +48,7 @@ AI_TRANSLATION_SUMMARY_KEYS = (
     "final_display_translated_count",
     "final_display_untranslated_count",
 )
+TRANSLATION_TARGET_CATEGORIES = ("ai_dev", "egg")
 ANTHROPIC_MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
@@ -592,6 +593,15 @@ def significant_ascii_tokens(text: str) -> set[str]:
     return tokens
 
 
+# title_preserves_original_subject() asks that an ASCII token from the English
+# headline survives into the Japanese title. AI/developer headlines keep vendor,
+# product and API names, so it is a useful guard there. Food and egg headlines are
+# normally translated in full ("Company launches plant-based egg product" ->
+# "企業が植物由来の卵商品を発売"), leaving no ASCII token, so applying the same rule
+# to them rejects correct translations. Only ai_dev opts in.
+SUBJECT_PRESERVING_CATEGORIES = ("ai_dev",)
+
+
 def title_preserves_original_subject(translated_title: str, original_title: str) -> bool:
     original_tokens = significant_ascii_tokens(original_title)
     if not original_tokens:
@@ -637,20 +647,29 @@ def looks_like_untranslated_summary(lines: list) -> bool:
     return not has_japanese_text(joined)
 
 
-def usable_ai_dev_translation(article: dict) -> bool:
+def usable_newsroom_translation(article: dict, category: str | None = None) -> bool:
     translated_title = str(article.get("translated_title") or "")
     translated_summary = article.get("translated_summary") or article.get("summary") or []
     impact = str(article.get("impact") or "")
     original_title = str(article.get("original_title") or "")
-    return (
+    if not (
         bool(translated_title)
         and has_japanese_text(translated_title)
         and not is_generic_ai_dev_title(translated_title)
-        and title_preserves_original_subject(translated_title, original_title)
         and not looks_like_untranslated_summary(translated_summary)
         and has_japanese_text(impact)
         and not is_generic_ai_dev_impact(impact)
-    )
+    ):
+        return False
+    resolved_category = str(category or article.get("category") or "ai_dev")
+    if resolved_category not in SUBJECT_PRESERVING_CATEGORIES:
+        return True
+    return title_preserves_original_subject(translated_title, original_title)
+
+
+def usable_ai_dev_translation(article: dict) -> bool:
+    """Validate a translation using the article's own category rules."""
+    return usable_newsroom_translation(article)
 
 
 def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
@@ -667,6 +686,8 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     article_payload = [
         {
             "stable_id": item["stable_id"],
+            "category": item.get("category", "ai_dev"),
+            "category_label": item.get("category_label", "AI・開発"),
             "title": item["title"],
             "text": item["description"][:700],
         }
@@ -714,8 +735,10 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
         "translated_title: concrete Japanese localization of the original title, 80 Japanese characters or fewer. "
         "Do not use generic or fallback titles such as AI・開発ニュースの注目アップデート, 翻訳未取得, or 要確認. "
         "translated_summary: exactly three concise Japanese points based on the article, 70 Japanese characters or fewer each. "
-        "impact: article-specific Japanese implication for AI workflow, developer operations, product planning, or newsroom automation, 90 Japanese characters or fewer. "
-        "All fields must be Japanese except product/company names such as OpenAI, Codex, Gemini, GPT, Warp, and CUDA.\n"
+        "impact: article-specific Japanese implication for the category, 90 Japanese characters or fewer. "
+        "For ai_dev articles, focus on AI workflow, developer operations, product planning, or newsroom automation. "
+        "For egg articles, focus on food product development, formulation, collaboration, manufacturing, merchandising, or ingredient/product ideas. "
+        "All fields must be Japanese except product/company names such as OpenAI, Codex, Gemini, GPT, Warp, CUDA, egg, food, brand, and company names.\n"
         f"Articles JSON: {json.dumps(article_payload, ensure_ascii=False)}\n"
     )
     tool_schema = anthropic_translation_tool_schema()
@@ -743,6 +766,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
     matched_count = 0
     requested_stable_ids = {item["stable_id"] for item in items}
     original_title_by_stable_id = {item["stable_id"]: item.get("title", "") for item in items}
+    category_by_stable_id = {item["stable_id"]: item.get("category", "ai_dev") for item in items}
     for item in parsed:
         if not isinstance(item, dict) or not item.get("stable_id"):
             parse_failures += 1
@@ -767,21 +791,22 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
             "translated_summary": translated_summary,
             "impact": str(item.get("impact") or "")[:180],
             "original_title": original_title_by_stable_id.get(stable_id, ""),
+            "category": category_by_stable_id.get(stable_id, "ai_dev"),
         }
-        if usable_ai_dev_translation(article_translation):
+        if usable_newsroom_translation(article_translation):
             translations[stable_id] = article_translation
         else:
             parse_failures += 1
             log_capped(
                 logging.WARNING,
                 "anthropic_weak_translation",
-                f"[anthropic] discarded weak ai_dev translation for stable_id={stable_id}",
+                f"[anthropic] discarded weak translation for stable_id={stable_id}",
             )
     anthropic_last_response_count = len(parsed)
     anthropic_last_matched_count = matched_count
     anthropic_last_generic_translation_count = matched_count - len(translations)
     LOG.info(
-        "[anthropic] ai_dev parse results: "
+        "[anthropic] translation parse results: "
         f"matched_count={matched_count}, meaningful_translation_count={len(translations)}, "
         f"generic_translation_count={anthropic_last_generic_translation_count}, "
         f"parse_failed={parse_failures}, fallback_count={len(items) - len(translations)}"
@@ -792,7 +817,7 @@ def call_anthropic_haiku_batch(items: list[dict[str, str]]) -> dict[str, dict[st
 def anthropic_translation_tool_schema() -> dict:
     return {
         "name": "save_ai_dev_translations",
-        "description": "Save Japanese translations for AI/developer news articles.",
+        "description": "Save Japanese translations for selected newsroom articles.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -993,8 +1018,9 @@ def ai_translate_and_summarize(
             "translated_summary": translated_summary,
             "impact": impact,
             "original_title": title,
+            "category": category_key,
         }
-        if not usable_ai_dev_translation(candidate_translation):
+        if not usable_newsroom_translation(candidate_translation):
             log_capped(
                 logging.WARNING,
                 "anthropic_save_validation_fallback",
@@ -1212,12 +1238,16 @@ def provisional_display_articles(articles: list[dict]) -> list[dict]:
     return enforce_category_limits(articles, 10)
 
 
-def ai_dev_display_articles(articles: list[dict]) -> list[dict]:
+def translation_display_articles(articles: list[dict], category: str) -> list[dict]:
     return [
         article
         for article in sorted(articles, key=lambda x: x.get("score", 0), reverse=True)
-        if article.get("category") == "ai_dev"
+        if article.get("category") == category
     ][:10]
+
+
+def ai_dev_display_articles(articles: list[dict]) -> list[dict]:
+    return translation_display_articles(articles, "ai_dev")
 
 
 def log_title_list(label: str, titles: list[str]) -> None:
@@ -1228,44 +1258,62 @@ def log_value_list(label: str, values: list[str]) -> None:
     log_safe(f"[anthropic] {label}={json.dumps(values, ensure_ascii=False)}", logging.DEBUG)
 
 
-def select_final_ai_dev_translation_candidates(articles: list[dict]) -> list[dict[str, str]]:
+def select_final_translation_candidates(articles: list[dict]) -> list[dict[str, str]]:
     candidates: list[dict[str, str]] = []
     display_articles = provisional_display_articles(articles)
-    ai_dev_articles = ai_dev_display_articles(display_articles)
     japanese_source_count = 0
-    for article in ai_dev_articles:
-        original_title = clean_text(str(article.get("original_title") or article.get("title") or ""))
-        description = clean_text(str(article.get("raw_summary") or ""))
-        if not original_title or not article.get("id"):
-            continue
-        if is_japanese_article(original_title, description):
-            japanese_source_count += 1
-            continue
-        if not is_english_article(original_title, description):
-            continue
-        stable_id = f"ai_dev_{len(candidates)}"
-        candidates.append(
-            {
-                "stable_id": stable_id,
-                "id": str(article["id"]),
-                "title": original_title,
-                "description": description,
-            }
-        )
+    candidate_display_count = 0
+    for category in TRANSLATION_TARGET_CATEGORIES:
+        category_candidates = 0
+        category_articles = translation_display_articles(display_articles, category)
+        candidate_display_count += len(category_articles)
+        for article in category_articles:
+            original_title = clean_text(str(article.get("original_title") or article.get("title") or ""))
+            description = clean_text(str(article.get("raw_summary") or ""))
+            if not original_title or not article.get("id"):
+                continue
+            if is_japanese_article(original_title, description):
+                japanese_source_count += 1
+                continue
+            if not is_english_article(original_title, description):
+                continue
+            stable_id = f"{category}_{category_candidates}"
+            category_candidates += 1
+            candidates.append(
+                {
+                    "stable_id": stable_id,
+                    "id": str(article["id"]),
+                    "category": category,
+                    "category_label": str(article.get("category_label") or category),
+                    "title": original_title,
+                    "description": description,
+                }
+            )
+            if category_candidates >= ANTHROPIC_TRANSLATION_LIMIT:
+                break
     RUN_STATS["ai_translation"]["source_japanese_count"] = japanese_source_count
     RUN_STATS["ai_translation"]["source_english_count"] = len(candidates)
     first_title = candidates[0]["title"] if candidates else ""
     log_title_list("translation_request_titles", [candidate["title"] for candidate in candidates[:ANTHROPIC_TRANSLATION_LIMIT]])
     log_value_list("translation_request_article_ids", [candidate["id"] for candidate in candidates[:ANTHROPIC_TRANSLATION_LIMIT]])
     LOG.info(
-        "[anthropic] ai_dev final translation candidates: "
-        f"candidate_count={len(ai_dev_articles)}, "
+        "[anthropic] final translation candidates: "
+        f"target_categories={','.join(TRANSLATION_TARGET_CATEGORIES)}, "
+        f"candidate_count={candidate_display_count}, "
         f"source_japanese_count={japanese_source_count}, "
         f"source_english_count={len(candidates)}, "
-        f"request_article_count={min(len(candidates), ANTHROPIC_TRANSLATION_LIMIT)}, "
+        f"request_article_count={len(candidates)}, "
         f"first_article_title={console_safe(first_title[:160])!r}"
     )
-    return candidates[:ANTHROPIC_TRANSLATION_LIMIT]
+    return candidates
+
+
+def select_final_ai_dev_translation_candidates(articles: list[dict]) -> list[dict[str, str]]:
+    return [
+        candidate
+        for candidate in select_final_translation_candidates(articles)
+        if candidate.get("category") == "ai_dev"
+    ][:ANTHROPIC_TRANSLATION_LIMIT]
 
 
 def ai_dev_japanese_passthrough_summary(title: str, description: str) -> tuple[list[str], str]:
@@ -1282,37 +1330,57 @@ def ai_dev_japanese_passthrough_summary(title: str, description: str) -> tuple[l
     return summary, impact
 
 
-def ensure_ai_dev_japanese_display_articles_localized(articles: list[dict]) -> int:
+def japanese_passthrough_summary(category: str, title: str, description: str) -> tuple[list[str], str]:
+    if category == "ai_dev":
+        return ai_dev_japanese_passthrough_summary(title, description)
+    title_hint = clean_text(title)[:90]
+    body_hint = clean_text(description)[:90] or title_hint
+    summary = [
+        f"日本語原文記事です。主題は「{title_hint}」です。"[:120],
+        f"本文の手がかり: {body_hint}"[:120],
+        "食品の商品開発、共同企画、素材・製法・売場づくりの観点で確認します。",
+    ]
+    impact = f"「{title_hint[:42]}」は食品開発やコラボ企画の着眼点として確認したい事例です。"[:120]
+    return summary, impact
+
+
+def ensure_translation_japanese_display_articles_localized(articles: list[dict]) -> int:
     display_articles = provisional_display_articles(articles)
     localized_count = 0
-    for article in ai_dev_display_articles(display_articles):
-        original_title = clean_text(str(article.get("original_title") or article.get("title") or ""))
-        description = clean_text(str(article.get("raw_summary") or ""))
-        if not original_title or article.get("source_type") == "fallback":
-            continue
-        if not is_japanese_article(original_title, description):
-            continue
-        summary, impact = ai_dev_japanese_passthrough_summary(original_title, description)
-        article["title"] = original_title
-        article["display_title"] = original_title
-        article["translated_title"] = original_title
-        article["translated_summary"] = summary
-        article["summary"] = summary
-        article["impact"] = impact
-        article["fallback_title"] = ""
-        localized_count += 1
-        log_capped(
-            logging.DEBUG,
-            "ai_dev_japanese_passthrough",
-            "[anthropic] ai_dev japanese passthrough: "
-            f"article_id={article.get('id')}, translated_summary_count={len(summary)}, "
-            f"title_80={console_safe(original_title[:80])!r}",
-        )
+    for category in TRANSLATION_TARGET_CATEGORIES:
+        for article in translation_display_articles(display_articles, category):
+            original_title = clean_text(str(article.get("original_title") or article.get("title") or ""))
+            description = clean_text(str(article.get("raw_summary") or ""))
+            if not original_title or article.get("source_type") == "fallback":
+                continue
+            if not is_japanese_article(original_title, description):
+                continue
+            summary, impact = japanese_passthrough_summary(category, original_title, description)
+            article["title"] = original_title
+            article["display_title"] = original_title
+            article["translated_title"] = original_title
+            article["translated_summary"] = summary
+            article["summary"] = summary
+            article["impact"] = impact
+            article["fallback_title"] = ""
+            localized_count += 1
+            log_capped(
+                logging.DEBUG,
+                "japanese_passthrough",
+                "[anthropic] japanese passthrough: "
+                f"category={category}, article_id={article.get('id')}, "
+                f"translated_summary_count={len(summary)}, "
+                f"title_80={console_safe(original_title[:80])!r}",
+            )
     RUN_STATS["ai_translation"]["japanese_passthrough_count"] = localized_count
     return localized_count
 
 
-def apply_ai_dev_translation(article: dict, translation: dict[str, Any]) -> None:
+def ensure_ai_dev_japanese_display_articles_localized(articles: list[dict]) -> int:
+    return ensure_translation_japanese_display_articles_localized(articles)
+
+
+def apply_newsroom_translation(article: dict, translation: dict[str, Any]) -> None:
     translated_title = str(translation.get("translated_title") or article.get("translated_title") or "")
     translated_summary = [
         str(x)
@@ -1325,25 +1393,35 @@ def apply_ai_dev_translation(article: dict, translation: dict[str, Any]) -> None
         "translated_summary": translated_summary,
         "impact": impact,
         "original_title": str(article.get("original_title") or article.get("title") or ""),
+        "category": str(article.get("category") or "ai_dev"),
     }
-    if not usable_ai_dev_translation(candidate_translation):
+    if not usable_newsroom_translation(candidate_translation):
         log_capped(
             logging.WARNING,
             "anthropic_final_save_validation_fallback",
             f"[anthropic] final save validation fallback: article_id={article.get('id')}",
         )
-        _, translated_summary, impact = article_level_ai_dev_fallback(
-            str(article.get("original_title") or article.get("title") or ""),
-            str(article.get("raw_summary") or ""),
-        )
         original_title = str(article.get("original_title") or article.get("title") or "")
+        if article.get("category") == "ai_dev":
+            _, translated_summary, impact = article_level_ai_dev_fallback(
+                original_title,
+                str(article.get("raw_summary") or ""),
+            )
+            fallback_title = ai_dev_fallback_title(original_title)
+        else:
+            translated_summary, impact, _ = fallback_summary(
+                original_title,
+                str(article.get("raw_summary") or ""),
+                str(article.get("category_label") or article.get("category") or ""),
+            )
+            fallback_title = ""
         article["title"] = original_title
         article["display_title"] = original_title
         article["translated_title"] = ""
         article["translated_summary"] = []
         article["summary"] = translated_summary[:3]
         article["impact"] = impact
-        article["fallback_title"] = ai_dev_fallback_title(original_title)
+        article["fallback_title"] = fallback_title
         return
     article["title"] = translated_title
     article["display_title"] = translated_title
@@ -1362,16 +1440,24 @@ def apply_ai_dev_translation(article: dict, translation: dict[str, Any]) -> None
     )
 
 
+def apply_ai_dev_translation(article: dict, translation: dict[str, Any]) -> None:
+    apply_newsroom_translation(article, translation)
+
+
 def log_final_ai_dev_display_status(articles: list[dict], requested_article_ids: set[str] | None = None) -> None:
     display_articles = provisional_display_articles(articles)
-    ai_dev_articles = ai_dev_display_articles(display_articles)
-    display_article_ids = [str(article.get("id") or "") for article in ai_dev_articles]
+    target_articles = [
+        article
+        for category in TRANSLATION_TARGET_CATEGORIES
+        for article in translation_display_articles(display_articles, category)
+    ]
+    display_article_ids = [str(article.get("id") or "") for article in target_articles]
     translated_count = sum(
         1
-        for article in ai_dev_articles
+        for article in target_articles
         if article.get("source_type") != "fallback" and usable_ai_dev_translation(article)
     )
-    untranslated_count = len(ai_dev_articles) - translated_count
+    untranslated_count = len(target_articles) - translated_count
     requested_article_ids = requested_article_ids or set()
     request_display_match_count = len(set(display_article_ids) & requested_article_ids)
     RUN_STATS["ai_translation"]["final_display_translated_count"] = translated_count
@@ -1379,13 +1465,13 @@ def log_final_ai_dev_display_status(articles: list[dict], requested_article_ids:
     RUN_STATS["ai_translation"]["request_display_match_count"] = request_display_match_count
     log_value_list("final_ai_dev_display_article_ids", display_article_ids)
     LOG.info(
-        "[anthropic] ai_dev request/display id match: "
+        "[anthropic] request/display id match: "
         f"request_display_match_count={request_display_match_count}, "
         f"request_article_count={len(requested_article_ids)}, "
         f"display_article_count={len(display_article_ids)}"
     )
     LOG.info(
-        "[anthropic] ai_dev display translation coverage: "
+        "[anthropic] display translation coverage: "
         f"translated_display_count={translated_count}, "
         f"untranslated_display_count={untranslated_count}"
     )
@@ -1431,8 +1517,8 @@ def call_anthropic_with_chunk_retry(candidates: list[dict[str, str]]) -> dict[st
 def translate_final_ai_dev_articles(articles: list[dict]) -> None:
     global anthropic_batch_requested
 
-    ensure_ai_dev_japanese_display_articles_localized(articles)
-    candidates = select_final_ai_dev_translation_candidates(articles)
+    ensure_translation_japanese_display_articles_localized(articles)
+    candidates = select_final_translation_candidates(articles)
     requested_article_ids = {candidate["id"] for candidate in candidates}
     RUN_STATS["ai_translation"]["api_key_present"] = bool(os.getenv("ANTHROPIC_API_KEY"))
     RUN_STATS["ai_translation"]["model"] = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
@@ -1458,9 +1544,9 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
     try:
         stable_translations = call_anthropic_with_chunk_retry(candidates)
     except Exception as exc:
-        LOG.error(f"[anthropic] ai_dev final batch unavailable: {exc}")
+        LOG.error(f"[anthropic] final batch unavailable: {exc}")
         LOG.info(
-            "[anthropic] ai_dev batch totals: "
+            "[anthropic] batch totals: "
             f"api_success=0, matched_count=0, meaningful_translation_count=0, "
             f"generic_translation_count=0, fallback_count={len(candidates)}"
         )
@@ -1499,23 +1585,23 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
         }
     )
     LOG.info(
-        "[anthropic] ai_dev stable_id match: "
+        "[anthropic] stable_id match: "
         f"requested_count={len(candidates)}, response_count={response_count}, "
         f"matched_count={matched_count}, unmatched_count={unmatched_count}, fallback_count={fallback_count}"
     )
     LOG.info(
-        "[anthropic] ai_dev batch totals: "
+        "[anthropic] batch totals: "
         f"api_success=1, matched_count={matched_count}, "
         f"meaningful_translation_count={meaningful_translation_count}, "
         f"generic_translation_count={generic_translation_count}, "
         f"fallback_count={fallback_count}"
     )
     for article in articles:
-        if article.get("category") != "ai_dev":
+        if article.get("category") not in TRANSLATION_TARGET_CATEGORIES:
             continue
         translation = translations.get(str(article.get("id")))
         if translation:
-            apply_ai_dev_translation(article, translation)
+            apply_newsroom_translation(article, translation)
     log_final_ai_dev_display_status(articles, requested_article_ids)
 
 
