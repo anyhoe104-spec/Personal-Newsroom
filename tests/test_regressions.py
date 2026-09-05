@@ -1,4 +1,5 @@
 import logging
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -375,6 +376,39 @@ class SourceFeedbackHistoryRegressionTests(unittest.TestCase):
             [item["generated_at"] for item in merged],
             ["run-0", "run-1", "run-2", "run-3"],
         )
+
+
+class TranslationKeyCoverageTests(unittest.TestCase):
+    """Markup annotated with a key the dictionary lacks renders the key itself,
+    which looks like working UI in a diff but shows "feedback_tools.copy" on the page."""
+
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def markup_keys(self) -> set[str]:
+        source = (self.ROOT / "scripts" / "build_site.py").read_text(encoding="utf-8")
+        keys = set(re.findall(r'data-i18n="([^"]+)"', source))
+        for group in re.findall(r'data-i18n-attr="([^"]+)"', source):
+            for pair in group.split(","):
+                _, _, key = pair.partition(":")
+                if key.strip():
+                    keys.add(key.strip())
+        return keys
+
+    def dictionary_leaves(self) -> set[str]:
+        source = (self.ROOT / "public" / "i18n.js").read_text(encoding="utf-8")
+        return set(re.findall(r'^\s*(\w+):\s*"', source, flags=re.MULTILINE))
+
+    def test_every_markup_key_exists_in_the_dictionary(self):
+        keys = self.markup_keys()
+        self.assertTrue(keys, "no data-i18n annotations found in the page template")
+        leaves = self.dictionary_leaves()
+        missing = sorted(key for key in keys if key.split(".")[-1] not in leaves)
+        self.assertEqual(missing, [], f"data-i18n keys missing from public/i18n.js: {missing}")
+
+    def test_app_js_holds_no_display_strings(self):
+        source = (self.ROOT / "public" / "app.js").read_text(encoding="utf-8")
+        japanese = re.findall(r"[぀-ヿ㐀-\u9fff]+", source)
+        self.assertEqual(japanese, [], f"move this copy into public/i18n.js: {japanese}")
 
 
 if __name__ == "__main__":

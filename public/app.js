@@ -78,7 +78,7 @@ function setFeedbackStatus(message) {
 async function copyFeedback() {
   const json = JSON.stringify(normalizedFeedbackExport(), null, 2);
   await navigator.clipboard.writeText(json);
-  setFeedbackStatus("コピーしました");
+  setFeedbackStatus(t("feedback_tools.copied"));
 }
 
 function downloadFeedback() {
@@ -86,10 +86,10 @@ function downloadFeedback() {
   const blob = new Blob([`${json}\n`], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "feedback.json";
+  link.download = t("feedback_tools.download_filename");
   link.click();
   URL.revokeObjectURL(link.href);
-  setFeedbackStatus("保存しました");
+  setFeedbackStatus(t("feedback_tools.saved"));
 }
 
 function articleKeywords(article) {
@@ -188,6 +188,6 @@ renderTabs();
 renderArticles();
 
 copyFeedbackButton.addEventListener("click", () => {
-  copyFeedback().catch(() => setFeedbackStatus("コピーに失敗しました"));
+  copyFeedback().catch(() => setFeedbackStatus(t("feedback_tools.copy_failed")));
 });
 downloadFeedbackButton.addEventListener("click", downloadFeedback);

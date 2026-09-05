@@ -36,6 +36,15 @@
         like: "いいね",
         bad: "バッド",
       },
+      feedback_tools: {
+        aria_label: "フィードバック管理",
+        copy: "フィードバックをコピー",
+        download: "JSON保存",
+        copied: "コピーしました",
+        copy_failed: "コピーに失敗しました",
+        saved: "保存しました",
+        download_filename: "feedback.json",
+      },
       // Category names must match config/sources.yaml. Live data supplies these
       // labels; the dictionary is the fallback when no articles are embedded.
       category: {
