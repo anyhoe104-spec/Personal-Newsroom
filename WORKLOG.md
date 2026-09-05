@@ -4,20 +4,67 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- Updated: 2026-09-05 11:05 +09:00
-- Agent: Claude Code
-- Branch: claude/newsroom-weekly-tasks-5msgjt
-- Objective: Merge the weekly maintenance branch with the newly merged PR #11 work.
-- Completed: PR #11 was reviewed by Codex, all three findings were fixed and pushed, and the PR was merged into `main` as `c6c1e73`. The weekly maintenance branch (review fixes, the UI translation hook, and the logging migration) is being merged with that `main`.
-- In progress: Resolving the merge of `origin/main` into `claude/newsroom-weekly-tasks-5msgjt` for PR #12. Nine files overlapped; the resolution keeps PR #11's multi-category translation behaviour and PR #12's logging levels and translation keys together.
-- Blockers and risks: `data/articles.json` in the repository is a 2026-06-09 snapshot with only 9 food articles, so `validate_newsroom.py` reports `food displayed=9; expected 10` on the committed data alone. A fresh `fetch_rss.py` run fills all four categories. This predates both branches.
-- Next actions:
-  1. Finish and validate the merge, then push PR #12.
-  2. Run `Daily Personal Newsroom` on `main` and confirm the run-history cache restores and `history_runs` grows past 1.
-  3. Confirm on the same run that the Actions log is shorter while `[rss_summary]`, `[display_summary]`, `[validation_*]` and the translation block still appear.
-- Validation: see the dated reports below for the measurements taken on each branch.
+- 更新: 2026-09-05 16:26:14 +09:00
+- エージェント: Claude Code
+- ブランチ: claude/newsroom-weekly-tasks-5msgjt（origin と同期済み）
+- リビジョン: b3b304e
+- 目的: 今週の改修3件（レビュー指摘の修正 / UI翻訳フックの全体導入 / ログの整理）と、PR #11 のCodexレビュー指摘への対応。
+- 完了した作業:
+  - PR #11 のCodexレビュー指摘3件を再現確認のうえ修正し、PR #11 は `c6c1e73` として main にマージ済み。
+  - 今週の改修3件は PR #12（open）に載せて push 済み。main（PR #11 マージ後）を取り込み、9ファイルの衝突を解消済み。
+- 進行中: なし。作業ツリーはクリーンで、push 済み。
+- ブロッカーとリスク:
+  - 本番 GitHub Actions での実行は未確認。この環境から外部RSSに接続できないため、ログ削減量とrun-historyキャッシュの動作はローカル計測とAPIスタブでの検証にとどまる。
+  - リポジトリの `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が `food displayed=9; expected 10` で終了コード1になる。`fetch_rss.py` を新規実行すれば4カテゴリとも10件になる。両ブランチより前から存在する事象で、今回変更していない。
+- 次のアクション:
+  1. `Daily Personal Newsroom` を main で手動実行し、run-historyキャッシュstepが履歴を復元して `history_runs` が1を超えて伸びることを確認する。
+  2. 同じ実行のログで、`[rss_summary]` / `[display_summary]` / `[validation_*]` と翻訳ブロックが残り、記事単位のダンプが消えていることを確認する。
+  3. PR #12 のマージ可否を判断する。
+  4. 多言語化に進む場合は `public/i18n.js` の `MESSAGES` に `en` を追加し、`i18n.setLocale()` を呼ぶ。コンポーネント側の変更は不要。
+- 検証: `python -m unittest discover -s tests` 28件パス。`score_articles.py` / `build_site.py` / `analyze_source_feedback.py` 終了コード0。`validate_newsroom.py` は上記の既存事象により1。ヘッドレスChromium 390x844 でUI確認済み。
 
 ## Dated work reports
+
+### 2026-09-05 16:26 +09:00 - Claude Code
+
+- 目的: 今週の改修3件の完了と、PR #11 のCodexレビュー指摘への対応、および両者の統合。
+- 完了した作業:
+  - **レビュー指摘の修正**: 着手時点でGitHub上のPR #1〜#10 にレビューコメント・レビュー・Issueが1件も無かったため、ユーザー確認のうえコード監査に切り替えた。`scripts/score_articles.py` の卵カテゴリ価格ペナルティのキーワードがcp932で二重に文字化けしており「価格」「相場」「卵価」が一度も一致しない状態だったのを `EGG_PRICE_KEYWORDS` として復元。その原因である `console_safe()` の無条件cp932往復を、実際にcp932コンソールの場合のみに限定。RSS取得・失敗ログの二重出力と、`displayed=` を再掲していた `scored=` を削除。`build_site.py` の `category_label` 欠損でのKeyErrorを `.get()` 化。
+  - **翻訳フックの全体導入**: `public/i18n.js` を新規追加（`t()` / `tList()` / `setLocale()` / `applyStaticText()` と日本語辞書）。生成HTMLを `data-i18n` / `data-i18n-attr` で注釈し、`public/app.js` から表示文字列を全て除去した。外部ライブラリもビルド手順も追加していない。記事本文（タイトル・要約・impact）は対象外で、Anthropic翻訳パイプラインには触れていない。
+  - **ログの整理**: `scripts/newsroom_logging.py` を追加し、パイプライン全体の `print()` を標準 `logging` に移行。記事単位の診断はDEBUG、品質問題はWARNING、API失敗はERROR。`logs/newsroom.log` へのローテーション出力（既定1MiB×3世代）と、記事単位ログの1実行あたり上限（抑制件数を必ず報告）を追加。Actions は `NEWSROOM_LOG_LEVEL=INFO`・ファイル出力なしを明示。
+  - **PR #11 のレビュー指摘3件**: 3件とも再現確認のうえ修正し、PR #11 をマージした（`c6c1e73`）。詳細は下の 2026-09-05 10:45 の報告を参照。
+  - **PR #11 と PR #12 の統合**: main を PR #12 のブランチに取り込み、9ファイルの衝突を解消。PR #11 の複数カテゴリ翻訳と、本ブランチのログレベル・上限の両方を残した。PR #11 が追加したフィードバック操作の文言も翻訳キー化し、PR #11 が追加した `print()` 4箇所もロガーに移行した。
+  - **自分が入れた不具合の修正**: マージコミット `b8e915d` で、翻訳キー化の直後に `git checkout -- public/` を実行して `i18n.js` の `feedback_tools` 辞書と `app.js` の `t()` 呼び出しを破棄したままコミットしていた。生成HTMLだけがキーを参照する状態になり、画面上でボタンが `feedback_tools.copy` などと表示されていた。`b3b304e` で復元し、再発防止のテストを2件追加した。
+- 影響範囲:
+  - 新規: `scripts/newsroom_logging.py`、`public/i18n.js`
+  - 変更: `scripts/fetch_rss.py`、`scripts/score_articles.py`、`scripts/build_site.py`、`scripts/validate_newsroom.py`、`scripts/update_preferences.py`、`scripts/analyze_source_feedback.py`、`scripts/collectors/rss.py`、`scripts/collectors/api_stub.py`、`public/app.js`、`public/index.html`（再生成）、`tests/test_regressions.py`、`.github/workflows/daily_news.yml`、`.gitignore`、`README.md`、`docs/requirements.md`
+- 検証:
+  - `python -m unittest discover -s tests`: 28件パス（元の12件 + 本ブランチ7件 + PR #11 レビュー修正9件）。
+  - `score_articles.py` / `build_site.py` / `analyze_source_feedback.py` 終了コード0。`validate_newsroom.py` は `food displayed=9; expected 10` により1（既存事象）。
+  - ログ削減の実測: AI翻訳パス（表示10件・日7/英3、APIスタブ）37行→6行。`build_site.py` 21行→11行。`fetch_rss.py` フル実行（オフライン）115行→78行。`validate_newsroom.py` は14行のまま。`NEWSROOM_LOG_LEVEL=DEBUG` にすると出力は改修前とバイト単位で一致する。
+  - ローテーションを `NEWSROOM_LOG_MAX_BYTES=4000 NEWSROOM_LOG_BACKUP_COUNT=2` で確認（3ファイル保持、古い分を削除）。
+  - オフライン実行（20ソース全失敗）でコンソールにトレースバックが0件、`logs/newsroom.log` には連鎖例外を含む全文が残ることを確認。
+  - ヘッドレスChromium 390x844 で実データ・記事0件フォールバックの両経路を描画。ヘッダー、タブ、カード、原文行、いいね/バッド、PR #11 のコピー/保存操作がすべて辞書から描画され、コンソールエラーなし。
+  - 追加した翻訳キーのテストが実際に不具合を検出することを、辞書から `feedback_tools` を削除して確認（壊れていた3キーちょうどを報告）。
+- 決定事項:
+  - ログ基盤は標準 `logging` を採用し、外部ライブラリを追加しなかった（`requirements.txt` 変更なし）。着手前にユーザーへ確認済み。
+  - コンソールのフォーマットは `%(message)s` のままとし、READMEに書かれた `[タグ] 本文` の読み方を維持した。
+  - Actions ではファイル出力を無効化した。ランナーは破棄され、GitHubがコンソールログを保持するため、ローテーションはローカル実行向けの機能である。
+  - 翻訳フックは新規ファイル1つと `data-i18n` 注釈で実装し、i18nライブラリを導入しなかった。着手前にユーザーへ確認済み。レンダリング構造・DOM構造・カード生成ロジックは変更していない。
+  - HTMLには日本語テキストを残した。`i18n.js` の読み込みに失敗しても見出しとボタンは日本語で表示される（記事一覧の描画には従来どおり `app.js` が必要）。
+  - カテゴリ名は「AI・活用」に統一した。`config/sources.yaml` が既にその値を持ち、UIに出ている名前であるため。ユーザーの判断による。
+  - PR #11 の履歴永続化は commit-back ではなく `actions/cache` を採用した。ワークフローの権限を `contents: read` のまま維持できるため。
+  - 本ファイルおよび `docs/work-log-2026-08-08.md` の過去の記録は書き換えていない。これらは当時の名称である「AI・開発」を使っている。
+- 未解決の課題:
+  - 本番 GitHub Actions での実行が未確認。ログ削減量とrun-historyキャッシュの動作は、ローカル計測とAPIスタブでの検証にとどまる。
+  - `data/articles.json` が2026-06-09のスナップショットで food が9件しかなく、`validate_newsroom.py` がこのデータ単体では終了コード1になる。両ブランチより前から存在する事象。
+  - PR #12 は open のまま。マージ判断は未了。
+  - 多言語ファイル（`en` など）の追加は次段階として未着手。
+- 次のアクション:
+  1. `Daily Personal Newsroom` を main で手動実行する。
+  2. run-historyキャッシュstepが履歴を復元し、`history_runs` が1を超えて伸びることを確認する。
+  3. 同じログで `[rss_summary]` / `[display_summary]` / `[validation_*]` と翻訳ブロックが残り、記事単位のダンプが消えていることを確認する。
+  4. PR #12 のマージ可否を判断する。
 
 ### 2026-09-05 10:45 +09:00 - Claude Code
 
