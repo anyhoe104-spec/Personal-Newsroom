@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
+
+from newsroom_logging import get_logger, log_capped, log_suppression_summary
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTICLES_PATH = ROOT / "data" / "articles.json"
 PUBLIC_DIR = ROOT / "public"
 INDEX_PATH = PUBLIC_DIR / "index.html"
+LOG = get_logger()
 
 
 def load_articles() -> list[dict]:
@@ -36,7 +40,7 @@ def main() -> None:
     articles = load_articles()
     display_counts = count_by_category(articles)
     for category in ("business", "food", "ai_dev", "egg"):
-        print(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
+        LOG.info(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
     translation_articles = [
         article
         for article in sorted(
@@ -46,32 +50,40 @@ def main() -> None:
         )[:20]
     ]
     for article in translation_articles:
-        print(
-            {
-                "build_article_id": article.get("id"),
-                "category": article.get("category"),
-                "translated_title_exists": bool(article.get("translated_title")),
-                "translated_summary_exists": bool(article.get("translated_summary")),
-                "impact_exists": bool(article.get("impact")),
-                "translation_usable": translation_usable(article),
-            }
+        log_capped(
+            logging.DEBUG,
+            "build_translation_article",
+            str(
+                {
+                    "build_article_id": article.get("id"),
+                    "category": article.get("category"),
+                    "translated_title_exists": bool(article.get("translated_title")),
+                    "translated_summary_exists": bool(article.get("translated_summary")),
+                    "impact_exists": bool(article.get("impact")),
+                    "translation_usable": translation_usable(article),
+                }
+            ),
+            limit=20,
         )
     translated_articles = sum(
         1
         for article in translation_articles
         if translation_usable(article)
     )
-    print("=== Personal Newsroom Build Summary ===")
+    LOG.info("=== Personal Newsroom Build Summary ===")
     for category in ("business", "food", "ai_dev", "egg"):
-        print(f"{category}: displayed={display_counts.get(category, 0)}")
-    print(
+        LOG.info(f"{category}: displayed={display_counts.get(category, 0)}")
+    LOG.info(
         "Translation render check: "
         f"final_display_translated_count={translated_articles}, "
         f"final_display_untranslated_count={len(translation_articles) - translated_articles}"
     )
     category_order = ["business", "food", "ai_dev", "egg"]
     categories = {
-        key: next((a["category_label"] for a in articles if a["category"] == key), key)
+        key: next(
+            (a.get("category_label") or key for a in articles if a.get("category") == key),
+            key,
+        )
         for key in category_order
     }
     payload = {
@@ -85,22 +97,22 @@ def main() -> None:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Personal-Newsroom</title>
+  <title data-i18n="app.title">Personal-Newsroom</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="app-header">
     <div>
-      <p class="eyebrow">Personal-Newsroom</p>
-      <h1>今日読むべき40本</h1>
+      <p class="eyebrow" data-i18n="app.name">Personal-Newsroom</p>
+      <h1 data-i18n="header.headline">今日読むべき40本</h1>
     </div>
-    <p class="updated">更新: <time id="generatedAt"></time></p>
+    <p class="updated"><span data-i18n="header.updated_label">更新:</span> <time id="generatedAt"></time></p>
   </header>
 
-  <nav class="tabs" id="tabs" aria-label="カテゴリ"></nav>
-  <section class="feedback-tools" aria-label="フィードバック管理">
-    <button id="copyFeedback" type="button">フィードバックをコピー</button>
-    <button id="downloadFeedback" type="button">JSON保存</button>
+  <nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav>
+  <section class="feedback-tools" aria-label="フィードバック管理" data-i18n-attr="aria-label:feedback_tools.aria_label">
+    <button id="copyFeedback" type="button" data-i18n="feedback_tools.copy">フィードバックをコピー</button>
+    <button id="downloadFeedback" type="button" data-i18n="feedback_tools.download">JSON保存</button>
     <span id="feedbackStatus" aria-live="polite"></span>
   </section>
   <main id="app" class="article-list"></main>
@@ -118,19 +130,21 @@ def main() -> None:
       <p class="impact"></p>
       <p class="egg-insight"></p>
       <div class="actions">
-        <button class="feedback like" type="button" data-value="like">いいね</button>
-        <button class="feedback bad" type="button" data-value="bad">バッド</button>
+        <button class="feedback like" type="button" data-value="like" data-i18n="feedback.like">いいね</button>
+        <button class="feedback bad" type="button" data-value="bad" data-i18n="feedback.bad">バッド</button>
       </div>
     </article>
   </template>
 
   <script id="newsData" type="application/json">{json.dumps(payload, ensure_ascii=False)}</script>
+  <script src="./i18n.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
 """
     INDEX_PATH.write_text(html, encoding="utf-8")
-    print(f"Built {INDEX_PATH}")
+    log_suppression_summary()
+    LOG.info(f"Built {INDEX_PATH}")
 
 
 if __name__ == "__main__":

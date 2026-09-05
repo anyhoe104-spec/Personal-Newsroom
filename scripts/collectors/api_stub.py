@@ -2,7 +2,12 @@
 
 from typing import Any
 
+from newsroom_logging import get_logger
+
+
+LOG = get_logger()
+
 
 def collect_api_stub(source: dict[str, Any]) -> list[dict[str, Any]]:
-    print(f"[api_stub] {source['name']}: collector not implemented yet")
+    LOG.debug(f"[api_stub] {source['name']}: collector not implemented yet")
     return []
