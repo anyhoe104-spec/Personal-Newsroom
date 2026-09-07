@@ -29,5 +29,9 @@ These instructions apply to every agent working in a repository that adopts this
 
 - Do not discard or overwrite existing user or agent changes.
 - Do not commit, push, merge, rebase, switch branches, or resolve conflicts unless the user has authorized that action.
+- **When a push is authorized, finish the delivery: open or update a pull request for that branch in the same step.** A draft pull request is acceptable. Never leave an authorized push without a corresponding pull request — a branch with no pull request has no reviewer and no path to `main`.
+- **Merging stays the owner's decision.** Agents never merge and never request review on the owner's behalf unless asked.
+- **Keep a pull request reviewable in one sitting.** When a change would exceed roughly 500 changed lines, split it into separate branches and pull requests along natural boundaries, and say in each description which part it covers.
+- In the pull request description, state what changed, which checks were run and their results, and what was deliberately left out.
 - Before committing, summarize included files. Before pushing, confirm the expected remote and branch.
 - Never put secrets, credentials, or machine-specific absolute paths in tracked reports.
