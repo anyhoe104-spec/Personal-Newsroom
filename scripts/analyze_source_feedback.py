@@ -8,6 +8,8 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
+from newsroom_logging import get_logger
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTICLES_PATH = ROOT / "data" / "articles.json"
@@ -17,6 +19,7 @@ RECOMMENDATIONS_PATH = ROOT / "data" / "source_recommendations.json"
 PUBLIC_HISTORY_PATH = ROOT / "public" / "run_history.json"
 PUBLIC_RECOMMENDATIONS_PATH = ROOT / "public" / "source_recommendations.json"
 CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
+LOG = get_logger()
 
 
 def load_json(path: Path, default: Any) -> Any:
@@ -176,14 +179,14 @@ def main() -> None:
     write_json(RECOMMENDATIONS_PATH, recommendations)
     write_json(PUBLIC_HISTORY_PATH, history)
     write_json(PUBLIC_RECOMMENDATIONS_PATH, recommendations)
-    print(f"[source_feedback] history_runs={len(history)}")
+    LOG.info(f"[source_feedback] history_runs={len(history)}")
     for category, sources in recommendations["categories"].items():
         replace_candidates = [
             source
             for source, metrics in sources.items()
             if metrics.get("recommendation") == "replace_candidate"
         ]
-        print(
+        LOG.info(
             f"[source_feedback] {category}: sources={len(sources)}, "
             f"replace_candidates={len(replace_candidates)}"
         )

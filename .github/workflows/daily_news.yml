@@ -17,6 +17,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Console level for every pipeline step. Set DEBUG on a manual run to get the
+      # per-article translation diagnostics back.
+      NEWSROOM_LOG_LEVEL: INFO
+      # The runner is discarded after the run and GitHub keeps the console log,
+      # so the rotating file is only useful for local runs.
+      NEWSROOM_LOG_FILE: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v4

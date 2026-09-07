@@ -7,12 +7,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+from newsroom_logging import get_logger
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTICLES_PATH = ROOT / "data" / "articles.json"
 FEEDBACK_PATH = ROOT / "data" / "feedback.json"
 PREFERENCES_PATH = ROOT / "config" / "preferences.yaml"
+LOG = get_logger()
 EGG_REQUIRED_KEYWORDS = (
     "卵",
     "たまご",
@@ -275,6 +277,7 @@ EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS = (
     "recipe",
 )
 CROSS_CATEGORY_DUPLICATE_KEY_FIELDS = ("url", "original_title", "title")
+EGG_PRICE_KEYWORDS = ("価格", "相場", "卵価", "price")
 
 
 def load_yaml(path: Path) -> dict:
@@ -435,7 +438,7 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
     egg_price_penalty = 0.0
     egg_relevance = 1.0
     article["category_relevance"] = 1.0
-    if category == "egg" and any(kw in text for kw in ("關難ｽ｡隴ｬ・ｼ", "騾ｶ・ｸ陜｣・ｴ", "陷奇ｽｵ關難ｽ｡", "price")):
+    if category == "egg" and any(kw in text for kw in EGG_PRICE_KEYWORDS):
         egg_price_penalty = weights.get("egg_price_weight", 0.05)
     if category == "egg":
         egg_relevance = egg_article_relevance(article)
@@ -559,17 +562,16 @@ def main() -> None:
     display_counts = count_by_category(articles)
     fallback_counts = fallback_count_by_category(articles)
     for category in ("business", "food", "ai_dev", "egg"):
-        print(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
-    print("=== Personal Newsroom Score Summary ===")
+        LOG.info(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
+    LOG.info("=== Personal Newsroom Score Summary ===")
     for category in ("business", "food", "ai_dev", "egg"):
-        print(
+        LOG.info(
             f"{category}: input={input_counts.get(category, 0)}, "
-            f"scored={display_counts.get(category, 0)}, "
             f"displayed={display_counts.get(category, 0)}, "
             f"fallback={fallback_counts.get(category, 0)}"
         )
     ARTICLES_PATH.write_text(json.dumps(articles, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Scored {len(articles)} articles")
+    LOG.info(f"Scored {len(articles)} articles")
 
 
 if __name__ == "__main__":

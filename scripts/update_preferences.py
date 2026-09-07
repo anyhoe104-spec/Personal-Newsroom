@@ -6,11 +6,13 @@ from collections import Counter
 from pathlib import Path
 
 import yaml
+from newsroom_logging import get_logger
 
 
 ROOT = Path(__file__).resolve().parents[1]
 FEEDBACK_PATH = ROOT / "data" / "feedback.json"
 PREFERENCES_PATH = ROOT / "config" / "preferences.yaml"
+LOG = get_logger()
 
 
 def tokenize(text: str) -> list[str]:
@@ -19,7 +21,7 @@ def tokenize(text: str) -> list[str]:
 
 def main() -> None:
     if not FEEDBACK_PATH.exists():
-        print("No feedback.json found")
+        LOG.warning("No feedback.json found")
         return
     feedback = json.loads(FEEDBACK_PATH.read_text(encoding="utf-8"))
     prefs = yaml.safe_load(PREFERENCES_PATH.read_text(encoding="utf-8")) or {}
@@ -36,7 +38,7 @@ def main() -> None:
         category_prefs["downrank_keywords"] = downs[:30]
 
     PREFERENCES_PATH.write_text(yaml.safe_dump(prefs, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    print(f"Updated {PREFERENCES_PATH}")
+    LOG.info(f"Updated {PREFERENCES_PATH}")
 
 
 if __name__ == "__main__":

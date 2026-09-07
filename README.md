@@ -8,7 +8,7 @@
 
 - 経済・ビジネス
 - スイーツ・飲食
-- AI・開発
+- AI・活用
 - 卵（加工品・ゆで卵・温泉卵・煮卵・商品開発・技術トレンド）
 
 ## ローカル実行手順（PowerShell）
@@ -81,7 +81,7 @@ categories:
 - `google_alert`: GoogleアラートRSSです。通常RSSとして取得し、記事には `source_type: google_alert` を保存します。
 - `api_stub`: 将来API取得を追加するための予約枠です。現時点では記事を追加せず、既存処理を止めません。
 
-記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・開発カテゴリと卵・食品開発カテゴリでは、APIキーがある場合はAnthropicで英語記事の日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
+記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・活用カテゴリと卵・食品開発カテゴリでは、APIキーがある場合はAnthropicで英語記事の日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
 
 ## GitHub Pages
 
@@ -102,10 +102,66 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `public/index.html`: GitHub Pages用HTML
 - `public/style.css`: スマホ優先CSS
 - `public/app.js`: タブ表示とフィードバックUI
+- `public/i18n.js`: UI固定文言の翻訳キー辞書と `t()` フック
 - `data/articles.json`: 記事データ
 - `data/feedback.json`: 次回スコア反映用フィードバック
 - `data/run_history.json`: ソース別表示状況の蓄積
 - `data/source_recommendations.json`: ソース別の維持・強化・監視・差し替え候補
+
+## UI文言の翻訳フック（i18n）
+
+画面に出る固定文言は `public/i18n.js` の辞書に集約し、`i18n.t('キー')` 経由で取得します。記事タイトル・要約・impact などの記事本文は対象外で、従来どおり `data/articles.json` の値をそのまま表示します（AI・活用カテゴリのClaude翻訳パイプラインには一切手を入れていません）。
+
+デフォルト言語は日本語（`ja`）で、現時点で辞書は `ja` のみです。表示は従来と同一です。
+
+使い方:
+
+```js
+i18n.t("feedback.like");                                  // "いいね"
+i18n.t("nav.tab_label", { label: "AI・活用", count: 10 }); // "AI・活用 10"
+i18n.tList("fallback.themes.egg");                        // 文字列配列
+i18n.setLocale("en");                                     // 未登録ロケールは ja にフォールバック
+```
+
+HTML側は属性で指定し、`i18n.applyStaticText()` が差し替えます。日本語のテキストはマークアップにも残してあるため、`i18n.js` の読み込みに失敗しても見出し・ボタンなどの静的部分は日本語のまま表示されます（記事一覧の描画には従来どおり `app.js` が必要です）。
+
+```html
+<h1 data-i18n="header.headline">今日読むべき40本</h1>
+<nav data-i18n-attr="aria-label:nav.categories_aria_label" aria-label="カテゴリ"></nav>
+```
+
+キーが辞書にない場合はキー文字列をそのまま返すため、タイプミスが画面上で見つかります。
+
+多言語ファイルの追加は次段階です。`i18n.js` の `MESSAGES` に `en` などのオブジェクトを足し、`i18n.setLocale()` を呼ぶだけで切り替わります。コンポーネント側の変更は不要です。
+
+カテゴリ名は `config/sources.yaml` が正です。記事データにラベルが入っている場合はそちらを使い、記事0件時のフォールバック表示でのみ `i18n.js` の `category.*` を使います。
+
+## ログ設定
+
+ログは Python 標準の `logging` に統一しています。出力形式は従来どおり `[タグ] 本文` のままです。
+
+| 環境変数 | 既定値 | 説明 |
+| --- | --- | --- |
+| `NEWSROOM_LOG_LEVEL` | `INFO` | コンソール出力レベル。`DEBUG` にすると記事単位の翻訳診断ログが復活します（`LOG_LEVEL` でも可）。 |
+| `NEWSROOM_LOG_FILE` | `logs/newsroom.log` | ログファイルの出力先。空文字を指定するとファイル出力を止めます。 |
+| `NEWSROOM_LOG_FILE_LEVEL` | `DEBUG` | ファイル出力レベル。コンソールに出さない詳細もファイルには残ります。 |
+| `NEWSROOM_LOG_MAX_BYTES` | `1048576`（1MiB） | 1ファイルあたりの上限。超えるとローテーションします。 |
+| `NEWSROOM_LOG_BACKUP_COUNT` | `3` | 保持する世代数。上限に達した古いファイルから削除されます。 |
+
+`logs/` は `.gitignore` 済みです。ローカル実行では最大 4MiB（1MiB × 4世代）でログの増加が止まります。
+
+GitHub Actions は既定で `NEWSROOM_LOG_LEVEL=INFO`、ファイル出力なしで実行します。詳細を見たいときは `daily_news.yml` の `NEWSROOM_LOG_LEVEL` を `DEBUG` にして手動実行してください。
+
+記事単位で繰り返し出るログには1実行あたりの件数上限があり、上限に達した場合は `[log_capped] グループ名: emitted=N, suppressed=M` を最後に出力します。ログが黙って欠けることはありません。
+
+デバッグ時のみ出力されるログ（`NEWSROOM_LOG_LEVEL=DEBUG` が必要）:
+
+- `[anthropic] request articles before prompt` / `request messages payload`
+- `[anthropic] response content types` / `tool_use name` / `tool_use.input item`
+- `[anthropic] translation_request_titles` / `translation_request_article_ids` / `final_ai_dev_display_article_ids`
+- `[anthropic] ai_dev japanese passthrough` / `applied translation to article`
+- 記事ごとの翻訳可否ダンプ（`article_id` / `translation_usable`）
+- `[rss] 名称: parse warning`（feedparser の bozo 判定は誤検知が多いため）
 
 ## Actionsログの見方
 
@@ -121,11 +177,11 @@ RSS取得:
 AI翻訳:
 
 - `api_key_present=True` なら Anthropic API キーがActions環境にあります。キー値はログに出しません。
-- `request_count` はAI・開発と卵・食品開発の最終表示候補のうち、英語記事を翻訳対象にした件数です。
+- `request_count` はAI・活用と卵・食品開発の最終表示候補のうち、英語記事を翻訳対象にした件数です。
 - `source_japanese_count` は対象カテゴリの表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
 - `japanese_passthrough_count` は日本語原文記事に3点要約とimpactを補って表示可能にした件数です。
 - `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
-- `translation_request_article_ids` と `final_ai_dev_display_article_ids`、および `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。
+- `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。内訳の `translation_request_article_ids` と `final_ai_dev_display_article_ids` は DEBUG レベルです（「ログ設定」を参照）。
 - `final_display_translated_count` が8以上なら概ね成功です。10なら理想状態です。
 - `fallback_count` が多い場合は、API失敗、レスポンス解析失敗、汎用翻訳判定、またはAPIキー未設定の可能性があります。
 

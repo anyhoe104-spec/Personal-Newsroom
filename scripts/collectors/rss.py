@@ -4,8 +4,10 @@ from typing import Any
 
 import feedparser
 import requests
+from newsroom_logging import get_logger
 
 
+LOG = get_logger()
 USER_AGENT = "Personal-Newsroom/1.0 (+https://github.com/anyhoe104-spec/Personal-Newsroom)"
 
 
@@ -19,5 +21,6 @@ def collect_rss(source: dict[str, Any]) -> list[dict[str, Any]]:
     feed = feedparser.parse(response.content)
     if getattr(feed, "bozo", False):
         reason = getattr(feed, "bozo_exception", "unknown parse error")
-        print(f"[rss] {source['name']}: parse warning: {reason}")
+        # feedparser flags many well-formed feeds as bozo, so this is diagnostic only.
+        LOG.debug(f"[rss] {source['name']}: parse warning: {reason}")
     return list(feed.entries[: source.get("limit", 30)])
