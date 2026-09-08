@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import sys
@@ -8,6 +9,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import analyze_source_feedback  # noqa: E402
+import build_site  # noqa: E402
 import fetch_rss  # noqa: E402
 import newsroom_logging  # noqa: E402
 import score_articles  # noqa: E402
@@ -410,6 +412,38 @@ class TranslationKeyCoverageTests(unittest.TestCase):
         japanese = re.findall(r"[぀-ヿ㐀-\u9fff]+", source)
         self.assertEqual(japanese, [], f"move this copy into public/i18n.js: {japanese}")
 
+
+
+class ScriptEmbeddingRegressionTests(unittest.TestCase):
+    """記事データを<script>へ埋め込む際のエスケープ。
+
+    タイトルと要約は外部RSS由来で内容を制御できない。`</script>` を
+    含む記事が1本でもあると、素の json.dumps ではscript要素がそこで
+    終了し、以降がHTMLとして解釈される。
+    """
+
+    def test_closing_script_tag_cannot_break_out(self):
+        payload = {
+            "articles": [
+                {"title": "速報 </script><img src=x onerror=alert(1)> 続報"}
+            ]
+        }
+        embedded = build_site.embed_json(payload)
+        self.assertNotIn("</script>", embedded)
+        self.assertNotIn("<img", embedded)
+
+    def test_escaped_json_still_parses_to_the_same_object(self):
+        payload = {
+            "articles": [
+                {"title": "a < b </script>", "summary": ["<p>", "x"]},
+            ],
+            "categories": {"business": "ビジネス"},
+        }
+        self.assertEqual(json.loads(build_site.embed_json(payload)), payload)
+
+    def test_japanese_text_is_not_escaped_to_ascii(self):
+        embedded = build_site.embed_json({"title": "卵価格の動向"})
+        self.assertIn("卵価格の動向", embedded)
 
 if __name__ == "__main__":
     unittest.main()

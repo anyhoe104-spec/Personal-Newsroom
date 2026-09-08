@@ -4,26 +4,54 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-05 16:26:14 +09:00
-- エージェント: Claude Code
-- ブランチ: claude/newsroom-weekly-tasks-5msgjt（origin と同期済み）
-- リビジョン: b3b304e
-- 目的: 今週の改修3件（レビュー指摘の修正 / UI翻訳フックの全体導入 / ログの整理）と、PR #11 のCodexレビュー指摘への対応。
+- 更新: 2026-09-08 01:20 +09:00
+- エージェント: Claude
+- ブランチ: `claude/fix-newsdata-script-escaping`
+- ベース: `main`（`11a4bad`、PR #12・#13 マージ後）
+- 目的: 生成HTMLの `<script id="newsData">` へ外部RSS由来の文字列を埋め込む際のエスケープ不足を修正する。
 - 完了した作業:
-  - PR #11 のCodexレビュー指摘3件を再現確認のうえ修正し、PR #11 は `c6c1e73` として main にマージ済み。
-  - 今週の改修3件は PR #12（open）に載せて push 済み。main（PR #11 マージ後）を取り込み、9ファイルの衝突を解消済み。
-- 進行中: なし。作業ツリーはクリーンで、push 済み。
+  - `scripts/build_site.py` に `embed_json()` を追加し、`<` を `\u003c` へ置換してから埋め込むようにした。`</script>` がHTMLパーサから見えなくなる。
+  - 回帰テスト3件を `tests/test_regressions.py` に追加（`ScriptEmbeddingRegressionTests`）。
+- 進行中: なし。
 - ブロッカーとリスク:
-  - 本番 GitHub Actions での実行は未確認。この環境から外部RSSに接続できないため、ログ削減量とrun-historyキャッシュの動作はローカル計測とAPIスタブでの検証にとどまる。
-  - リポジトリの `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が `food displayed=9; expected 10` で終了コード1になる。`fetch_rss.py` を新規実行すれば4カテゴリとも10件になる。両ブランチより前から存在する事象で、今回変更していない。
+  - 本番 GitHub Actions での実行は未確認。この環境から外部RSSに接続できないため、実フィードでの挙動は未検証。
+  - リポジトリの `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が `food displayed=9; expected 10` で終了コード1になる。`fetch_rss.py` を新規実行すれば4カテゴリとも10件になる。以前から存在する事象で、今回変更していない。
 - 次のアクション:
-  1. `Daily Personal Newsroom` を main で手動実行し、run-historyキャッシュstepが履歴を復元して `history_runs` が1を超えて伸びることを確認する。
-  2. 同じ実行のログで、`[rss_summary]` / `[display_summary]` / `[validation_*]` と翻訳ブロックが残り、記事単位のダンプが消えていることを確認する。
-  3. PR #12 のマージ可否を判断する。
-  4. 多言語化に進む場合は `public/i18n.js` の `MESSAGES` に `en` を追加し、`i18n.setLocale()` を呼ぶ。コンポーネント側の変更は不要。
-- 検証: `python -m unittest discover -s tests` 28件パス。`score_articles.py` / `build_site.py` / `analyze_source_feedback.py` 終了コード0。`validate_newsroom.py` は上記の既存事象により1。ヘッドレスChromium 390x844 でUI確認済み。
+  1. 本ブランチのPRをマージする。
+  2. `Daily Personal Newsroom` を main で手動実行し、生成された `public/index.html` の `newsData` ブロックが `JSON.parse` できることを確認する。
+  3. run-historyキャッシュstepが履歴を復元し `history_runs` が1を超えて伸びることを確認する（PR #12 からの持ち越し）。
+- 検証:
+  - `python -m unittest discover -s tests`: **31件 OK**（修正前は新規3件が失敗することを確認済み）。
+  - `python scripts/build_site.py`: 終了コード0。生成された `public/index.html` の `newsData` ブロックに `</script>` が含まれないこと、`json.loads` が通ることを確認。
+  - `validate_newsroom.py` は上記の既存事象により1。
 
 ## Dated work reports
+
+### 2026-09-08 01:20 +09:00 - Claude
+
+- 目的: `<script id="newsData">` への埋め込みエスケープ不足を修正する。2026-08-25 の健全性チェックで検出されてから3週間、`main` に残っていた。
+- 完了した作業:
+  - `scripts/build_site.py` に `embed_json()` を追加し、`json.dumps(...).replace("<", "\\u003c")` を通してから埋め込むよう変更した。
+  - `tests/test_regressions.py` に `ScriptEmbeddingRegressionTests` を追加（3件）。
+    - `</script>` を含むタイトルで埋め込み結果に `</script>` と `<img` が現れないこと
+    - エスケープ後も `json.loads` が元のオブジェクトに戻ること
+    - 日本語がASCIIエスケープされないこと（`ensure_ascii=False` の維持）
+- 影響範囲: `scripts/build_site.py`、`tests/test_regressions.py`、`WORKLOG.md`。
+- 検証:
+  - 修正前のコードで新規テストを実行し、3件が失敗することを確認（意図した不具合を捉えている）。
+  - 修正後 `python -m unittest discover -s tests`: 31件 OK。
+  - `python scripts/build_site.py`: 終了コード0。生成HTMLの `newsData` ブロックに `</script>` が含まれず、`json.loads` が通ることを確認。生成物はコミットに含めていない。
+- 何が問題だったか:
+  - 記事のタイトル・要約は外部RSS由来で内容を制御できない。`json.dumps` はJSONとしては正しくエスケープするが、HTMLの `</script>` を無害化しない。
+  - タイトルに `</script>` を含む記事が1本でもあると、そこでscript要素が終了し、以降がHTMLとして解釈される。悪意がなくても `JSON.parse` が失敗して記事が1本も表示されなくなり、悪意があれば任意のマークアップを注入できる。
+  - このリポジトリはPublicかつ毎日自動デプロイのため、人手の確認が入らない。
+  - フロントエンド（`public/app.js`）は `textContent` を徹底して使いXSSを防いでいたが、この1行がその対策を無効化していた。
+- 決定:
+  - `<` の置換のみで対応した。JSON仕様上 `<` と `\u003c` は等価なので `JSON.parse` の結果は変わらず、`ensure_ascii=False` による日本語のそのまま出力も維持される。
+  - インライン置換ではなく名前付き関数 `embed_json()` にした。なぜこの置換が必要かをdocstringに残し、将来 `json.dumps` へ戻されるのを防ぐため。
+- 未解決の課題:
+  - 本番 Actions での実行確認は未実施（この環境から外部RSSへ接続できないため）。
+- 次のアクション: 上記 Current handoff の「次のアクション」を参照。
 
 ### 2026-09-05 16:26 +09:00 - Claude Code
 

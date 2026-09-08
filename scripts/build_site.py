@@ -15,6 +15,21 @@ INDEX_PATH = PUBLIC_DIR / "index.html"
 LOG = get_logger()
 
 
+
+def embed_json(payload: dict) -> str:
+    """HTMLの<script>ブロックへ安全に埋め込めるJSON文字列を返す。
+
+    記事のタイトルや要約は外部RSS由来で、内容を制御できない。素の
+    json.dumps はJSONとしては正しくエスケープするが `</script>` を
+    無害化しないため、そのまま埋め込むとscript要素がそこで終了し、
+    以降がHTMLとして解釈されてしまう（記事1本で全体が壊れ、任意の
+    マークアップを注入されうる）。
+
+    JSON仕様上 `<` と `\u003c` は等価なので、`JSON.parse` の結果は
+    変わらないまま、HTMLパーサからは `</script>` が見えなくなる。
+    """
+    return json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
+
 def load_articles() -> list[dict]:
     if not ARTICLES_PATH.exists():
         return []
@@ -136,7 +151,7 @@ def main() -> None:
     </article>
   </template>
 
-  <script id="newsData" type="application/json">{json.dumps(payload, ensure_ascii=False)}</script>
+  <script id="newsData" type="application/json">{embed_json(payload)}</script>
   <script src="./i18n.js"></script>
   <script src="./app.js"></script>
 </body>
