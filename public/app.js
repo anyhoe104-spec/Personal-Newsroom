@@ -11,7 +11,26 @@ const feedbackStatus = document.getElementById("feedbackStatus");
 const feedbackKey = "personal-newsroom-feedback-v1";
 
 let activeCategory = categoryKeys[0];
-let feedback = JSON.parse(localStorage.getItem(feedbackKey) || "{}");
+let feedback = loadFeedback();
+
+function loadFeedback() {
+  let stored;
+  try {
+    stored = JSON.parse(localStorage.getItem(feedbackKey) || "{}");
+  } catch {
+    // Unavailable storage or damaged feedback must not prevent news rendering.
+    return {};
+  }
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) return {};
+  // Keep usable votes without rewriting the saved data during page startup.
+  return Object.fromEntries(categoryKeys.map((category) => [
+    category,
+    Array.isArray(stored[category]) ? stored[category].filter((item) =>
+      item && typeof item.id === "string" && item.id.length > 0
+      && (item.value === "like" || item.value === "bad")
+    ) : [],
+  ]));
+}
 
 generatedAt.textContent = new Date(data.generated_at).toLocaleString("ja-JP", {
   month: "numeric",
