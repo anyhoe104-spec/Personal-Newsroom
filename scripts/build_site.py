@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+
+import yaml
 from pathlib import Path
 
 from newsroom_config import state_path
@@ -103,7 +105,8 @@ def main() -> None:
         for key in category_order
     }
     payload = {
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "vocabulary": {key: value.get("boost_keywords", []) for key, value in (yaml.safe_load((ROOT / "config/preferences.yaml").read_text(encoding="utf-8")) or {}).get("categories", {}).items()},
         "categories": categories,
         "articles": articles,
     }
@@ -114,47 +117,65 @@ def main() -> None:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="app.title">Personal-Newsroom</title>
+  <meta name="theme-color" content="#123e35">
+  <meta name="description" content="ニュースを評価して、あなたの関心に育てるパーソナルニュースルーム。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+  <a class="skip-link" href="#app">記事一覧へ</a>
   <header class="app-header">
-    <div>
-      <p class="eyebrow" data-i18n="app.name">Personal-Newsroom</p>
-      <h1 data-i18n="header.headline">今日読むべき40本</h1>
-    </div>
-    <p class="updated"><span data-i18n="header.updated_label">更新:</span> <time id="generatedAt"></time></p>
+    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">N.</span><span>PERSONAL<br>NEWSROOM</span></a>
+    <button id="openSettings" class="settings-button" type="button" data-i18n="reader.settings">設定</button>
   </header>
-
-  <nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav>
-  <section class="feedback-tools" aria-label="フィードバック管理" data-i18n-attr="aria-label:feedback_tools.aria_label">
-    <button id="copyFeedback" type="button" data-i18n="feedback_tools.copy">フィードバックをコピー</button>
-    <button id="downloadFeedback" type="button" data-i18n="feedback_tools.download">JSON保存</button>
-    <span id="feedbackStatus" aria-live="polite"></span>
-  </section>
-  <main id="app" class="article-list"></main>
-
-  <template id="articleTemplate">
-    <article class="card">
-      <div class="card-top">
-        <span class="source"></span>
-        <span class="score"></span>
-      </div>
-      <h2><a class="title" target="_blank" rel="noopener noreferrer"></a></h2>
-      <p class="original-title"></p>
-      <p class="category"></p>
-      <ul class="summary"></ul>
-      <p class="impact"></p>
-      <p class="egg-insight"></p>
-      <div class="actions">
-        <button class="feedback like" type="button" data-value="like" data-i18n="feedback.like">いいね</button>
-        <button class="feedback bad" type="button" data-value="bad" data-i18n="feedback.bad">バッド</button>
-      </div>
-    </article>
-  </template>
+  <div class="page-shell">
+    <section class="hero">
+      <p class="eyebrow">YOUR DAILY PERSPECTIVE</p>
+      <h1 data-i18n="header.headline">今日の視点を、育てる。</h1>
+      <p class="intro" data-i18n="reader.intro">読む。選ぶ。自分の視点が育つ。</p>
+      <p class="updated"><span data-i18n="header.updated_label">更新:</span> <time id="generatedAt"></time></p>
+      <p id="learningCount" class="learning-count"></p>
+    </section>
+    <p id="offline" class="banner" hidden data-i18n="reader.offline">オフラインです。</p>
+    <p id="freshness" class="banner" hidden data-i18n="reader.freshness">記事の日付をご確認ください。</p>
+    <nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav>
+    <section id="filters" class="filters" aria-label="記事の絞り込み">
+      <label class="search-box"><span class="sr-only" data-i18n="reader.search">記事・情報源を検索</span><input id="search" type="search" placeholder="記事・情報源を検索" data-i18n-attr="placeholder:reader.search" autocomplete="off"></label>
+      <label class="sort-label"><span class="sr-only" data-i18n="reader.sort">表示順</span><select id="sort"><option value="recommended" data-i18n="reader.recommended">おすすめ順</option><option value="latest" data-i18n="reader.latest">新しい順</option></select></label>
+      <label class="check-label"><input id="unread" type="checkbox"><span data-i18n="reader.unread">未読のみ</span></label>
+    </section>
+    <div class="section-heading"><h2 id="viewTitle"></h2><p id="resultCount" role="status"></p></div>
+    <main id="app" class="article-list" tabindex="-1"></main>
+  </div>
+  <nav class="bottom-nav" aria-label="メインメニュー">
+    <button type="button" data-view="today"><span aria-hidden="true">▤</span><span data-i18n="reader.view_today">今日のニュース</span></button>
+    <button type="button" data-view="saved"><span aria-hidden="true">◇</span><span data-i18n="reader.view_saved">あとで読む</span></button>
+    <button type="button" data-view="history"><span aria-hidden="true">◷</span><span data-i18n="reader.view_history">評価の履歴</span></button>
+    <button type="button" data-view="insights"><span aria-hidden="true">✧</span><span data-i18n="reader.view_insights">あなたの関心</span></button>
+  </nav>
+  <p id="feedbackStatus" class="toast" role="status" aria-live="polite"></p>
+  <dialog id="settings" aria-labelledby="settingsTitle">
+    <div class="dialog-heading"><h2 id="settingsTitle" data-i18n="reader.settings">設定</h2><button id="closeSettings" type="button" data-i18n="reader.close">閉じる</button></div>
+    <p id="settingsStatus" role="status" aria-live="polite"></p>
+    <p data-i18n="reader.privacy"></p>
+    <label class="setting-row"><span data-i18n="reader.learning"></span><input id="learningToggle" type="checkbox"></label>
+    <label class="setting-row"><span data-i18n="reader.compact"></span><input id="compactToggle" type="checkbox"></label>
+    <label class="setting-row"><span data-i18n="reader.theme"></span><select id="theme"><option value="system" data-i18n="reader.system"></option><option value="light" data-i18n="reader.light"></option><option value="dark" data-i18n="reader.dark"></option></select></label>
+    <p data-i18n="reader.tag_note"></p>
+    <h3 data-i18n="reader.data"></h3>
+    <div class="data-actions"><button id="downloadBackup" type="button" data-i18n="reader.backup"></button><label class="import-label"><span data-i18n="reader.import"></span><input id="importBackup" type="file" accept="application/json,.json"></label></div>
+    <details><summary data-i18n="reader.advanced"></summary><div class="data-actions"><button id="copyFeedback" type="button" data-i18n="feedback_tools.copy"></button><button id="downloadFeedback" type="button" data-i18n="feedback_tools.download"></button></div></details>
+    <p data-i18n="reader.install_hint"></p><button id="installApp" type="button" hidden data-i18n="reader.install"></button>
+    <button id="resetData" class="danger" type="button" data-i18n="reader.reset"></button>
+  </dialog>
+  <noscript><p>記事の表示にはJavaScriptが必要です。ブラウザでJavaScriptを有効にしてください。</p></noscript>
 
   <script id="newsData" type="application/json">{embed_json(payload)}</script>
   <script src="./i18n.js"></script>
+  <script src="./learning.js"></script>
   <script src="./app.js"></script>
+  <script src="./pwa.js"></script>
 </body>
 </html>
 """
