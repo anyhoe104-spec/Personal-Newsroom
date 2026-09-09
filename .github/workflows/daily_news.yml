@@ -17,6 +17,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      # Only this job writes: it pushes the built site to the gh-pages branch.
+      # The deploy job keeps the read-only default from above.
+      contents: write
+      pages: write
+      id-token: write
     env:
       # Console level for every pipeline step. Set DEBUG on a manual run to get the
       # per-article translation diagnostics back.
@@ -69,6 +75,16 @@ jobs:
 
       - name: Analyze source feedback
         run: python scripts/analyze_source_feedback.py
+
+      # Step 3 of docs/config-separation-plan.md. The private theme pack will take
+      # over this push in Step 4, and the Pages source moves to this branch in
+      # Step 5. Until the new path is confirmed, the deploy job below stays as the
+      # live delivery route, so a stale or broken gh-pages cannot take the site
+      # down. Restricted to the default branch so a manual run from a feature
+      # branch cannot overwrite what Pages will eventually serve.
+      - name: Publish site to gh-pages
+        if: github.ref == 'refs/heads/main'
+        run: bash scripts/publish_gh_pages.sh public gh-pages
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
