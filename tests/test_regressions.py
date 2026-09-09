@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import sys
 import unittest
@@ -11,6 +12,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 import analyze_source_feedback  # noqa: E402
 import build_site  # noqa: E402
 import fetch_rss  # noqa: E402
+import newsroom_config  # noqa: E402
 import newsroom_logging  # noqa: E402
 import score_articles  # noqa: E402
 import validate_newsroom  # noqa: E402
@@ -444,6 +446,258 @@ class ScriptEmbeddingRegressionTests(unittest.TestCase):
     def test_japanese_text_is_not_escaped_to_ascii(self):
         embedded = build_site.embed_json({"title": "卵価格の動向"})
         self.assertIn("卵価格の動向", embedded)
+
+class ConfigLocationTests(unittest.TestCase):
+    """The engine must run against a theme pack outside this repository, and must
+    behave exactly as before when the environment says nothing."""
+
+    ENV_VARS = ("NEWSROOM_CONFIG_DIR", "NEWSROOM_STATE_DIR")
+
+    def setUp(self):
+        self.saved = {name: os.environ.get(name) for name in self.ENV_VARS}
+        for name in self.ENV_VARS:
+            os.environ.pop(name, None)
+
+    def tearDown(self):
+        for name, value in self.saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+    def test_defaults_are_the_in_repository_layout(self):
+        self.assertEqual(newsroom_config.config_dir(), newsroom_config.ROOT / "config")
+        self.assertEqual(newsroom_config.state_dir(), newsroom_config.ROOT / "data")
+        self.assertEqual(
+            newsroom_config.config_path("sources.yaml"),
+            newsroom_config.ROOT / "config" / "sources.yaml",
+        )
+        self.assertEqual(
+            newsroom_config.state_path("feedback.json"),
+            newsroom_config.ROOT / "data" / "feedback.json",
+        )
+
+    def test_environment_overrides_both_directories(self):
+        os.environ["NEWSROOM_CONFIG_DIR"] = "/themes/personal"
+        os.environ["NEWSROOM_STATE_DIR"] = "/themes/personal/state"
+
+        self.assertEqual(
+            newsroom_config.config_path("preferences.yaml"),
+            Path("/themes/personal/preferences.yaml"),
+        )
+        self.assertEqual(
+            newsroom_config.state_path("run_history.json"),
+            Path("/themes/personal/state/run_history.json"),
+        )
+
+    def test_blank_environment_value_falls_back_to_the_default(self):
+        os.environ["NEWSROOM_CONFIG_DIR"] = "   "
+        self.assertEqual(newsroom_config.config_dir(), newsroom_config.ROOT / "config")
+
+    def test_every_pipeline_script_reads_through_the_config_layer(self):
+        # A script that hardcodes ROOT / "data" would silently ignore a theme pack.
+        scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
+        offenders = []
+        for path in sorted(scripts_dir.glob("*.py")):
+            if path.name == "newsroom_config.py":
+                continue
+            source = path.read_text(encoding="utf-8")
+            if 'ROOT / "data"' in source or 'ROOT / "config"' in source:
+                offenders.append(path.name)
+        self.assertEqual(offenders, [])
+
+
+class FeedUrlInjectionTests(unittest.TestCase):
+    """Feed URLs that must not be committed are referenced by name and injected."""
+
+    LOOKUP = "GOOGLE_ALERT_TEST_FEED"
+    ENV_VARS = (LOOKUP, newsroom_config.FEED_BUNDLE_ENV)
+    ALERT = "https://example.com/alerts/feeds/direct"
+    BUNDLED = "https://example.com/alerts/feeds/bundled"
+    LITERAL = "https://example.com/alerts/feeds/literal"
+
+    def setUp(self):
+        self.saved = {name: os.environ.get(name) for name in self.ENV_VARS}
+        for name in self.ENV_VARS:
+            os.environ.pop(name, None)
+
+    def tearDown(self):
+        for name, value in self.saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+    def source(self, **overrides) -> dict:
+        item = {"name": "Google Alert: test", "source_type": "google_alert", "url_env": self.LOOKUP}
+        item.update(overrides)
+        return item
+
+    def test_dedicated_environment_variable_is_used(self):
+        os.environ[self.LOOKUP] = self.ALERT
+        self.assertEqual(newsroom_config.resolve_source_url(self.source()), self.ALERT)
+
+    def test_bundle_supplies_the_url_when_no_dedicated_variable_exists(self):
+        os.environ[newsroom_config.FEED_BUNDLE_ENV] = json.dumps({self.LOOKUP: self.BUNDLED})
+        self.assertEqual(newsroom_config.resolve_source_url(self.source()), self.BUNDLED)
+
+    def test_dedicated_variable_wins_over_the_bundle(self):
+        os.environ[self.LOOKUP] = self.ALERT
+        os.environ[newsroom_config.FEED_BUNDLE_ENV] = json.dumps({self.LOOKUP: self.BUNDLED})
+        self.assertEqual(newsroom_config.resolve_source_url(self.source()), self.ALERT)
+
+    def test_literal_url_still_works_when_nothing_is_injected(self):
+        # Keeps a checkout that carries its own URLs behaving as before.
+        self.assertEqual(
+            newsroom_config.resolve_source_url(self.source(url=self.LITERAL)),
+            self.LITERAL,
+        )
+
+    def test_injected_url_overrides_the_literal_one(self):
+        os.environ[self.LOOKUP] = self.ALERT
+        self.assertEqual(
+            newsroom_config.resolve_source_url(self.source(url=self.LITERAL)),
+            self.ALERT,
+        )
+
+    def test_unresolvable_source_yields_no_url(self):
+        self.assertEqual(newsroom_config.resolve_source_url(self.source()), "")
+
+    def test_malformed_bundle_is_ignored_rather_than_raising(self):
+        os.environ[newsroom_config.FEED_BUNDLE_ENV] = "{not json"
+        self.assertEqual(newsroom_config.feed_bundle(), {})
+        self.assertEqual(
+            newsroom_config.resolve_source_url(self.source(url=self.LITERAL)),
+            self.LITERAL,
+        )
+
+    def test_normalize_source_injects_the_url_for_collectors(self):
+        # collectors/rss.py reads source["url"], so resolution happens before it.
+        os.environ[self.LOOKUP] = self.ALERT
+        normalized = fetch_rss.normalize_source(self.source())
+        self.assertEqual(normalized["url"], self.ALERT)
+        self.assertEqual(normalized["source_type"], "google_alert")
+
+    def test_unresolved_source_is_skipped_and_the_run_continues(self):
+        with self.assertRaises(ValueError) as caught:
+            fetch_rss.fetch_source(self.source(), "food", "スイーツ・飲食")
+        self.assertIn(self.LOOKUP, str(caught.exception))
+
+    def test_failure_message_names_the_lookup_but_never_a_url(self):
+        os.environ[newsroom_config.FEED_BUNDLE_ENV] = json.dumps({"OTHER": self.BUNDLED})
+        message = newsroom_config.describe_unresolved_source(self.source())
+        self.assertIn(self.LOOKUP, message)
+        self.assertNotIn(self.BUNDLED, message)
+        self.assertNotIn("https://", message)
+
+
+class SourcesConfigTests(unittest.TestCase):
+    def test_every_google_alert_names_an_injection_lookup(self):
+        # Step 6 removes the literal URLs; the lookup name has to be in place first.
+        import yaml
+
+        config = yaml.safe_load(
+            (Path(__file__).resolve().parents[1] / "config" / "sources.yaml").read_text(encoding="utf-8")
+        )
+        alerts = [
+            source
+            for category in config["categories"].values()
+            for source in category.get("sources", [])
+            if source.get("source_type") == "google_alert"
+        ]
+        self.assertTrue(alerts)
+        missing = [source["name"] for source in alerts if not source.get("url_env")]
+        self.assertEqual(missing, [])
+
+
+class InjectedUrlRedactionTests(unittest.TestCase):
+    """An injected feed URL must not reach the log.
+
+    requests reports a failure as "...(host='www.google.com')... with url: /alerts/
+    feeds/<id>/<token>", splitting host from path. GitHub only masks an exact
+    match of the registered secret, so the path would otherwise survive into a
+    public Actions log and defeat the point of injecting the URL at all.
+    """
+
+    LOOKUP = "GOOGLE_ALERT_REDACTION_TEST"
+    SECRET_URL = "https://www.google.com/alerts/feeds/11112222333344445555/6666777788889999"
+    SECRET_PATH = "/alerts/feeds/11112222333344445555/6666777788889999"
+
+    def setUp(self):
+        newsroom_logging.reset_secrets()
+        self.saved = os.environ.get(self.LOOKUP)
+        os.environ[self.LOOKUP] = self.SECRET_URL
+        self.logger = newsroom_logging.get_logger()
+        self.records: list[str] = []
+
+        formatter = newsroom_logging._RedactingFormatter("%(message)s")
+
+        class Collector(logging.Handler):
+            def emit(inner, record):
+                self.records.append(formatter.format(record))
+
+        self.handler = Collector(level=logging.DEBUG)
+        self.logger.addHandler(self.handler)
+        self.previous_level = self.logger.level
+        self.logger.setLevel(logging.DEBUG)
+
+    def tearDown(self):
+        self.logger.removeHandler(self.handler)
+        self.logger.setLevel(self.previous_level)
+        if self.saved is None:
+            os.environ.pop(self.LOOKUP, None)
+        else:
+            os.environ[self.LOOKUP] = self.saved
+        newsroom_logging.reset_secrets()
+
+    def resolve(self) -> str:
+        return newsroom_config.resolve_source_url(
+            {"name": "Google Alert: test", "source_type": "google_alert", "url_env": self.LOOKUP}
+        )
+
+    def test_resolution_returns_the_real_url_to_the_caller(self):
+        # Redaction is a logging concern; the collector still needs the real URL.
+        self.assertEqual(self.resolve(), self.SECRET_URL)
+
+    def test_full_url_is_scrubbed_from_the_log(self):
+        self.resolve()
+        self.logger.warning(f"[rss_failure] fetch failed for {self.SECRET_URL}")
+        self.assertNotIn(self.SECRET_URL, self.records[-1])
+        self.assertIn(newsroom_logging.REDACTED, self.records[-1])
+
+    def test_path_alone_is_scrubbed_from_the_log(self):
+        self.resolve()
+        self.logger.warning(
+            "HTTPSConnectionPool(host='www.google.com', port=443): "
+            f"Max retries exceeded with url: {self.SECRET_PATH} (Caused by ProxyError)"
+        )
+        message = self.records[-1]
+        self.assertNotIn(self.SECRET_PATH, message)
+        self.assertIn(newsroom_logging.REDACTED, message)
+        # The surrounding diagnostic detail is still readable.
+        self.assertIn("ProxyError", message)
+
+    def test_traceback_text_is_scrubbed(self):
+        self.resolve()
+        try:
+            raise RuntimeError(f"connection to {self.SECRET_URL} failed")
+        except RuntimeError:
+            self.logger.debug("[source] fetch failed", exc_info=True)
+        self.assertNotIn(self.SECRET_URL, self.records[-1])
+
+    def test_a_literal_url_from_the_config_file_is_not_redacted(self):
+        # Only injected values are secret; a URL committed in sources.yaml is not.
+        literal = "https://www3.nhk.or.jp/rss/news/cat5.xml"
+        newsroom_config.resolve_source_url({"name": "NHK", "source_type": "rss", "url": literal})
+        self.logger.info(f"[rss_summary] {literal}")
+        self.assertIn(literal, self.records[-1])
+
+    def test_short_values_are_not_registered(self):
+        # Guards against a stray short value blanking out ordinary log text.
+        newsroom_logging.register_secret("ok")
+        self.logger.info("everything is ok here")
+        self.assertIn("ok here", self.records[-1])
+
 
 if __name__ == "__main__":
     unittest.main()

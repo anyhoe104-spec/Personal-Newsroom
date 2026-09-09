@@ -35,6 +35,38 @@ DEFAULT_BACKUP_COUNT = 3
 _configured = False
 _capped_counts: dict[str, int] = {}
 _capped_limits: dict[str, int] = {}
+_secrets: set[str] = set()
+REDACTED = "[redacted]"
+
+
+def register_secret(value: str) -> None:
+    """Keep ``value`` out of the log, wherever it turns up.
+
+    Injected feed URLs reach the log through exception text: requests reports
+    "Max retries exceeded with url: /alerts/feeds/..." on a failure. GitHub only
+    masks a secret it can match exactly, and there the host and the path are
+    split across the message, so the path survives. Registering the value here
+    scrubs it from every record this logger emits.
+    """
+    text = str(value or "").strip()
+    # Too short to be a credential and likely to appear in ordinary text.
+    if len(text) < 8:
+        return
+    _secrets.add(text)
+
+
+def redact(text: str) -> str:
+    result = text
+    for secret in _secrets:
+        result = result.replace(secret, REDACTED)
+    return result
+
+
+class _RedactingFormatter(logging.Formatter):
+    """Scrub registered secrets from the rendered record, tracebacks included."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        return redact(super().format(record))
 
 
 def _env_level(name: str, default: str) -> int:
@@ -83,7 +115,7 @@ def configure_logging() -> logging.Logger:
 
     console = logging.StreamHandler(stream=sys.stdout)
     console.setLevel(console_level())
-    console.setFormatter(logging.Formatter("%(message)s"))
+    console.setFormatter(_RedactingFormatter("%(message)s"))
     logger.addHandler(console)
 
     file_level = _env_level("NEWSROOM_LOG_FILE_LEVEL", DEFAULT_FILE_LEVEL)
@@ -108,7 +140,7 @@ def configure_logging() -> logging.Logger:
         else:
             file_handler.setLevel(file_level)
             file_handler.setFormatter(
-                logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+                _RedactingFormatter("%(asctime)s %(levelname)s %(message)s")
             )
             logger.addHandler(file_handler)
     else:
@@ -161,3 +193,7 @@ def log_suppression_summary() -> None:
 def reset_caps() -> None:
     _capped_counts.clear()
     _capped_limits.clear()
+
+
+def reset_secrets() -> None:
+    _secrets.clear()
