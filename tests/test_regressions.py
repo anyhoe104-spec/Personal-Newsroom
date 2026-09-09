@@ -699,5 +699,71 @@ class InjectedUrlRedactionTests(unittest.TestCase):
         self.assertIn("ok here", self.records[-1])
 
 
+class ExampleThemePackTests(unittest.TestCase):
+    """themes/example/ is the entry point for anyone who clones this repository,
+    and it is public. It has to keep working, and it must never carry a feed URL
+    that belongs in a private pack."""
+
+    ROOT = Path(__file__).resolve().parents[1]
+    PACK = ROOT / "themes" / "example"
+
+    def load(self, filename: str) -> dict:
+        import yaml
+
+        return yaml.safe_load((self.PACK / filename).read_text(encoding="utf-8"))
+
+    def sources(self) -> list[dict]:
+        config = self.load("sources.yaml")
+        return [
+            source
+            for category in config["categories"].values()
+            for source in category.get("sources", [])
+        ]
+
+    def test_pack_carries_the_three_theme_files(self):
+        for filename in ("sources.yaml", "preferences.yaml", "prompts.yaml"):
+            self.assertTrue((self.PACK / filename).is_file(), filename)
+
+    def test_no_google_alert_feed_reaches_the_public_pack(self):
+        # A personal alert URL cannot be rotated, so it must never land here.
+        for source in self.sources():
+            self.assertNotEqual(source.get("source_type"), "google_alert", source.get("name"))
+        for path in sorted(self.PACK.rglob("*")):
+            if path.is_file():
+                self.assertNotIn("alerts/feeds", path.read_text(encoding="utf-8"), str(path))
+
+    def test_every_sample_source_is_directly_fetchable(self):
+        # The sample must work on a bare clone, so no source may need a secret.
+        for source in self.sources():
+            self.assertNotIn("url_env", source, source.get("name"))
+            url = str(source.get("url") or "")
+            self.assertTrue(url.startswith("https://"), source.get("name"))
+            self.assertEqual(url, url.strip(), source.get("name"))
+            self.assertNotIn("\n", url, source.get("name"))
+
+    def test_pack_covers_the_category_keys_the_engine_requires(self):
+        # The keys are still hardcoded across the pipeline and the page.
+        required = set(validate_newsroom.CATEGORY_ORDER)
+        self.assertEqual(set(self.load("sources.yaml")["categories"]), required)
+        self.assertEqual(set(self.load("preferences.yaml")["categories"]), required)
+
+    def test_every_category_names_a_label_and_at_least_one_source(self):
+        for key, category in self.load("sources.yaml")["categories"].items():
+            self.assertTrue(str(category.get("label") or "").strip(), key)
+            self.assertTrue(category.get("sources"), key)
+
+    def test_preferences_carry_every_weight_the_scorer_reads(self):
+        scoring = self.load("preferences.yaml")["scoring"]
+        for weight in ("keyword_weight", "recency_weight", "source_weight", "feedback_weight"):
+            self.assertIn(weight, scoring)
+
+    def test_the_scorer_runs_against_the_sample_pack(self):
+        prefs = self.load("preferences.yaml")
+        item = article("sample", "ai_dev", title="生成AIの活用事例とLLMのAPI更新")
+        score = score_articles.score_article(item, prefs, {})
+        self.assertGreater(score, 0)
+        self.assertLessEqual(score, 100)
+
+
 if __name__ == "__main__":
     unittest.main()

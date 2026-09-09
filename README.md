@@ -11,6 +11,49 @@
 - AI・活用
 - 卵（加工品・ゆで卵・温泉卵・煮卵・商品開発・技術トレンド）
 
+## サンプルテーマパックで動かす（clone した方はここから）
+
+`themes/example/` に、公開フィードだけで構成した最小のテーマパックがあります。個人の設定を持っていなくても、clone すればそのまま動きます。
+
+```bash
+git clone https://github.com/anyhoe104-spec/Personal-Newsroom.git
+cd Personal-Newsroom
+python -m pip install -r requirements.txt
+
+export NEWSROOM_CONFIG_DIR="$PWD/themes/example"
+export NEWSROOM_STATE_DIR="$PWD/.state"
+
+python scripts/fetch_rss.py
+python scripts/score_articles.py
+python scripts/build_site.py
+python scripts/validate_newsroom.py
+```
+
+PowerShell の場合:
+
+```powershell
+$env:NEWSROOM_CONFIG_DIR="$PWD/themes/example"
+$env:NEWSROOM_STATE_DIR="$PWD/.state"
+```
+
+生成された `public/index.html` をブラウザで開くと確認できます。APIキーは不要です（未設定なら記事タイトルとRSS概要から仮要約を作ります）。`NEWSROOM_STATE_DIR` は初回実行時に作られるので、事前に用意する必要はありません。
+
+### サンプルパックの構成
+
+| ファイル | 内容 |
+| --- | --- |
+| `themes/example/sources.yaml` | 4カテゴリ・8ソース。公開RSSのみ |
+| `themes/example/preferences.yaml` | スコアリングの重みとカテゴリ別キーワード |
+| `themes/example/prompts.yaml` | 要約プロンプト（**現時点ではパイプラインから読まれていません**。テーマパックの構成を揃えるために置いています） |
+
+GoogleアラートRSSは含めていません。個人に紐づきローテーションもできないため、Private なテーマパック側から `url_env` で注入する想定です（「設定とデータの置き場所」を参照）。
+
+### 現時点の制約
+
+- **カテゴリキーは `business` / `food` / `ai_dev` / `egg` に固定です。** ラベルとソースはテーマパックごとに変えられますが、キーの集合はまだ変えられません。パイプラインと画面側の8箇所にハードコードされています
+- **ビルド成果物の出力先は `public/` 固定です。** テーマパックを指定して実行してもリポジトリ内の `public/` に書き込みます。出力先の分離は今後の作業です
+- `prompts.yaml` は置いてあるだけで、要約プロンプトは `scripts/fetch_rss.py` 内で組み立てられています
+
 ## ローカル実行手順（PowerShell）
 
 Windows Terminal または PowerShell でリポジトリへ移動してから実行します。
@@ -92,6 +135,7 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `config/sources.yaml`: RSSソース
 - `config/preferences.yaml`: スコアリング設定とカテゴリ別キーワード
 - `config/prompts.yaml`: AI要約用プロンプト
+- `themes/example/`: 公開フィードだけで構成したサンプルテーマパック
 - `scripts/newsroom_config.py`: 設定・学習データの置き場所とフィードURL注入の解決
 - `scripts/fetch_rss.py`: RSS取得と要約
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
