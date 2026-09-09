@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from update_preferences import learned_preferences
-from score_articles import feedback_score
+from score_articles import feedback_score, enforce_category_limits
 
 
 class LearningTests(unittest.TestCase):
@@ -27,3 +27,15 @@ class LearningTests(unittest.TestCase):
         self.assertEqual(feedback_score(article, [{"source": "Source", "value": "none"}]), 0)
         self.assertGreater(feedback_score(article, [{"source": "Source", "value": "like"}]), 0)
         self.assertLess(feedback_score(article, [{"source": "Source", "value": "bad"}]), 0)
+
+    def test_business_diversifies_without_losing_articles_when_only_one_source_exists(self):
+        def candidates(source, count, score):
+            return [{"id": f"{source}-{i}", "category": "business", "source": source,
+                     "title": f"{source} story {i}", "url": f"https://example.org/{source}/{i}",
+                     "score": score-i} for i in range(count)]
+        preferred = candidates("A", 12, 100)
+        alternative = candidates("B", 8, 50)
+        selected = enforce_category_limits(preferred + alternative)
+        self.assertEqual(len(selected), 10)
+        self.assertEqual(sum(a["source"] == "A" for a in selected), 6)
+        self.assertEqual(len(enforce_category_limits(preferred)), 10)
