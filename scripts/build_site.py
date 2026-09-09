@@ -5,11 +5,12 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from newsroom_config import state_path
 from newsroom_logging import get_logger, log_capped, log_suppression_summary
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLES_PATH = ROOT / "data" / "articles.json"
+ARTICLES_PATH = state_path("articles.json")
 PUBLIC_DIR = ROOT / "public"
 INDEX_PATH = PUBLIC_DIR / "index.html"
 LOG = get_logger()

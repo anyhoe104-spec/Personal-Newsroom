@@ -7,13 +7,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+from newsroom_config import config_path, state_path
 from newsroom_logging import get_logger
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLES_PATH = ROOT / "data" / "articles.json"
-FEEDBACK_PATH = ROOT / "data" / "feedback.json"
-PREFERENCES_PATH = ROOT / "config" / "preferences.yaml"
+ARTICLES_PATH = state_path("articles.json")
+FEEDBACK_PATH = state_path("feedback.json")
+PREFERENCES_PATH = config_path("preferences.yaml")
 LOG = get_logger()
 EGG_REQUIRED_KEYWORDS = (
     "卵",

@@ -92,6 +92,7 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `config/sources.yaml`: RSSソース
 - `config/preferences.yaml`: スコアリング設定とカテゴリ別キーワード
 - `config/prompts.yaml`: AI要約用プロンプト
+- `scripts/newsroom_config.py`: 設定・学習データの置き場所とフィードURL注入の解決
 - `scripts/fetch_rss.py`: RSS取得と要約
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
 - `scripts/build_site.py`: 静的HTML生成
@@ -135,6 +136,49 @@ HTML側は属性で指定し、`i18n.applyStaticText()` が差し替えます。
 多言語ファイルの追加は次段階です。`i18n.js` の `MESSAGES` に `en` などのオブジェクトを足し、`i18n.setLocale()` を呼ぶだけで切り替わります。コンポーネント側の変更は不要です。
 
 カテゴリ名は `config/sources.yaml` が正です。記事データにラベルが入っている場合はそちらを使い、記事0件時のフォールバック表示でのみ `i18n.js` の `category.*` を使います。
+
+## 設定とデータの置き場所
+
+`scripts/` は設定と学習データの場所を環境変数で差し替えられます。既定値はリポジトリ内の従来の配置なので、**何も設定しなければ挙動は変わりません**。
+
+| 環境変数 | 既定値 | 中身 |
+| --- | --- | --- |
+| `NEWSROOM_CONFIG_DIR` | `config/` | `sources.yaml` / `preferences.yaml` / `prompts.yaml` |
+| `NEWSROOM_STATE_DIR` | `data/` | `articles.json` / `feedback.json` / `run_history.json` / `source_recommendations.json` |
+
+リポジトリ外のテーマパックに対して実行する例:
+
+```powershell
+$env:NEWSROOM_CONFIG_DIR="C:/themes/personal"
+$env:NEWSROOM_STATE_DIR="C:/themes/personal/state"
+python scripts/fetch_rss.py
+```
+
+実行時にどちらを使ったかは `[source_config] config_dir=... , state_dir=...` としてログに出ます。
+
+### フィードURLを設定ファイルに書かずに注入する
+
+コミットしたくないフィードURL（GoogleアラートRSSなど）は、`sources.yaml` に名前だけ書いて値を環境変数から渡せます。
+
+```yaml
+- name: "Google Alert: スイーツ 新商品"
+  source_type: "google_alert"
+  url_env: "GOOGLE_ALERT_SWEETS"
+```
+
+解決順は次のとおりです。
+
+1. `url_env` と同名の環境変数
+2. `GOOGLE_ALERT_FEEDS`（名前とURLのJSONオブジェクト。1つのSecretに複数まとめる場合）
+3. 同じ項目の `url`（自分のURLを持つチェックアウトはこれで従来どおり動きます）
+
+```powershell
+$env:GOOGLE_ALERT_FEEDS='{"GOOGLE_ALERT_SWEETS":"https://...","GOOGLE_ALERT_EGG":"https://..."}'
+```
+
+どれも解決できない場合、そのソースは警告つきでスキップされ、他のソースの処理は続きます。ログには参照名だけが出て、URLは出ません。
+
+**注入されたURLはログから自動的に伏せられます。** 取得失敗時に requests が出す `Max retries exceeded with url: /alerts/feeds/...` にはホストとパスが分かれて現れ、GitHub のSecretマスクは完全一致でしか効かないためパスが素通りします。注入されたURLとそのパスは `[redacted]` に置換されます。`sources.yaml` に直書きされたURLは秘密ではないため置換しません。
 
 ## ログ設定
 

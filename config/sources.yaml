@@ -2,6 +2,13 @@
 #   rss: 通常RSS
 #   google_alert: GoogleアラートRSS（通常RSSとして取得）
 #   api_stub: 将来API取得を実装するための予約枠
+#
+# url / url_env:
+#   url     フィードURLを直接書く
+#   url_env 環境変数からURLを注入する。値そのものはこのファイルに残らない。
+#           同名の環境変数、次に GOOGLE_ALERT_FEEDS（名前とURLのJSONオブジェクト）
+#           の順で解決し、どちらも無ければ url にフォールバックする。
+#           どれも解決できないソースは警告つきでスキップされ、実行は継続する。
 categories:
   business:
     label: "経済・ビジネス"
@@ -28,9 +35,11 @@ categories:
       - name: "Google Alert: スイーツ 新商品"
         source_type: "google_alert"
         url: "https://www.google.com/alerts/feeds/14991717492503514582/6822659523591433193"
+        url_env: "GOOGLE_ALERT_SWEETS"
       - name: "Google Alert: 外食 トレンド"
         source_type: "google_alert"
         url: "https://www.google.com/alerts/feeds/14991717492503514582/6074943813560512715"
+        url_env: "GOOGLE_ALERT_DINING"
   ai_dev:
     label: "AI・活用"
     focus: "生成AIの活用事例、ビジネス導入、SNSで話題のAIツール・使い方、国内外のAIトレンド"
@@ -59,6 +68,7 @@ categories:
       - name: "Google Alert: 生成AI 開発"
         source_type: "google_alert"
         url: "https://www.google.co.jp/alerts/feeds/14991717492503514582/8777567104038062054"
+        url_env: "GOOGLE_ALERT_AI_DEV"
   egg:
     label: "卵・食品開発"
     focus: "卵加工品、食品の商品開発、共同開発、コラボ、製造技術、素材設計、業務用途、食品産業動向"
@@ -95,8 +105,10 @@ categories:
       - name: "Google Alert: 卵 加工品"
         source_type: "google_alert"
         url: "https://www.google.co.jp/alerts/feeds/14991717492503514582/13176854682763196238"
+        url_env: "GOOGLE_ALERT_EGG"
         region: "jp"
       - name: "Google Alert: 食品業界 ニュース"
         source_type: "google_alert"
         url: "https://www.google.co.jp/alerts/feeds/14991717492503514582/12390725358265639448"
+        url_env: "GOOGLE_ALERT_FOOD_INDUSTRY"
         region: "jp"

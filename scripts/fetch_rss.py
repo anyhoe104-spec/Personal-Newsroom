@@ -16,6 +16,13 @@ from typing import Any
 import requests
 import yaml
 from collectors import COLLECTORS
+from newsroom_config import (
+    config_path,
+    describe_unresolved_source,
+    log_config_locations,
+    source_with_resolved_url,
+    state_path,
+)
 from newsroom_logging import (
     get_logger,
     log_capped,
@@ -25,10 +32,10 @@ from score_articles import egg_article_is_relevant, enforce_category_limits, sco
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_PATH = ROOT / "data" / "articles.json"
-SOURCES_PATH = ROOT / "config" / "sources.yaml"
-PREFERENCES_PATH = ROOT / "config" / "preferences.yaml"
-FEEDBACK_PATH = ROOT / "data" / "feedback.json"
+DATA_PATH = state_path("articles.json")
+SOURCES_PATH = config_path("sources.yaml")
+PREFERENCES_PATH = config_path("preferences.yaml")
+FEEDBACK_PATH = state_path("feedback.json")
 LOG = get_logger()
 ANTHROPIC_TRANSLATION_LIMIT = 10
 AI_TRANSLATION_SUMMARY_KEYS = (
@@ -156,7 +163,7 @@ def count_by_category(articles: list[dict]) -> dict[str, int]:
 
 
 def normalize_source(source: dict) -> dict:
-    normalized = dict(source)
+    normalized = source_with_resolved_url(source)
     normalized["source_type"] = normalized.get("source_type") or normalized.pop("type", "rss")
     return normalized
 
@@ -1221,6 +1228,10 @@ def fetch_source(source: dict, category_key: str, category_label: str) -> list[d
     if collector is None:
         LOG.warning(f"[source] {category_key} / {source['name']}: unsupported source_type={source_type}")
         return []
+    if source_type != "api_stub" and not str(source.get("url") or "").strip():
+        # url_env named a lookup that the environment does not carry. Report and
+        # skip this source; record_source_result() logs it as a failed source.
+        raise ValueError(describe_unresolved_source(source))
     entries = collector(source)
     articles = []
     for entry in entries:
@@ -1661,6 +1672,7 @@ def filter_category_articles(category_key: str, articles: list[dict]) -> list[di
 
 
 def main() -> None:
+    log_config_locations()
     sources = normalized_categories(load_yaml(SOURCES_PATH))
     all_articles: list[dict] = []
     seen: set[str] = set()
