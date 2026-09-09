@@ -4,28 +4,43 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-08 01:20 +09:00
+- 更新: 2026-09-09 +09:00
 - エージェント: Claude
-- ブランチ: `claude/fix-newsdata-script-escaping`
-- ベース: `main`（`11a4bad`、PR #12・#13 マージ後）
-- 目的: 生成HTMLの `<script id="newsData">` へ外部RSS由来の文字列を埋め込む際のエスケープ不足を修正する。
+- ブランチ: `claude/config-separation-plan`
+- ベース: `main`（`f58ecb2`、PR #14 マージ後）
+- 目的: 設定層（テーマパック）を Private リポジトリへ分離する計画を、実装前に仕様として確定させる。
 - 完了した作業:
-  - `scripts/build_site.py` に `embed_json()` を追加し、`<` を `\u003c` へ置換してから埋め込むようにした。`</script>` がHTMLパーサから見えなくなる。
-  - 回帰テスト3件を `tests/test_regressions.py` に追加（`ScriptEmbeddingRegressionTests`）。
-- 進行中: なし。
+  - `docs/config-separation-plan.md` を追加。分離の理由・目標構成・7段階の実装手順・完了条件・禁止事項を記載した。
+- 進行中: なし。**仕様のみで実装は未着手。**
 - ブロッカーとリスク:
-  - 本番 GitHub Actions での実行は未確認。この環境から外部RSSに接続できないため、実フィードでの挙動は未検証。
-  - リポジトリの `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が `food displayed=9; expected 10` で終了コード1になる。`fetch_rss.py` を新規実行すれば4カテゴリとも10件になる。以前から存在する事象で、今回変更していない。
+  - **🟡 `config/sources.yaml` に Google アラートのフィードURLが5本あり、本リポジトリは Public。** 認証不要のURLであり、監視中の検索クエリが読める。ローテーション不可（アラートの削除・再作成が必要）。深刻度は中でアカウント権限には至らない。詳細と対処は上記計画の Step 7
+  - 本リポジトリに LICENSE ファイルがない
 - 次のアクション:
-  1. 本ブランチのPRをマージする。
-  2. `Daily Personal Newsroom` を main で手動実行し、生成された `public/index.html` の `newsData` ブロックが `JSON.parse` できることを確認する。
-  3. run-historyキャッシュstepが履歴を復元し `history_runs` が1を超えて伸びることを確認する（PR #12 からの持ち越し）。
-- 検証:
-  - `python -m unittest discover -s tests`: **31件 OK**（修正前は新規3件が失敗することを確認済み）。
-  - `python scripts/build_site.py`: 終了コード0。生成された `public/index.html` の `newsData` ブロックに `</script>` が含まれないこと、`json.loads` が通ることを確認。
-  - `validate_newsroom.py` は上記の既存事象により1。
+  1. `docs/config-separation-plan.md` を読む。**会話履歴なしで着手できるように書いてある。**
+  2. Step 1（エンジンを設定非依存にする）から順に実施する。**順序を守ること。** 特に Step 5 は「新経路の成功確認 → 旧経路の停止」の順でなければ、オーナーがスマホでニュースを読めない日が発生する。
+  3. Step 7（Google アラートの作り直し）は**オーナーの手作業**であり自動化できない。新URLをチャットやIssueへ貼らないこと。
+- 検証: 本ブランチはドキュメントのみの追加でコード変更なし。テストへの影響なし。
 
 ## Dated work reports
+
+### 2026-09-09 - Claude
+
+- 目的: 設定層の分離計画を、次のエージェントが会話履歴なしで着手できる形で残す。
+- 背景: `project-dashboard` 側の公開戦略の検討で、本リポジトリの `config/` が「実装の付属物」ではなく「将来の製品そのもの（テーマパック）」であると整理された。Google アラートURLの露出は、その構造が未分離であることの症状として位置づけ直した。
+- 完了した作業:
+  - `docs/config-separation-plan.md` を追加。
+  - `WORKLOG.md` の Current handoff を、当該計画へ引き継げる内容に書き換えた。
+- 影響範囲: `docs/config-separation-plan.md`、`WORKLOG.md`。コード変更なし。
+- 検証: ドキュメントのみのため、テスト・ビルドへの影響はない。`config/sources.yaml` から `source_type: "google_alert"` の5件を機械的に抽出し、計画内の一覧が実データと一致することを確認した（food 2件・ai_dev 1件・egg 2件）。
+- 決定:
+  - **本リポジトリは Public のままとする。** 当初は Private 化を検討したが、外部へ見せる対象はエンジンであり、公開されていること自体に価値があると整理した。隠すのは設定層のみ。
+  - **リポジトリ名と配信URLを変えない。** 本リポジトリが Public なのは GitHub Pages で配信するためであり、オーナーは毎日スマホでこのサイトを読んでいる。ホーム画面のショートカットを維持することを設計制約に置いた。
+  - **git 履歴の書き換えは行わない。** 既に公開済みであり、効果に対してリスクが見合わない。露出済みURLはアラートの作り直しで無効化する。
+- 未解決の課題:
+  - 露出中の Google アラートURLは、Step 7 を実施するまで有効なまま。
+  - テーマパックの販売形態が未決。
+  - LICENSE ファイルが未整備。
+- 次のアクション: 上記 Current handoff を参照。
 
 ### 2026-09-08 01:20 +09:00 - Claude
 
