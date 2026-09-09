@@ -1,0 +1,154 @@
+{
+  "generated_at": "2026-09-09T22:49:49.319606+00:00",
+  "history_runs": 5,
+  "categories": {
+    "ai_dev": {
+      "Google Alert: 生成AI 開発": {
+        "runs_seen": 5,
+        "average_displayed": 2.8,
+        "average_score": 63.9,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      },
+      "OpenAI Blog": {
+        "runs_seen": 4,
+        "average_displayed": 1.0,
+        "average_score": 61.4,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      },
+      "Reddit r/ChatGPT": {
+        "runs_seen": 5,
+        "average_displayed": 1.8,
+        "average_score": 67.4,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "promote"
+      },
+      "Zenn AI": {
+        "runs_seen": 5,
+        "average_displayed": 2.4,
+        "average_score": 65.8,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "promote"
+      },
+      "Zenn LLM": {
+        "runs_seen": 4,
+        "average_displayed": 2.8,
+        "average_score": 66.3,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "promote"
+      }
+    },
+    "business": {
+      "ITmedia ビジネス": {
+        "runs_seen": 5,
+        "average_displayed": 10.0,
+        "average_score": 46.0,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      }
+    },
+    "egg": {
+      "Food Dive": {
+        "runs_seen": 5,
+        "average_displayed": 1.6,
+        "average_score": 29.2,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      },
+      "Food Industry Executive": {
+        "runs_seen": 5,
+        "average_displayed": 2.2,
+        "average_score": 27.4,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      },
+      "Google Alert: 卵 加工品": {
+        "runs_seen": 4,
+        "average_displayed": 1.5,
+        "average_score": 49.9,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      },
+      "Google Alert: 食品業界 ニュース": {
+        "runs_seen": 4,
+        "average_displayed": 2.5,
+        "average_score": 26.8,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "keep"
+      },
+      "食品産業新聞社": {
+        "runs_seen": 5,
+        "average_displayed": 3.0,
+        "average_score": 28.6,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "watch"
+      }
+    },
+    "food": {
+      "Google Alert: スイーツ 新商品": {
+        "runs_seen": 5,
+        "average_displayed": 2.2,
+        "average_score": 76.4,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "promote"
+      },
+      "えん食べ": {
+        "runs_seen": 5,
+        "average_displayed": 2.4,
+        "average_score": 73.9,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "promote"
+      },
+      "グルメ Watch": {
+        "runs_seen": 5,
+        "average_displayed": 5.4,
+        "average_score": 74.8,
+        "average_fallback": 0.0,
+        "likes": 0,
+        "bads": 0,
+        "net_feedback": 0,
+        "recommendation": "promote"
+      }
+    }
+  }
+}
