@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import re
 import logging
 from datetime import datetime, timezone
 
@@ -105,7 +107,7 @@ def main() -> None:
     }
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "vocabulary": {key: value.get("boost_keywords", []) for key, value in (yaml.safe_load((ROOT / "config/preferences.yaml").read_text(encoding="utf-8")) or {}).get("categories", {}).items()},
+        "vocabulary": {key: list(dict.fromkeys(value.get("boost_keywords", []) + list(value.get("learned_tags", {})))) for key, value in (yaml.safe_load((ROOT / "config/preferences.yaml").read_text(encoding="utf-8")) or {}).get("categories", {}).items()},
         "categories": categories,
         "articles": articles,
     }
@@ -118,6 +120,7 @@ def main() -> None:
   <title data-i18n="app.title">Personal-Newsroom</title>
   <meta name="theme-color" content="#123e35">
   <meta name="description" content="ニュースを評価して、あなたの関心に育てるパーソナルニュースルーム。">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
@@ -179,6 +182,11 @@ def main() -> None:
 </html>
 """
     INDEX_PATH.write_text(html, encoding="utf-8")
+    worker = PUBLIC_DIR / "sw.js"
+    if worker.exists():
+        names = ("index.html", "app.js", "learning.js", "i18n.js", "style.css", "pwa.js", "manifest.webmanifest")
+        digest = hashlib.sha256(b"".join((PUBLIC_DIR / name).read_bytes() for name in names)).hexdigest()[:16]
+        worker.write_text(re.sub(r"newsroom-shell-[a-z0-9]+", f"newsroom-shell-{digest}", worker.read_text(encoding="utf-8")), encoding="utf-8")
     log_suppression_summary()
     LOG.info(f"Built {INDEX_PATH}")
 

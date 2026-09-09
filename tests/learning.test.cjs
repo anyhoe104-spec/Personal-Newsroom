@@ -32,8 +32,8 @@ test('legacy migration and import are deduplicated with newest vote winning', ()
   const s = L.createStore(storage({ [L.LEGACY]: JSON.stringify(old) }));
   s.import(old); s.import(old); assert.equal(s.state.feedback.egg.length, 1);
   s.vote(a, 'bad'); s.import(old); assert.equal(s.state.feedback.egg[0].value, 'bad');
-  s.save(a); const restored = L.createStore(storage()); restored.import(JSON.parse(s.export()));
-  assert.equal(restored.state.saved['egg:a'].title, a.title);
+  s.save(a); s.update(n => { n.settings.theme = 'dark'; }); const restored = L.createStore(storage()); restored.import(JSON.parse(s.export()));
+  assert.equal(restored.state.saved['egg:a'].title, a.title); assert.equal(restored.state.settings.theme, 'dark');
 });
 test('invalid import is atomic, malicious URLs and future votes are rejected', () => {
   const s = L.createStore(storage()); s.vote(a, 'like'); const before = s.export();
@@ -46,4 +46,13 @@ test('manual tags influence matching articles, samples always sort last', () => 
   const s = L.createStore(storage()); s.update(n => { n.tags.egg = ['冷凍技術']; });
   const result = L.rank([{ ...a, id: 'sample', source_type: 'fallback', score: 999 }, a], s.state);
   assert.equal(result[0].id, 'a'); assert.ok(result[0].matched.includes('冷凍技術'));
+});
+test('two tabs merge sequential edits; corrupt storage requires explicit recovery', () => {
+  const memory = storage(), tab1 = L.createStore(memory), tab2 = L.createStore(memory);
+  tab1.vote(a, 'like'); tab2.save(a);
+  assert.equal(L.createStore(memory).state.feedback.egg.length, 1);
+  const broken = L.createStore(storage({ [L.KEY]: '{bad' }));
+  assert.throws(() => broken.vote(a, 'like'));
+  broken.import(JSON.parse(tab2.export())); assert.equal(broken.error, '');
+  assert.equal(broken.state.feedback.egg.length, 1);
 });
