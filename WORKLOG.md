@@ -4,26 +4,17 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-08 01:20 +09:00
-- エージェント: Claude
-- ブランチ: `claude/fix-newsdata-script-escaping`
-- ベース: `main`（`11a4bad`、PR #12・#13 マージ後）
-- 目的: 生成HTMLの `<script id="newsData">` へ外部RSS由来の文字列を埋め込む際のエスケープ不足を修正する。
-- 完了した作業:
-  - `scripts/build_site.py` に `embed_json()` を追加し、`<` を `\u003c` へ置換してから埋め込むようにした。`</script>` がHTMLパーサから見えなくなる。
-  - 回帰テスト3件を `tests/test_regressions.py` に追加（`ScriptEmbeddingRegressionTests`）。
-- 進行中: なし。
-- ブロッカーとリスク:
-  - 本番 GitHub Actions での実行は未確認。この環境から外部RSSに接続できないため、実フィードでの挙動は未検証。
-  - リポジトリの `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が `food displayed=9; expected 10` で終了コード1になる。`fetch_rss.py` を新規実行すれば4カテゴリとも10件になる。以前から存在する事象で、今回変更していない。
-- 次のアクション:
-  1. 本ブランチのPRをマージする。
-  2. `Daily Personal Newsroom` を main で手動実行し、生成された `public/index.html` の `newsData` ブロックが `JSON.parse` できることを確認する。
-  3. run-historyキャッシュstepが履歴を復元し `history_runs` が1を超えて伸びることを確認する（PR #12 からの持ち越し）。
-- 検証:
-  - `python -m unittest discover -s tests`: **31件 OK**（修正前は新規3件が失敗することを確認済み）。
-  - `python scripts/build_site.py`: 終了コード0。生成された `public/index.html` の `newsData` ブロックに `</script>` が含まれないこと、`json.loads` が通ることを確認。
-  - `validate_newsroom.py` は上記の既存事象により1。
+- 更新: 2026-09-09 +09:00
+- エージェント: Codex (Astra)
+- 対象: `codex/newsroom-release`、ベース `main` の `f58ecb2`（PR #14 マージ済み）。
+- 完了: 評価の永続化・取消、カテゴリ別RSSタグ学習・優先度補正・情報源見直しと活用提案、検索・未読・保存・履歴、設定・バックアップ統合、モバイルUI・テーマ・PWA・オフライン。
+- 配送: PR #15（学習基盤）→ #16（操作）→ #17（UI）→ 最終リリースPR。全段を順にレビューする。通常git pushは認証未設定のためGitHub接続で同じファイルをコミット・ブランチ反映。ローカルのコミットSHAと配送側SHAは異なる。
+- 検証: Python回帰33件、Node学習7件、ブラウザ操作テスト成功。320/390/768/1280pxで横はみ出しなし。生成とvalidator成功（既存の翻訳不足・カテゴリ重複は警告）。
+- 進行中: なし（実装・ローカル検証完了）。配送状態はGitHub上の最終リリースPRを正とする。
+- 制約: 個人評価は端末内。自動クラウド同期とRSS購読URL自動変更は行わない。既存の編集スコアに端末内で最大±18点補正する。
+- 未確認: mainへの統合後の本番Actions/Pages、実RSS・有償翻訳APIの今回の実行、Android/iOS実機、ストア申請。
+- 次のアクション: 所有者がPRを依存順にマージし、Reader checksとDaily Personal Newsroomの完了を確認。`docs/release-guide.md` の実機チェックを行う。
+- 再開時: この作業の続きは `codex/newsroom-release` を取得し、開始スキル・WORKLOG・GitHub上のPR状態を照合する。PR #14未マージという旧引き継ぎは解消済み。今回のデータでは4カテゴリ10件でvalidatorも成功した。
 
 ## Dated work reports
 
@@ -244,3 +235,26 @@ This file is the shared source of truth for cross-device and cross-agent handoff
   2. Stage `AGENTS.md`, `WORKLOG.md`, and `.agents/`.
   3. Commit the workflow adoption.
   4. Push `codex/pr8-category-relevance-tuning` to `origin`.
+
+### 2026-09-09 +09:00 — Codex (Astra)
+
+- 目的: 開始スキルで再開し、評価→蓄積→RSSタグ・優先度・提案という設計をアプリ内で利用できる状態に仕上げる。
+- 開始時確認: main `f58ecb2`、クリーン。PR #14の安全性修正は統合済み。WORKLOGとproject-dashboardには古い未マージ記録が残っていた。依存ライブラリを導入後、既存31件のテスト成功。
+- 完了した作業:
+  - `learning.js`: バージョン付き端末内状態、旧評価移行、最新評価の統合・取消、上限付きのカテゴリ別学習、保存容量失敗と破損データの保護、複数タブの更新取得。
+  - `app.js` / `i18n.js`: 検索・新着/おすすめ・未読、保存記事、評価履歴、手動関心タグと学習タグ、情報源見直し候補、カテゴリ別活用提案、バックアップ保存/統合・リセット、学習停止・テーマ・簡易表示。
+  - 生成HTML/CSS: スマホ1列・PC2列、下部ナビ、設定ダイアログ、44px以上の主要操作、フォーカス、古い記事の注意、サンプルの評価無効化、外部URLの検証。
+  - PWA: 相対パスのマニフェスト・192/512pxアイコン、バージョン付きサービスワーカー、オフライン起動、オンライン判定が残っていてもキャッシュ経由を通知。
+  - Python: 評価から派生RSSタグ・情報源重みを毎回再計算し、手動編集キーワードを保護。取消を負評価として扱っていた箇所を修正。Actionsで派生タグ計算を実行。
+  - テストとCI、要件更新、リリースガイドを追加。
+- 検証:
+  - `python -m unittest discover -s tests`: 33件成功。
+  - `node --test tests/learning.test.cjs`: 7件成功。
+  - `python scripts/build_site.py`: 成功。
+  - `python scripts/validate_newsroom.py`: 成功。既存スナップショットの翻訳不足・カテゴリ間重複は警告。
+  - Playwright操作テスト: 320/390/768/1280px、評価・取消・再読み込み、保存・履歴、検索、タグ、設定、バックアップ・復元、不正JSON、オフライン再読み込み、破損保存を通過。ページエラーなし。
+  - 通信不能でもnavigator.onLineがtrueになるブラウザテスト事象から、サービスワーカーのキャッシュ応答に識別ヘッダーを付け、接続案内を補強。
+- 決定: 既存の静的GitHub Pages構成を維持。評価は端末内で翌日も反映し、個人評価の公開アップロードを不要にした。RSSの購読URLは自動変更せず、見直し候補として提案する。公開は所有者のマージ判断を待つ。
+- CI初回実行: Python33件・Node7件・生成は成功。ブラウザテストがファイル取込完了前に結果を判定して失敗したため、成功/失敗通知を待つよう修正。PR #18で再検証する。
+- 未解決/未実施: 本番Actions・Pagesの統合後検証、実機ホーム画面追加、iOS Safari、ストア申請は未実施。ストア審査準拠済みとは表明しない。
+- 次のアクション: Current handoffとリリースガイドを参照。ソース変更・テスト・ドキュメントをコミットし、最終ブランチ/PRと配送内容の一致を確認する。
