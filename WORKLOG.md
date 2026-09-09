@@ -4,17 +4,17 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-09 +09:00
+- 更新: 2026-09-09 +09:00（運用検証の再開後）
 - エージェント: Codex (Astra)
-- 対象: `codex/newsroom-release`、ベース `main` の `f58ecb2`（PR #14 マージ済み）。
-- 完了: 評価の永続化・取消、カテゴリ別RSSタグ学習・優先度補正・情報源見直しと活用提案、検索・未読・保存・履歴、設定・バックアップ統合、モバイルUI・テーマ・PWA・オフライン。
-- 配送: PR #15（学習基盤）→ #16（操作）→ #17（UI）→ 最終リリースPR。全段を順にレビューする。通常git pushは認証未設定のためGitHub接続で同じファイルをコミット・ブランチ反映。ローカルのコミットSHAと配送側SHAは異なる。
-- 検証: Python回帰33件、Node学習7件、ブラウザ操作テスト成功。320/390/768/1280pxで横はみ出しなし。生成とvalidator成功（既存の翻訳不足・カテゴリ重複は警告）。
-- 進行中: なし（実装・ローカル検証完了）。配送状態はGitHub上の最終リリースPRを正とする。
-- 制約: 個人評価は端末内。自動クラウド同期とRSS購読URL自動変更は行わない。既存の編集スコアに端末内で最大±18点補正する。
-- 未確認: mainへの統合後の本番Actions/Pages、実RSS・有償翻訳APIの今回の実行、Android/iOS実機、ストア申請。
-- 次のアクション: 所有者がPRを依存順にマージし、Reader checksとDaily Personal Newsroomの完了を確認。`docs/release-guide.md` の実機チェックを行う。
-- 再開時: この作業の続きは `codex/newsroom-release` を取得し、開始スキル・WORKLOG・GitHub上のPR状態を照合する。PR #14未マージという旧引き継ぎは解消済み。今回のデータでは4カテゴリ10件でvalidatorも成功した。
+- 対象: `codex/newsroom-rss-repair`。ベースはPR #18の `8a35a7b`。
+- 完了: 新アプリの実装・UI・PWA・学習・バックアップ。PR #18のReader checksは全工程成功。今回、実RSS取得から生成・検証・ソース分析まで完走し、RSS設定2件と経済の媒体偏りを修正。
+- 配送: PR #15 → #16 → #17 → #18 → RSS修正PR。すべて未統合。マージはAGENTS.mdの所有者判断ルールに従う。
+- 検証: 実RSSパイプラインは各工程0、40件すべて実記事・重複0。修正先のFood Navigatorは200/20件、Food Business Newsは200/30件。Python34件成功。
+- 追加で確認: 現行mainの日次build/deploy成功、履歴キャッシュ復元・history_runs=4。本番の対象20件中18件が日本語表示可能。
+- 進行中: なし（実装・検証完了）。配送状態はGitHub上のRSS修正PRを正とする。
+- 残課題: HBRの無効RSS、Redditの429、農林水産省の403。今回有効な代替URLを確認できた2媒体だけ修正。個人評価の自動クラウド同期・RSS購読URLの自動変更は対象外。
+- 未実施: 新UIのmain統合後のPages確認、Android/iOS実機、ストア申請。
+- 次のアクション: 所有者のマージ指示後に依存順で統合し、Daily Personal Newsroom/Pagesを確認する。詳細は `docs/operations-verification.md` と `docs/release-guide.md`。
 
 ## Dated work reports
 
@@ -258,3 +258,20 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - CI初回実行: Python33件・Node7件・生成は成功。ブラウザテストがファイル取込完了前に結果を判定して失敗したため、成功/失敗通知を待つよう修正。PR #18で再検証する。
 - 未解決/未実施: 本番Actions・Pagesの統合後検証、実機ホーム画面追加、iOS Safari、ストア申請は未実施。ストア審査準拠済みとは表明しない。
 - 次のアクション: Current handoffとリリースガイドを参照。ソース変更・テスト・ドキュメントをコミットし、最終ブランチ/PRと配送内容の一致を確認する。
+
+### 2026-09-09 +09:00 — Codex (Astra)、運用検証の再開
+
+- 目的: 「再開して」の指示を受け、公開前の実RSS・運用確認を進める。
+- 開始確認: PR #15〜#18は未統合。`codex/newsroom-release` はoriginと同期・クリーン。Reader checks run 34300223430は全工程成功。
+- 完了:
+  - 現行mainの日次run 34288778211でbuild/deploy成功、キャッシュ復元・history_runs=4、対象20件中18件の日本語表示を確認。
+  - 検証用コピーで実RSS→スコア→生成→validator→ソース分析を実行し、すべて終了コード0。283記事から40件の実記事を選定し、重複0件。
+  - Food Navigatorの404を公式の現行XMLフィードへ修正。HTTP200・20記事。
+  - Food Business NewsのHTML案内URLを公式のFBN Best News XMLへ修正。HTTP200・30記事。
+  - 経済10本が1媒体へ偏る結果を受け、同一媒体6件の目安を追加。他媒体不足時は10件確保を優先する既存の二段階選定を維持。
+  - 運用確認レポートを追加。
+- 影響範囲: config/sources.yaml、scripts/score_articles.py、tests/test_learning.py、docs/operations-verification.md、WORKLOG.md。
+- 検証: Python34件成功。新規回帰は経済の6/4媒体配分と単一媒体の10件確保を確認。URL修正後の2フィードは個別HTTP/XML検証。全パイプラインは修正前設定で完了したため、修正後の全件再取得を済ませたとは表明しない。
+- 決定: 確認できた公式配信先だけを修正。HBRの代替候補は502のため採用しない。制限の回避は行わない。
+- 未解決: HBR・Reddit429・農林水産省403。本番新版公開、実機、ストア申請は未実施。
+- 次のアクション: RSS修正PRを配送し、所有者のマージ判断を得てから本番反映を確認する。

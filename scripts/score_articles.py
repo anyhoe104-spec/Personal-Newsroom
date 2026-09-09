@@ -465,6 +465,8 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
 
 
 def source_limit_for_category(category: str) -> int | None:
+    if category == "business":
+        return 6
     if category == "ai_dev":
         return 4
     if category == "egg":
