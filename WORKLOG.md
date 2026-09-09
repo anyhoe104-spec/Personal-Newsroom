@@ -4,24 +4,73 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-09 +09:00
-- エージェント: Claude
-- ブランチ: `claude/config-separation-plan`
-- ベース: `main`（`f58ecb2`、PR #14 マージ後）
-- 目的: 設定層（テーマパック）を Private リポジトリへ分離する計画を、実装前に仕様として確定させる。
+- 更新: 2026-09-09 14:47:39 +09:00
+- エージェント: Claude Code
+- ブランチ: claude/record-fetch-rss-duplicate-defs（main = cb5c25c から作成）
+- 目的: 設定層の分離（`docs/config-separation-plan.md`）。Step 1 を完了し、作業中に見つけた既存不具合を記録する。
 - 完了した作業:
-  - `docs/config-separation-plan.md` を追加。分離の理由・目標構成・7段階の実装手順・完了条件・禁止事項を記載した。
-- 進行中: なし。**仕様のみで実装は未着手。**
+  - Step 1（エンジンを設定非依存にする）を PR #20 として実施し、`cb5c25c` で main にマージ済み。
+  - `NEWSROOM_CONFIG_DIR` / `NEWSROOM_STATE_DIR` と、フィードURLの `url_env` 注入経路を導入。既定値は従来の配置のため挙動は不変。
+  - 注入されたURLがログに平文で出る漏洩を発見し、ログ層の伏せ字で塞いだ。
+- 進行中: 本ブランチは `scripts/fetch_rss.py` の重複定義に関する記録の追加のみ。コード変更はしない。
 - ブロッカーとリスク:
-  - **🟡 `config/sources.yaml` に Google アラートのフィードURLが5本あり、本リポジトリは Public。** 認証不要のURLであり、監視中の検索クエリが読める。ローテーション不可（アラートの削除・再作成が必要）。深刻度は中でアカウント権限には至らない。詳細と対処は上記計画の Step 7
-  - 本リポジトリに LICENSE ファイルがない
+  - **`scripts/fetch_rss.py` に同名関数の重複定義が3組ある**（下の「未解決の課題」に詳細）。前半の定義は到達せず、そこを修正しても何も起きない。オーナーの判断で対応を保留中。
+  - 本番 GitHub Actions での実行は未検証のまま。この環境から外部RSSに接続できないため、ログ削減量と run-history キャッシュの動作はローカル計測とスタブ検証にとどまる。
+  - `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が終了コード1になる。`fetch_rss.py` の新規実行で解消する。Step 1 以前から存在する事象。
 - 次のアクション:
-  1. `docs/config-separation-plan.md` を読む。**会話履歴なしで着手できるように書いてある。**
-  2. Step 1（エンジンを設定非依存にする）から順に実施する。**順序を守ること。** 特に Step 5 は「新経路の成功確認 → 旧経路の停止」の順でなければ、オーナーがスマホでニュースを読めない日が発生する。
-  3. Step 7（Google アラートの作り直し）は**オーナーの手作業**であり自動化できない。新URLをチャットやIssueへ貼らないこと。
-- 検証: 本ブランチはドキュメントのみの追加でコード変更なし。テストへの影響なし。
+  1. 計画書の Step 2（`themes/example/` のサンプルテーマパック）に着手する。
+  2. `fetch_rss.py` の重複定義を削除するか否かを判断する（保留中）。
+  3. `Daily Personal Newsroom` を main で手動実行し、Step 1 のログ出力（`[source_config] config_dir=...`）と既存の確認項目を実機で確認する。
+- 検証: Step 1 時点で `python -m unittest discover -s tests` 52件パス。環境変数なしでパイプライン出力が Step 1 前と一致することを確認済み。
 
 ## Dated work reports
+
+### 2026-09-09 14:47 +09:00 - Claude Code
+
+- 目的: 設定分離 Step 1 の完了と、作業中に見つけた既存不具合の記録。
+- 完了した作業:
+  - `docs/config-separation-plan.md` の Step 1 を実施し、PR #20 として main にマージした（`cb5c25c`）。
+    - `scripts/newsroom_config.py` を追加し、設定と学習データの場所を決める唯一の場所にした。`NEWSROOM_CONFIG_DIR`（既定 `config/`）と `NEWSROOM_STATE_DIR`（既定 `data/`）。パイプライン6スクリプトの `ROOT / "config"` / `ROOT / "data"` 直書きを全廃した。
+    - フィードURLを `sources.yaml` に書かず環境変数から注入する経路を用意した。`url_env` の参照名を、①同名の環境変数 → ②`GOOGLE_ALERT_FEEDS`（JSONオブジェクト）→ ③同項目の `url` の順で解決する。解決できないソースは参照名だけを記した警告つきでスキップし、実行は継続する。
+    - 5本のGoogleアラートに参照名を付けつつ既存の `url` も残した。今日の挙動は同一で、Step 4 / Step 6 では値を消すだけで済む。
+  - 検証中に、注入したURLがログに平文で出ることを確認したため、計画書には無いが Step 1 に含めて塞いだ。requests は失敗時に `Max retries exceeded with url: /alerts/feeds/<id>/<token>` の形でホストとパスを分けて出力し、GitHub の Secret マスクは完全一致でしか効かないため、公開Actionsログにパスが残る。`newsroom_logging` に伏せ字用の Formatter を追加し、`newsroom_config` が注入されたURLとそのパスを登録する。`sources.yaml` 直書きのURLは秘密ではないため対象外とした。
+- 影響範囲:
+  - 新規: `scripts/newsroom_config.py`
+  - 変更: `scripts/fetch_rss.py`、`scripts/score_articles.py`、`scripts/build_site.py`、`scripts/validate_newsroom.py`、`scripts/update_preferences.py`、`scripts/analyze_source_feedback.py`、`scripts/newsroom_logging.py`、`config/sources.yaml`、`tests/test_regressions.py`、`README.md`、`docs/requirements.md`
+- 検証:
+  - `python -m unittest discover -s tests`: 52件パス（Step 1 前の main は31件、新規21件）。
+  - 伏せ字の Formatter を無効化すると、伏せ字テスト3件だけが落ちることを確認した。
+  - 環境変数なしで `score_articles.py` / `validate_newsroom.py` / `analyze_source_feedback.py` の出力が Step 1 前の main とバイト単位で一致。`build_site.py` は出力先の絶対パス表示のみ差分（チェックアウト位置の違い）。
+  - リポジトリ外のテーマパックに対して実行し、外部の `sources.yaml` を読み、`run_history.json` と `source_recommendations.json` を外部側に書き、リポジトリの `data/` が無変更であることを確認した。
+  - ダミーのアラートURLで漏洩を再現し、修正後はコンソールと `logs/newsroom.log` の両方で0件になることを確認した。
+- 決定事項:
+  - Step 1 では注入の**経路**を用意するに留め、`sources.yaml` から実URLは削除しなかった。削除は計画書の Step 6 の担当であり、Step 1 の「この時点ではまだ挙動は変わらない」という前提を守るため。
+  - `public/`（ビルド成果物の出力先）は環境変数化していない。計画書の Step 3 の領分と判断した。
+  - `daily_news.yml` は無変更とした。Secrets の登録は Step 4 で Private 側に置く計画のため。
+  - `source["url"]` を読むのは `collectors/rss.py` の1箇所だけなので、URLの解決は `normalize_source()` で行い、collector 側は変更しなかった。
+- 未解決の課題:
+  - **`scripts/fetch_rss.py` に同名関数の重複定義が3組ある。** Python はモジュール直下で後に書かれた定義が勝つため、前半の定義はどこからも到達しない。**前半を修正しても実行時の挙動は一切変わらない。** Step 1 の作業中、私自身も最初に無効な `fetch_source` を編集し、気づいて有効な方に付け直した。今後の修正が黙って無効化される危険がある。オーナーの判断で対応は保留（2026-09-09 時点）。
+
+    | 関数 | 定義行 | 有効な定義 | 死んだ行数 |
+    | --- | --- | --- | --- |
+    | `ai_translate_and_summarize` | 326 / 1007 | 1007 | 80 |
+    | `normalize_entry` | 408 / 1068 | 1068 | 31 |
+    | `fetch_source` | 441 / 1225 | 1225 | 13 |
+
+    合計124行。行番号は main `cb5c25c` 時点。
+
+    3組とも中身が異なり、単なる重複ではない。前半は後半に置き換えられた**古い版**で、置換ではなく追記されたまま残ったものと見られる。たとえば `ai_translate_and_summarize` は、前半がAPIキー有無の分岐を持つ旧シグネチャ（4値タプルを返す）、後半が Haiku 一括翻訳を受け取る新シグネチャ（5値タプルを返す）である。`normalize_entry` も同様に、後半だけが `haiku_translations` 引数を持つ。
+
+    削除の安全性について確認した事実:
+    - 前半の定義を呼ぶモジュール直下のコードは存在しない（定義の間に実行される呼び出しが無いため、削除で束縛先が変わる箇所は無い）。
+    - 呼び出しは関数内からのみで、実行時にはすべて後半の定義に束縛される。
+    - 外部からの参照は `tests/test_regressions.py` の `fetch_rss.fetch_source` 1箇所のみで、これも後半の定義を見ている。
+
+    以上より削除は挙動を変えない見込みだが、124行の削除であり、別PRで扱うのが妥当と考える。
+- 次のアクション:
+  1. 計画書の Step 2（`themes/example/`）に着手する。
+  2. `fetch_rss.py` の重複定義の扱いを判断する。
+  3. `Daily Personal Newsroom` を main で手動実行し、Step 1 のログ出力を実機で確認する。
 
 ### 2026-09-09 - Claude
 
