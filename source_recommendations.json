@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-12T22:42:12.180787+00:00",
-  "history_runs": 8,
+  "generated_at": "2026-09-13T22:43:05.525051+00:00",
+  "history_runs": 9,
   "categories": {
     "ai_dev": {
       "Google AI Blog": {
@@ -14,8 +14,8 @@
         "recommendation": "keep"
       },
       "Google Alert: 生成AI 開発": {
-        "runs_seen": 8,
-        "average_displayed": 2.5,
+        "runs_seen": 9,
+        "average_displayed": 2.4,
         "average_score": 63.5,
         "average_fallback": 0.0,
         "likes": 0,
@@ -44,9 +44,9 @@
         "recommendation": "promote"
       },
       "Zenn AI": {
-        "runs_seen": 8,
-        "average_displayed": 2.4,
-        "average_score": 64.4,
+        "runs_seen": 9,
+        "average_displayed": 2.6,
+        "average_score": 64.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -54,21 +54,21 @@
         "recommendation": "keep"
       },
       "Zenn LLM": {
-        "runs_seen": 7,
-        "average_displayed": 2.3,
-        "average_score": 64.3,
+        "runs_seen": 8,
+        "average_displayed": 2.5,
+        "average_score": 65.3,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
         "net_feedback": 0,
-        "recommendation": "keep"
+        "recommendation": "promote"
       }
     },
     "business": {
       "ITmedia ビジネス": {
-        "runs_seen": 8,
+        "runs_seen": 9,
         "average_displayed": 10.0,
-        "average_score": 45.4,
+        "average_score": 45.6,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -78,9 +78,9 @@
     },
     "egg": {
       "Food Dive": {
-        "runs_seen": 8,
-        "average_displayed": 1.6,
-        "average_score": 29.1,
+        "runs_seen": 9,
+        "average_displayed": 1.7,
+        "average_score": 28.6,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -88,9 +88,9 @@
         "recommendation": "keep"
       },
       "Food Industry Executive": {
-        "runs_seen": 8,
-        "average_displayed": 2.8,
-        "average_score": 25.9,
+        "runs_seen": 9,
+        "average_displayed": 2.9,
+        "average_score": 25.4,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -108,9 +108,9 @@
         "recommendation": "keep"
       },
       "Google Alert: 食品業界 ニュース": {
-        "runs_seen": 6,
-        "average_displayed": 2.0,
-        "average_score": 24.7,
+        "runs_seen": 7,
+        "average_displayed": 1.9,
+        "average_score": 26.0,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -118,9 +118,9 @@
         "recommendation": "keep"
       },
       "食品産業新聞社": {
-        "runs_seen": 8,
+        "runs_seen": 9,
         "average_displayed": 3.2,
-        "average_score": 29.4,
+        "average_score": 28.8,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -130,9 +130,9 @@
     },
     "food": {
       "Google Alert: スイーツ 新商品": {
-        "runs_seen": 8,
-        "average_displayed": 2.5,
-        "average_score": 77.3,
+        "runs_seen": 9,
+        "average_displayed": 2.7,
+        "average_score": 77.1,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -140,9 +140,9 @@
         "recommendation": "promote"
       },
       "えん食べ": {
-        "runs_seen": 8,
+        "runs_seen": 9,
         "average_displayed": 3.2,
-        "average_score": 73.7,
+        "average_score": 73.4,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -150,9 +150,9 @@
         "recommendation": "promote"
       },
       "グルメ Watch": {
-        "runs_seen": 8,
-        "average_displayed": 4.2,
-        "average_score": 76.0,
+        "runs_seen": 9,
+        "average_displayed": 4.1,
+        "average_score": 75.4,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
