@@ -1338,5 +1338,123 @@
         }
       }
     }
+  },
+  {
+    "generated_at": "articles:0bc7ed3c44978331",
+    "recorded_at": "2026-09-15T23:17:01.596467+00:00",
+    "categories": {
+      "business": {
+        "displayed": 10,
+        "unique_sources": 1,
+        "sources": {
+          "ITmedia ビジネス": {
+            "displayed": 10,
+            "average_score": 48.2,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "food": {
+        "displayed": 10,
+        "unique_sources": 3,
+        "sources": {
+          "Google Alert: スイーツ 新商品": {
+            "displayed": 1,
+            "average_score": 80.4,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "えん食べ": {
+            "displayed": 3,
+            "average_score": 69.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "グルメ Watch": {
+            "displayed": 6,
+            "average_score": 73.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "ai_dev": {
+        "displayed": 10,
+        "unique_sources": 3,
+        "sources": {
+          "Reddit r/ChatGPT": {
+            "displayed": 4,
+            "average_score": 58.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn AI": {
+            "displayed": 4,
+            "average_score": 59.4,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn LLM": {
+            "displayed": 2,
+            "average_score": 66.0,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "egg": {
+        "displayed": 10,
+        "unique_sources": 4,
+        "sources": {
+          "Food Dive": {
+            "displayed": 1,
+            "average_score": 19.8,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Industry Executive": {
+            "displayed": 5,
+            "average_score": 22.2,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Google Alert: 卵 加工品": {
+            "displayed": 2,
+            "average_score": 42.5,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "食品産業新聞社": {
+            "displayed": 2,
+            "average_score": 26.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      }
+    }
   }
 ]
