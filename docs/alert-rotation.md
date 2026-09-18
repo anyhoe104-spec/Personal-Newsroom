@@ -17,6 +17,18 @@
 | GOOGLE_ALERT_EGG | 卵 加工品 |
 | GOOGLE_ALERT_FOOD_INDUSTRY | 食品業界 ニュース |
 
+```json
+{
+  "GOOGLE_ALERT_SWEETS": "新しいスイーツ用RSS URL",
+  "GOOGLE_ALERT_DINING": "新しい外食用RSS URL",
+  "GOOGLE_ALERT_AI_DEV": "新しい生成AI用RSS URL",
+  "GOOGLE_ALERT_EGG": "新しい卵加工品用RSS URL",
+  "GOOGLE_ALERT_FOOD_INDUSTRY": "新しい食品業界用RSS URL"
+}
+```
+
+値の日本語部分を対応する新URLへ置き換え、SecretのValueにJSON全体を登録する。
+
 Secretが未登録の場合、その5本は警告付きでスキップされ、一般RSSの収集は継続する。
 既存Googleアラートの再発行・Secret登録完了を確認するまで、本番切替完了とはしない。
 この変更はGit履歴を消去せず、過去に公開された旧URLを無効化する操作の代わりにはならない。
