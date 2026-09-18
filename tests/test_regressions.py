@@ -593,7 +593,7 @@ class FeedUrlInjectionTests(unittest.TestCase):
 
 class SourcesConfigTests(unittest.TestCase):
     def test_every_google_alert_names_an_injection_lookup(self):
-        # Step 6 removes the literal URLs; the lookup name has to be in place first.
+        # Production alert endpoints are supplied only through Actions secrets.
         import yaml
 
         config = yaml.safe_load(
@@ -608,6 +608,7 @@ class SourcesConfigTests(unittest.TestCase):
         self.assertTrue(alerts)
         missing = [source["name"] for source in alerts if not source.get("url_env")]
         self.assertEqual(missing, [])
+        self.assertTrue(all("url" not in source for source in alerts))
 
 
 class InjectedUrlRedactionTests(unittest.TestCase):
