@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-17T23:13:20.257629+00:00",
-  "history_runs": 13,
+  "generated_at": "2026-09-18T22:54:26.495939+00:00",
+  "history_runs": 14,
   "categories": {
     "ai_dev": {
       "Google AI Blog": {
@@ -14,9 +14,9 @@
         "recommendation": "keep"
       },
       "Google Alert: 生成AI 開発": {
-        "runs_seen": 11,
+        "runs_seen": 12,
         "average_displayed": 2.2,
-        "average_score": 63.0,
+        "average_score": 63.2,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -24,9 +24,9 @@
         "recommendation": "keep"
       },
       "OpenAI Blog": {
-        "runs_seen": 10,
+        "runs_seen": 11,
         "average_displayed": 1.4,
-        "average_score": 61.1,
+        "average_score": 61.2,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -34,9 +34,9 @@
         "recommendation": "keep"
       },
       "Qiita AI": {
-        "runs_seen": 2,
-        "average_displayed": 1.0,
-        "average_score": 63.6,
+        "runs_seen": 3,
+        "average_displayed": 2.0,
+        "average_score": 61.8,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -54,9 +54,9 @@
         "recommendation": "promote"
       },
       "Zenn AI": {
-        "runs_seen": 12,
-        "average_displayed": 2.8,
-        "average_score": 63.5,
+        "runs_seen": 13,
+        "average_displayed": 2.6,
+        "average_score": 63.1,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -64,8 +64,8 @@
         "recommendation": "keep"
       },
       "Zenn LLM": {
-        "runs_seen": 12,
-        "average_displayed": 2.7,
+        "runs_seen": 13,
+        "average_displayed": 2.5,
         "average_score": 64.3,
         "average_fallback": 0.0,
         "likes": 0,
@@ -76,9 +76,9 @@
     },
     "business": {
       "ITmedia ビジネス": {
-        "runs_seen": 13,
+        "runs_seen": 14,
         "average_displayed": 10.0,
-        "average_score": 46.1,
+        "average_score": 46.3,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -88,9 +88,9 @@
     },
     "egg": {
       "Food Dive": {
-        "runs_seen": 13,
-        "average_displayed": 1.8,
-        "average_score": 28.3,
+        "runs_seen": 14,
+        "average_displayed": 2.0,
+        "average_score": 28.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -98,18 +98,18 @@
         "recommendation": "keep"
       },
       "Food Industry Executive": {
-        "runs_seen": 13,
-        "average_displayed": 3.1,
-        "average_score": 25.2,
+        "runs_seen": 14,
+        "average_displayed": 2.9,
+        "average_score": 26.4,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
         "net_feedback": 0,
-        "recommendation": "watch"
+        "recommendation": "keep"
       },
       "Google Alert: 卵 加工品": {
-        "runs_seen": 8,
-        "average_displayed": 1.4,
+        "runs_seen": 9,
+        "average_displayed": 1.8,
         "average_score": 51.5,
         "average_fallback": 0.0,
         "likes": 0,
@@ -140,9 +140,9 @@
     },
     "food": {
       "Google Alert: スイーツ 新商品": {
-        "runs_seen": 13,
-        "average_displayed": 2.5,
-        "average_score": 77.9,
+        "runs_seen": 14,
+        "average_displayed": 2.6,
+        "average_score": 77.7,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -150,9 +150,9 @@
         "recommendation": "promote"
       },
       "えん食べ": {
-        "runs_seen": 13,
-        "average_displayed": 3.0,
-        "average_score": 73.1,
+        "runs_seen": 14,
+        "average_displayed": 2.9,
+        "average_score": 73.3,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -160,9 +160,9 @@
         "recommendation": "promote"
       },
       "グルメ Watch": {
-        "runs_seen": 13,
-        "average_displayed": 4.5,
-        "average_score": 76.1,
+        "runs_seen": 14,
+        "average_displayed": 4.4,
+        "average_score": 75.9,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
