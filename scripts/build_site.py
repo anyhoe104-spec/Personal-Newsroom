@@ -162,13 +162,15 @@ def main() -> None:
     </section>
     <p id="offline" class="banner" hidden data-i18n="reader.offline">オフラインです。</p>
     <p id="freshness" class="banner" hidden data-i18n="reader.freshness">記事の日付をご確認ください。</p>
-    <nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav>
+    <div class="section-heading"><h2 id="viewTitle"></h2><p id="resultCount" role="status"></p></div>
+    <div class="category-nav"><p class="category-caption" data-i18n="reader.category_filter"></p><nav class="tabs" id="tabs" aria-label="カテゴリ" data-i18n-attr="aria-label:nav.categories_aria_label"></nav></div>
     <section id="filters" class="filters" aria-label="記事の絞り込み">
       <label class="search-box"><span class="sr-only" data-i18n="reader.search">記事・情報源を検索</span><input id="search" type="search" placeholder="記事・情報源を検索" data-i18n-attr="placeholder:reader.search" autocomplete="off"></label>
       <label class="sort-label"><span class="sr-only" data-i18n="reader.sort">表示順</span><select id="sort"><option value="recommended" data-i18n="reader.recommended">おすすめ順</option><option value="latest" data-i18n="reader.latest">新しい順</option></select></label>
       <label class="check-label"><input id="unread" type="checkbox"><span data-i18n="reader.unread">未読のみ</span></label>
+      <button id="refreshRanking" type="button" data-i18n="reader.refresh_ranking"></button>
     </section>
-    <div class="section-heading"><h2 id="viewTitle"></h2><p id="resultCount" role="status"></p></div>
+    <p id="rankingHint" class="muted ranking-hint"></p>
     <main id="app" class="article-list" tabindex="-1"></main>
   </div>
   <nav class="bottom-nav" aria-label="メインメニュー">
@@ -187,7 +189,8 @@ def main() -> None:
     <label class="setting-row"><span data-i18n="reader.theme"></span><select id="theme"><option value="system" data-i18n="reader.system"></option><option value="light" data-i18n="reader.light"></option><option value="dark" data-i18n="reader.dark"></option></select></label>
     <p data-i18n="reader.tag_note"></p>
     <h3 data-i18n="reader.data"></h3>
-    <div class="data-actions"><button id="downloadBackup" type="button" data-i18n="reader.backup"></button><label class="import-label"><span data-i18n="reader.import"></span><input id="importBackup" type="file" accept="application/json,.json"></label></div>
+    <div class="data-actions"><button id="downloadBackup" type="button" data-i18n="reader.backup"></button><label class="import-label"><span data-i18n="reader.import"></span><input id="importBackup" type="file" aria-describedby="importHelp"></label><p id="importHelp" data-i18n="reader.import_help"></p></div>
+    <details><summary data-i18n="reader.paste_backup"></summary><label for="backupText" data-i18n="reader.paste_help"></label><textarea id="backupText" rows="6" spellcheck="false" autocomplete="off"></textarea><button id="importPastedBackup" type="button" data-i18n="reader.import_pasted"></button></details>
     <details><summary data-i18n="reader.advanced"></summary><div class="data-actions"><button id="copyFeedback" type="button" data-i18n="feedback_tools.copy"></button><button id="downloadFeedback" type="button" data-i18n="feedback_tools.download"></button></div></details>
     <p data-i18n="reader.install_hint"></p><button id="installApp" type="button" hidden data-i18n="reader.install"></button>
     <button id="resetData" class="danger" type="button" data-i18n="reader.reset"></button>
