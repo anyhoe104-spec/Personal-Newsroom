@@ -4,24 +4,18 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-09 14:47:39 +09:00
-- エージェント: Claude Code
-- ブランチ: claude/record-fetch-rss-duplicate-defs（main = cb5c25c から作成）
-- 目的: 設定層の分離（`docs/config-separation-plan.md`）。Step 1 を完了し、作業中に見つけた既存不具合を記録する。
-- 完了した作業:
-  - Step 1（エンジンを設定非依存にする）を PR #20 として実施し、`cb5c25c` で main にマージ済み。
-  - `NEWSROOM_CONFIG_DIR` / `NEWSROOM_STATE_DIR` と、フィードURLの `url_env` 注入経路を導入。既定値は従来の配置のため挙動は不変。
-  - 注入されたURLがログに平文で出る漏洩を発見し、ログ層の伏せ字で塞いだ。
-- 進行中: 本ブランチは `scripts/fetch_rss.py` の重複定義に関する記録の追加のみ。コード変更はしない。
-- ブロッカーとリスク:
-  - **`scripts/fetch_rss.py` に同名関数の重複定義が3組ある**（下の「未解決の課題」に詳細）。前半の定義は到達せず、そこを修正しても何も起きない。オーナーの判断で対応を保留中。
-  - 本番 GitHub Actions での実行は未検証のまま。この環境から外部RSSに接続できないため、ログ削減量と run-history キャッシュの動作はローカル計測とスタブ検証にとどまる。
-  - `data/articles.json` は2026-06-09のスナップショットで food が9件しかなく、このデータ単体では `validate_newsroom.py` が終了コード1になる。`fetch_rss.py` の新規実行で解消する。Step 1 以前から存在する事象。
-- 次のアクション:
-  1. 計画書の Step 2（`themes/example/` のサンプルテーマパック）に着手する。
-  2. `fetch_rss.py` の重複定義を削除するか否かを判断する（保留中）。
-  3. `Daily Personal Newsroom` を main で手動実行し、Step 1 のログ出力（`[source_config] config_dir=...`）と既存の確認項目を実機で確認する。
-- 検証: Step 1 時点で `python -m unittest discover -s tests` 52件パス。環境変数なしでパイプライン出力が Step 1 前と一致することを確認済み。
+- 更新: 2026-09-19 11:39 UTC / 作業者: Codex (Astra)。記録更新前のローカル作業リビジョン32c80fd、branch codex/release-integration。
+- 完了: オーナーのSecret登録を受け、PR #26のアラートSecret切替、PR #18の競合解消/PWA/レビュー5点/RSS修復、PR #27の実機UI改善をmainへマージした（2026-09-19 GitHub API）。最終アプリmainは3dd9b02。コードはローカルとmainで一致。
+- 本番: Daily 35437648483（3dd9b02）のbuild/deployともsuccess、gh-pages d64b57aは同SHAをPublishと記録（2026-09-19 Actions API/git fetch）。Reader checks 35437591057と35437648485もsuccess。
+- Secret: GOOGLE_ALERT_FEEDSから5本すべて取得成功。スイーツ20/外食3/生成AI20/卵2/食品業界20件。各カテゴリ10件、fallback 0、history_runs=16（2026-09-19 最終buildログ）。Secret値は読んだり表示していない。Google側での旧URL無効化・再発行自体は確認していない。
+- UI: 評価後の順位を固定し手動更新、バックアップのファイル選択制限解除と貼付け/BOM対応、安全な文字参照表示、カテゴリ追従/画面別選択、今日以外の上部情報整理、履歴30件ずつ/評価日時表示を公開済み。公開app.jsはHTTP200で修正版とバイト一致を確認（2026-09-19 HTTP取得）。
+- レビュー: config_path/state_path、静的アセット/全アイコンhash、学習state分離、unused learned_sources廃止、offline即表示を配送済み。PR18 inlineへ4052888070で回答しスレッドPRRT_kwDOSW5XRM6iu0sSを解決（2026-09-19 GitHub API）。
+- 検証: Python65/Node8/build/Chromium操作成功。実バックアップ復元・BOM・不正JSON・順位固定・履歴1000件・カテゴリ・文字参照非XSS・offline・4画面幅を確認。履歴先頭82msはこの環境の計測。Android/iOS実機の最終再確認とストア審査は未実施。
+- 公開運用: mainへpublic/scripts/config/requirements/Daily workflowの変更が入るとDaily実行。文書のみのpushは対象外。日次・手動も保持。Public側が実行主体、GitHub Pages URLは維持。
+- 記録: Claudeの設定分離とAstraの学習/UIを並行開発して競合した経緯・全過去レポートを保持。約500行のPR18、152行のPR27、文書・記録を別PRに分けた。実装はすべて配送済み。
+- 管理表: 2026-09-15 W38の大規模な設定層全面分離の10月末まで保留を維持。学習未接続/PR11未マージという8/25指摘は古い。今回の公開滞留とレビューは解消。dashboardは未変更。
+- 残件: 卵の意図しない評価は未再現。該当記事・選択ボタンの画像から保存評価日/IDを照合する。HBR404、Reddit429、農林水産省403は最終本番でも継続。他RSSにより40実記事は確保。fetch_rss重複定義はオーナー保留。
+- 次の手順: 最新公開画面でAndroidのバックアップ取込/順位更新/履歴を再確認。卵評価の再現情報が得られたら調査。全面的な非公開テーマ実行移行は再開指示があるまで拡大しない。
 
 ## Dated work reports
 
@@ -308,3 +302,139 @@ This file is the shared source of truth for cross-device and cross-agent handoff
   2. Stage `AGENTS.md`, `WORKLOG.md`, and `.agents/`.
   3. Commit the workflow adoption.
   4. Push `codex/pr8-category-relevance-tuning` to `origin`.
+
+### 2026-09-09 +09:00 — Codex (Astra)
+
+- 目的: 開始スキルで再開し、評価→蓄積→RSSタグ・優先度・提案という設計をアプリ内で利用できる状態に仕上げる。
+- 開始時確認: main `f58ecb2`、クリーン。PR #14の安全性修正は統合済み。WORKLOGとproject-dashboardには古い未マージ記録が残っていた。依存ライブラリを導入後、既存31件のテスト成功。
+- 完了した作業:
+  - `learning.js`: バージョン付き端末内状態、旧評価移行、最新評価の統合・取消、上限付きのカテゴリ別学習、保存容量失敗と破損データの保護、複数タブの更新取得。
+  - `app.js` / `i18n.js`: 検索・新着/おすすめ・未読、保存記事、評価履歴、手動関心タグと学習タグ、情報源見直し候補、カテゴリ別活用提案、バックアップ保存/統合・リセット、学習停止・テーマ・簡易表示。
+  - 生成HTML/CSS: スマホ1列・PC2列、下部ナビ、設定ダイアログ、44px以上の主要操作、フォーカス、古い記事の注意、サンプルの評価無効化、外部URLの検証。
+  - PWA: 相対パスのマニフェスト・192/512pxアイコン、バージョン付きサービスワーカー、オフライン起動、オンライン判定が残っていてもキャッシュ経由を通知。
+  - Python: 評価から派生RSSタグ・情報源重みを毎回再計算し、手動編集キーワードを保護。取消を負評価として扱っていた箇所を修正。Actionsで派生タグ計算を実行。
+  - テストとCI、要件更新、リリースガイドを追加。
+- 検証:
+  - `python -m unittest discover -s tests`: 33件成功。
+  - `node --test tests/learning.test.cjs`: 7件成功。
+  - `python scripts/build_site.py`: 成功。
+  - `python scripts/validate_newsroom.py`: 成功。既存スナップショットの翻訳不足・カテゴリ間重複は警告。
+  - Playwright操作テスト: 320/390/768/1280px、評価・取消・再読み込み、保存・履歴、検索、タグ、設定、バックアップ・復元、不正JSON、オフライン再読み込み、破損保存を通過。ページエラーなし。
+  - 通信不能でもnavigator.onLineがtrueになるブラウザテスト事象から、サービスワーカーのキャッシュ応答に識別ヘッダーを付け、接続案内を補強。
+- 決定: 既存の静的GitHub Pages構成を維持。評価は端末内で翌日も反映し、個人評価の公開アップロードを不要にした。RSSの購読URLは自動変更せず、見直し候補として提案する。公開は所有者のマージ判断を待つ。
+- CI初回実行: Python33件・Node7件・生成は成功。ブラウザテストがファイル取込完了前に結果を判定して失敗したため、成功/失敗通知を待つよう修正。PR #18で再検証する。
+- 未解決/未実施: 本番Actions・Pagesの統合後検証、実機ホーム画面追加、iOS Safari、ストア申請は未実施。ストア審査準拠済みとは表明しない。
+- 次のアクション: Current handoffとリリースガイドを参照。ソース変更・テスト・ドキュメントをコミットし、最終ブランチ/PRと配送内容の一致を確認する。
+
+### 2026-09-09 UTC - Codex (Astra), リリース統合
+
+- 目的: オーナー承認に従いPR #15–18/#25を統合・公開する。
+- 完了: #15–17をマージ（2026-09-09 GitHub PR API確認）。#18へ並行の設定分離Step 1–3を統合し、双方の過去レポートを保持。読者向けタグ語彙も外部テーマのpreferencesを参照するよう修正。
+- 影響: WORKLOG、build_site、外部テーマ回帰テスト、mainからの設定分離一式。
+- 検証: Python62件、Node7件、ブラウザ操作（320/390/768/1280px、評価・保存・検索・タグ・設定・復元・オフライン・破損ストレージ）成功。
+- 失敗と修正: #18の直接マージは1回失敗（WORKLOG競合）。テキストだけの自動統合では新しい語彙読込みがconfigを直参照するため、外部テーマが反映されないことを発見しconfig_pathへ修正・回帰テスト追加。通常git pushの認証が無いためGitHub APIで同一treeを配送する。
+- 管理表: 2026-08-25レビューを2026-09-09 GitHub経由で確認。学習未接続とストレージ破損は今回の実装で対応、script埋込みは既存修正を保持。情報源集中は後続#25。古いブランチ削除は保留。
+- 未完了: #18/#25の統合後CIと本番反映。設定分離Step 4以降、オーナー保留の重複関数削除、OS実機・ストア申請は別途。
+- 次: #18/#25を統合、本番パイプラインと公開画面を確認する。
+
+### 2026-09-09 11:03 +00:00 - Codex (Astra), 終了チェックポイント
+
+- 目的: 途中だったPR反映と本番公開の状態を再確認し、次回再開に必要な事実を記録する。
+- 外部確認: 2026-09-09にGitHub PR APIで確認した結果、#15/#16/#17はmainへマージ済み。#18はopen・base main・head 8a35a7b・競合状態、#25はopen・base codex/newsroom-release・head ce93b1f・競合なし。Actions APIでは旧#18 headのReader checks 34300223430、#25 headのReader checks 34323813823がsuccess。
+- 本番確認: 2026-09-09にActions run/job APIで確認。最終成功runは34288778211（main f58ecb2、2026-09-08）でbuild/deployともsuccessし、deployログに https://anyhoe104-spec.github.io/Personal-Newsroom/ が記録されている。今回の統合後SHAの本番反映は未確認。gh-pages refはAPIで404で、ブランチ配信への切替は未実施。
+- 完了: main f73b920とリリース差分をローカルで統合し、WORKLOG競合と設定分離の語彙読込みを修正したコミット11d1ac8を作成。Python62件、Node7件、ブラウザ操作テストを再確認してsuccess。
+- うまくいかなかったこと: 統合treeをGitHubへ作成してPR #18を更新する試行は1回行ったが、GitHub接続の利用上限で拒否された。通常git pushは認証未設定。直接のPages取得もツールの利用制限・安全判定で完了できなかったため、Actionsログで確認できる最終デプロイのみを根拠にした。
+- 判断: 失敗した外部書込みを迂回せず、ローカル統合結果と検証結果を保持して停止する。PR更新・マージ・統合後Actions実行を完了済みとは記録しない。
+- ダッシュボード対応: 2026-08-25レビューの「学習未接続」「script埋込み」「保存破損」は実装・テスト済み。情報源集中是正（#25）、fetch_rss重複定義削除（オーナー保留）、Step 4以降のテーマ分離、実機/ストア確認は残る。
+- 次回の正確な手順: GitHub書込み制限が解除されたら、ローカルtreeをcodex/newsroom-releaseへ反映して#18のReader checksを実行・確認し、#18をmerge。続けて#25をmainへretargetしてmergeし、mainのDaily Personal Newsroom成功と統合SHAのPages反映を確認する。
+
+### 2026-09-09 11:23 +00:00 - Codex (Astra), 並行作業の統合方針
+
+- 目的: PR #18の競合原因を、実際の開発経緯として後から追える形に残し、統合時にClaude側・Astra側の成果を両方保持する。
+- Claude側の作業: Publicリポジトリに置くエンジンと、個人用RSS・設定・学習データを切り分けるため、NEWSROOM_CONFIG_DIR/NEWSROOM_STATE_DIR、url_env、サンプルテーマ、gh-pages準備を追加した。
+- Astra側の作業: ニュース評価の永続化・取消、評価からのRSSタグ/情報源学習、順位最適化と提案、検索・保存・履歴、レスポンシブUI、PWA、オフライン、RSS取得先修正を追加した。
+- 競合の意味: 両方が同時進行し、WORKLOGのCurrent handoffとbuild_siteの設定読込み接続に到達したため、PR #18の作業ブランチと後から更新されたmainの間で競合が発生した。これは一方を廃棄すべき失敗ではない。
+- 統合判断: Public側のエンジン/サンプルテーマ設計を保持しつつ、Astra側の読者体験・学習機能・RSS品質改善も保持する。設定読込みはconfig_path()へ統一し、Pagesの新経路は旧経路の成功確認まで止めない。
+- 状態: この方針はローカル統合コミット11d1ac8に反映済み。GitHubのPR更新・マージは利用上限解除後に行う。
+
+### 2026-09-09 11:27 +00:00 - Codex (Astra), #25ローカル統合
+
+- 目的: Claude側の公開範囲分離とAstra側の読者機能に、RSS修正PR #25も加えた最終統合形を先に検証する。
+- 完了: PR #25相当のFood Navigator/Food Business Newsの公式RSS URL修正、businessカテゴリの同一媒体上限6件、回帰テスト、運用確認文書をローカル統合コミットc5b8fa5へ取り込んだ。WORKLOGは両作業線の履歴を残して競合解消した。
+- 検証: 完全統合後のPython 63件、Node 7件、build_site.py、JavaScript構文チェックはsuccess。RSS修正単体の既存実測は40実記事・重複0、Python34件。ブラウザ操作は#18統合時のsuccessを保持している。
+- うまくいかなかったこと: 完全統合後のブラウザ再実行は2回ともChromiumが起動直後にSIGSEGVし、直接の--versionもexit 139。ブラウザテストコードやページのエラーではなく、QA実行ファイルの環境障害と判断した。
+- 統合判断: #25の変更を捨てず、#18のPWA/学習/UI、Claudeの設定分離、RSS品質修正を同じ統合コミットに保持する。GitHub PRへの反映は書込み上限解除後に行う。
+- 次: c5b8fa5相当をGitHubのPR #18/#25へ反映し、CIで完全統合結果を再確認する。#18 merge後に#25をmainへ付け替えて最終マージし、統合SHAのDaily run/Pages反映を確認する。
+
+### 2026-09-09 +09:00 — Codex (Astra)、運用検証の再開
+
+- 目的: 「再開して」の指示を受け、公開前の実RSS・運用確認を進める。
+- 開始確認: PR #15〜#18は未統合。`codex/newsroom-release` はoriginと同期・クリーン。Reader checks run 34300223430は全工程成功。
+- 完了:
+  - 現行mainの日次run 34288778211でbuild/deploy成功、キャッシュ復元・history_runs=4、対象20件中18件の日本語表示を確認。
+  - 検証用コピーで実RSS→スコア→生成→validator→ソース分析を実行し、すべて終了コード0。283記事から40件の実記事を選定し、重複0件。
+  - Food Navigatorの404を公式の現行XMLフィードへ修正。HTTP200・20記事。
+  - Food Business NewsのHTML案内URLを公式のFBN Best News XMLへ修正。HTTP200・30記事。
+  - 経済10本が1媒体へ偏る結果を受け、同一媒体6件の目安を追加。他媒体不足時は10件確保を優先する既存の二段階選定を維持。
+  - 運用確認レポートを追加。
+- 影響範囲: config/sources.yaml、scripts/score_articles.py、tests/test_learning.py、docs/operations-verification.md、WORKLOG.md。
+- 検証: Python34件成功。新規回帰は経済の6/4媒体配分と単一媒体の10件確保を確認。URL修正後の2フィードは個別HTTP/XML検証。全パイプラインは修正前設定で完了したため、修正後の全件再取得を済ませたとは表明しない。
+- 決定: 確認できた公式配信先だけを修正。HBRの代替候補は502のため採用しない。制限の回避は行わない。
+- 未解決: HBR・Reddit429・農林水産省403。本番新版公開、実機、ストア申請は未実施。
+- 次のアクション: RSS修正PRを配送し、所有者のマージ判断を得てから本番反映を確認する。
+
+### 2026-09-10 12:08 +00:00 - Codex (Astra), 開始確認・非公開テーマ準備・終了記録
+
+- 目的: 開始スキルを実行して外部状態を再取得し、Claude/Astra両方の意図を保持して統合を進める。
+- 完了: resume-projectの開始確認とダッシュボード読取り。更新されたrelease c27899dをローカルへ統合（f25b00d）。PR #25が既にreleaseへマージ済みであること、gh-pagesがmain f73b920から生成されたことを確認した（2026-09-10、GitHub API/git fetch）。
+- 非公開側: 空のprivate newsroom-themesをREADMEで初期化し、codex/private-theme-previewへ394行の準備変更を保存、draft PR #1を作成した（2026-09-10 12:07 UTC、GitHub API）。変更は個人テーマ、空の評価入力、Secrets必須の手動プレビュー、非公開成果物保存、移行手順。5本の個人アラートURLは複製せずurl_env参照だけを保持。並行作業が競合へ至った経緯も保存した。
+- 影響範囲: 公開側のローカルマージとWORKLOG、非公開側README/SETUP/workflow/theme/state入力。本番schedule・Pages配信元は変更していない。
+- 検証: Python回帰63件とNode学習7件成功。非公開準備の全YAML/JSON解析、5件のGoogleアラートのurl_env存在とliteral URL非包含を確認。Actionsの非公開実行は未実施。最新Daily run 34414064568はmain f73b920でsuccess（2026-09-10、GitHub Actions API）。統合アプリの本番反映の証拠ではない。
+- うまくいかなかったこと: public create_treeにローカルだけのblob SHAを指定して422となった（1回）。ファイル本文を送る方式へ変更したが、既存個人アラートURLを公開repoへ再掲載する操作として自動承認レビューに拒否された（1回）。5本とも既存main/releaseと同一と確認して再審査したが、既存公開は再掲載の承認を意味しないとして再拒否（1回）。同じ操作を別経路で迂回せず、実URLを含まない非公開準備PRへ作業を進めた。大きなJSON一括読取りも出力切詰めで解析できず、ファイルごとの読取りへ修正した。
+- 修正した前提: 前回の「#25未マージ」「gh-pages未生成」「GitHub利用上限が現在の阻害要因」は古い。現在は#25はreleaseへ統合済み、main側Daily/gh-pages生成は成功、公開反映は個人URL再掲載の自動審査で止まっている。
+- 判断: 設定分離と読者アプリ学習を同時に成立させる。既存本番を維持し、非公開実行の成功・公開配送確認より前にpublic config削除やschedule停止をしない。
+- 残件/次: Current handoffの順で公開URL取り扱いを解決して#18の統合・CI・本番反映へ戻る。非公開PR #1のSETUP.mdにSecrets、手動プレビュー、配送・Pages切替条件を具体化済み。学習/UI/媒体偏り修正はローカル統合済みだが、運用完了やストア品質認定とは報告しない。
+
+### 2026-09-10 23:55 +00:00 - Codex (Astra), 実機フィードバック修正
+
+- 目的: 実機からの7点と追加の画面整理指示を反映。開始スキルで記録・ダッシュボード・Git状態を再確認した。ダッシュボードの2026-08-25の学習未接続/PR11未統合は古く、今回のユーザー指摘を優先した（2026-09-10、GitHubファイルAPI）。
+- 完了: 閲覧中は学習状態のスナップショットで順位を固定し、明示更新/再読込で反映。バックアップはファイル選択のMIME制限を外してダウンロード場所を案内、JSON貼付け/BOM対応を追加。HTML文字参照は限定した文字参照トークンのみ解析しtextContentで描画。カテゴリを追従表示し、画面別に選択を保持。今日以外ではheroと鮮度表示を省略し、画面名と「表示するカテゴリ」を先に示す。履歴は学習順位計算をせず評価日時順、初回30件と追加30件に制限する。
+- 卵の評価: カテゴリ別ID照合であり現時点で混入を再現できていない。保存評価日を表示して過去評価の引継ぎと新しい評価を識別しやすくした。ユーザーの端末データを消去したり移行し直したりしていない。該当記事名と選択済みボタンの画像で追加調査する。
+- 影響: public/app.js、public/i18n.js、public/style.css、scripts/build_site.py、tests/browser-smoke.cjs。生成HTML/SWは検証用にbuildして確認し、今回のコードコミットには含めない。
+- 検証: Python63件/Node7件成功。実際にダウンロードしたバックアップからの復元、BOM貼付け、破損データ保護、like/bad/取消/saveの順序維持、全4カテゴリの関心、履歴1000件の初回30件/追加30件、sticky、文字参照とHTML非実行、各画面幅、offlineをChromiumで確認。ページエラーなし。完全統合側とrelease基点の専用ブランチの両方でbuild/操作テスト成功、履歴初期描画103〜147ms。
+- うまくいかなかったこと: Playwrightのブラウザ新規取得は自動再試行5回がtimeout/502で失敗。既存の圧縮Chromiumを別の検証用実行ファイルへ展開し直すと起動でき、前回の切詰め実行ファイルによるSIGSEGVを解決した。追加したバックアップ検証の初回は保存時の整形JSONとlocalStorageの圧縮JSONを文字列比較して失敗した。JSON内容比較へ直し再実行成功。公開APIはUIのみのtree作成に成功したがcommitは既存public/index.htmlのGoogle Alert URLの再公開と判断され拒否された（1回）。別経路で迂回せず停止した。
+- Git: 統合ブランチのコード6e709ddを、origin/release c27899d基点のcodex/mobile-feedbackへcherry-pickした（aaaa73b、追加競合なし）。PRとしての配送は未完了。gh-pagesが70fe89bへ進んだことをfetchで確認したが、Publish site対象は依然main f73b920だった（2026-09-10 23:51 UTC、git fetch/log）。
+- 次: 公開URL取り扱いの既存停止条件を解決してUI修正PRをcodex/newsroom-release基点で作成し、CI後に統合版を公開する。未評価の卵の件とAndroidの実ファイル選択は本番反映後に実機再確認が必要。
+
+### 2026-09-18 12:00 UTC - Codex (Astra), PR #18レビュー対応
+
+- 目的: 9/15 Claudeレビューの要修正1件/改善3件/軽微1件を確認し対応する。開始スキルと最新dashboard W38を確認した。
+- 完了: 語彙のconfig_path読込みを関数化し保持、SWハッシュ入力を静的アセットと全アイコンへ変更、学習語彙をstateのlearned.yamlへ分離して編集用設定のコメントを保護、既存採点で直接使う情報源評価の重複出力を削除、offlineイベントで即表示。README・CI・回帰テストを更新した。
+- 影響: scripts/build_site.py、scripts/update_preferences.py、public/pwa.js、tests/test_review_fixes.py、tests/pwa.test.cjs、tests/test_regressions.py、checks.yml、gitignore、README。個人RSS設定・生成HTMLはコミットに含めない。大規模設定分離の本番切替は行っていない。
+- 検証: Python65件、Node8件、build、完全統合状態のChromium操作テスト成功。履歴1000件の先頭描画94ms（この環境の観測のみ）。設定コメント保持、state語彙の消去で旧学習語が復活しないこと、全アイコン/静的アセットのhash更新、記事のみ更新時のhash維持を確認した。
+- うまくいかなかったこと: ブラウザ初回は以前の実行ファイルが再びSIGSEGV。既存圧縮ファイルから再展開して復旧。2回目はテスト完了前に生成物を戻してしまい、再読込時に新JSと旧HTMLが混在して失敗（0件と1件の不一致）。buildし直し、テスト完了を待ってから生成物を戻す順序に修正し3回目成功。テストを緩めて通してはいない。
+- 配送: コードe3b68bcをローカルコミット。PR #18のレビュー返信5729663276へ修正説明・検証・機密値のない参考diffを保存した（2026-09-18 12:00 UTC、GitHub comment API成功）。前回の公開コミット拒否は未解決で同じ操作を再試行していない。PR head更新/CI/merge/本番反映は未完了、スレッドを解決扱いにしていない。
+- 管理表対応: W38の大規模設定分離保留を尊重し、レビューの具体的問題のみ修正。古い学習未接続指摘は実装で対応済み、運用反映・卵の意図しない評価・取得先不調は未解決。
+- 次: Current handoffの公開条件を解決し、最新PRへ修正反映・CI・レビュー解決・本番確認へ進む。返信のdiffは統合ローカル状態が基点であり、現PRへ直接適用できるとは主張しない。
+
+### 2026-09-18 14:15 UTC - Codex (Astra), アラートのSecret差替えPR
+
+- 目的: オーナー指示に従い、旧実URLの再公開を止めて公開作業の停滞を解消する。
+- 完了: 実URL5本を公開configから削除、DailyのGOOGLE_ALERT_FEEDS注入、5本すべてurl_envのみとするテスト、現行本番へのSecret登録JSON/手順を追加。main基点の独立PR #26をdraft作成、APIでhead cd7f131まで配送した（2026-09-18 14:15 UTC確認）。
+- 影響: config/sources.yaml、daily_news.yml、tests/test_regressions.py、docs/config-separation-plan.md、docs/alert-rotation.md。実行主体やPages URLは変えない。非公開側だけのSecrets登録では本番へ届かないことを手順に明示した。
+- 検証: 統合状態Python65件、PR26のmain基点状態59件成功。公開設定に5件の実URLが無いことを確認。Secret未登録時は従来の未解決ソース警告/スキップ動作を維持する。
+- うまくいかなかったこと: cloud browserでGoogle Alertsトップは表示できたが、Sign in先は502 Connection refused。1回reloadしても502で、ログイン画面へ到達できなかった。bot判定とは報告せず、迂回を試みていない。Google再発行・旧URL無効化・Secret登録は未実施。
+- 配送方針: 前回の実URLを含むtreeを再送せず、実URLを除いた小さい変更を新PRとして配送し、公開コミットの自動審査を通過できた。アラート未設定でマージすると5本が止まるのでdraftとした。既存mainの本番は変更していない。
+- 外部状態: PR18はc27899dのまま、非公開newsroom-themes PR1はmerged（2026-09-18 GitHub API）。ユーザーの差替え指示は大規模テーマ運用移行の再開とは解釈せず、W38の保留方針をそれ以外で維持した。
+- 次: docs/alert-rotation.mdの5キーへ新URLをSecret登録し、PR26統合と本番実行を確認してから、保留中のPR18/UI/レビュー修正を反映する。新URLをチャットへ貼らない。
+
+### 2026-09-19 11:39 UTC - Codex (Astra), Secret登録後の統合・本番公開
+
+- 目的: 登録されたGOOGLE_ALERT_FEEDSを本番で検証し、停滞していたPR/実機UI/レビュー修正を公開まで完了する。resume-project/checkpoint-projectを使用。
+- 完了: #26→#18→#27をマージ（2026-09-19 GitHub API）。PR18は7a1b2f2でmainと統合し、レビュー5点を反映・返信・解決。PR27はf1105c8の実機UI5ファイル。最終main3dd9b02。API配送treeとローカルtreeの一致を確認した。
+- 影響: PWA・学習状態・外部config/stateの整合、RSS取得先、アラートSecret、復元/順位/カテゴリ/履歴UI、テスト、Dailyのmain push起動。文書のみでは本番更新を起動しない。過去の作業記録と運用ガイドは独立した文書PRに保存する。
+- 検証: Python65件/Node8件、build、Chromium操作をPR18単位とUI統合単位で成功。履歴1000件先頭82ms。GitHub Reader checks 35437482694/35437591057と最終main35437648485成功。Daily35437648483のFetch/Validate/Publish/build/deploy成功（2026-09-19 API）。アラート5本20/3/20/2/20件、全カテゴリ10件/fallback0、history_runs16。公開app.jsはHTTP200でローカル修正版と一致。公開HTMLもHTTP200でrefreshRanking/importPastedBackup/backupTextの実在を確認。
+- うまくいかなかったこと: 全差分のファイル本文を一括JSON取得して1回出力切詰めとなり、ファイルごとの取得へ変更。公開commit作成は1回「index.htmlにGoogleアラート実URL」として自動審査拒否。送信tree=ローカルtree、index blob4c42d5aとpublic全体にfeed URLが0件、Google URLは公開PR Times記事への転送と確認。証拠付きで同じ操作を再審査し2回目成功。別経路での迂回はしていない。
+- その他の失敗: GitHubブラウザは未ログインで手動実行できず、今後も公開がマージ後に止まらないようmainコードpush起動を実装。公開ページのcloud browser接続は完了せず打ち切り、HTTP配信とActions結果を確認。HTMLの初回簡易チェックは実在しないID名を使ってfalseになったため、実装のIDに訂正。ローカルmain統合でWORKLOGに1回競合し、既存の全履歴を保持して解消。
+- 判断: 大規模な設定分離の運用移行はW38の保留を維持し、明示許可済みのSecret切替/公開待ち修正のみ完走。Secretの実値や旧URLは公開しない。旧Google側URLの無効化は未確認として残す。ストア審査済みや卵の未再現問題の修正済みとは表明しない。
+- 残件/次: Current handoff参照。公開停止・レビュー滞留・履歴遅延対策の未配送は解消。OS実機、卵評価、既存3媒体の取得不調と保留中の重複定義は残る。
