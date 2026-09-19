@@ -13,6 +13,49 @@
 - AI・活用
 - 卵（加工品・ゆで卵・温泉卵・煮卵・商品開発・技術トレンド）
 
+## サンプルテーマパックで動かす（clone した方はここから）
+
+`themes/example/` に、公開フィードだけで構成した最小のテーマパックがあります。個人の設定を持っていなくても、clone すればそのまま動きます。
+
+```bash
+git clone https://github.com/anyhoe104-spec/Personal-Newsroom.git
+cd Personal-Newsroom
+python -m pip install -r requirements.txt
+
+export NEWSROOM_CONFIG_DIR="$PWD/themes/example"
+export NEWSROOM_STATE_DIR="$PWD/.state"
+
+python scripts/fetch_rss.py
+python scripts/score_articles.py
+python scripts/build_site.py
+python scripts/validate_newsroom.py
+```
+
+PowerShell の場合:
+
+```powershell
+$env:NEWSROOM_CONFIG_DIR="$PWD/themes/example"
+$env:NEWSROOM_STATE_DIR="$PWD/.state"
+```
+
+生成された `public/index.html` をブラウザで開くと確認できます。APIキーは不要です（未設定なら記事タイトルとRSS概要から仮要約を作ります）。`NEWSROOM_STATE_DIR` は初回実行時に作られるので、事前に用意する必要はありません。
+
+### サンプルパックの構成
+
+| ファイル | 内容 |
+| --- | --- |
+| `themes/example/sources.yaml` | 4カテゴリ・8ソース。公開RSSのみ |
+| `themes/example/preferences.yaml` | スコアリングの重みとカテゴリ別キーワード |
+| `themes/example/prompts.yaml` | 要約プロンプト（**現時点ではパイプラインから読まれていません**。テーマパックの構成を揃えるために置いています） |
+
+GoogleアラートRSSは含めていません。個人に紐づきローテーションもできないため、Private なテーマパック側から `url_env` で注入する想定です（「設定とデータの置き場所」を参照）。
+
+### 現時点の制約
+
+- **カテゴリキーは `business` / `food` / `ai_dev` / `egg` に固定です。** ラベルとソースはテーマパックごとに変えられますが、キーの集合はまだ変えられません。パイプラインと画面側の8箇所にハードコードされています
+- **ビルド成果物の出力先は `public/` 固定です。** テーマパックを指定して実行してもリポジトリ内の `public/` に書き込みます。出力先の分離は今後の作業です
+- `prompts.yaml` は置いてあるだけで、要約プロンプトは `scripts/fetch_rss.py` 内で組み立てられています
+
 ## ローカル実行手順（PowerShell）
 
 Windows Terminal または PowerShell でリポジトリへ移動してから実行します。
@@ -66,7 +109,7 @@ python scripts/build_site.py
 python scripts/analyze_source_feedback.py
 ```
 
-`update_preferences.py` は手動の編集キーワードを維持し、`learned_tags` と `learned_sources` を評価から毎回再計算します。同じ評価の再実行で重みは増幅せず、取り消しも反映されます。
+`update_preferences.py` は編集用の `preferences.yaml` を変更せず、評価から再計算した `learned_tags` を `NEWSROOM_STATE_DIR/learned.yaml`（既定 `data/learned.yaml`）へ保存します。コメントも保持され、再実行で重みは増幅せず、取り消しも反映されます。サイト生成は編集用キーワードとこの学習語彙を読みます。情報源の評価は `score_articles.py` が `feedback.json` から直接使うため、未使用だった `learned_sources` は出力しません。`learned.yaml` は評価から再生成できる派生状態です。
 
 ## GoogleアラートRSSの追加方法
 
@@ -91,13 +134,29 @@ categories:
 
 ## GitHub Pages
 
-Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml` が毎日 `public/` を生成し、Pages artifactとしてアップロードします。
+現在の配信元は **GitHub Actions** です。`daily_news.yml` が毎日 `public/` を生成し、Pages artifact としてアップロードします。
+
+あわせて、同じ成果物を **`gh-pages` ブランチにも push** しています（`scripts/publish_gh_pages.sh`）。設定分離計画（`docs/config-separation-plan.md`）の Step 5 で、Pages の配信元をこのブランチへ切り替える準備です。
+
+**この時点では配信元を切り替えないでください。** 順序は計画書の Step 5 のとおりです。
+
+1. `gh-pages` に正しい内容が入っていることを確認する
+2. Pages の配信元を `gh-pages` ブランチへ変更する（オーナーの手作業）
+3. スマホで当日のニュースが表示されることを確認する
+4. 確認できてから、旧経路（`Configure Pages` / `Upload artifact` / `deploy` ジョブ）を外す
+
+切り替えるまでの間は両方の経路が動きます。配信しているのは従来どおり Actions 経由の方なので、`gh-pages` の内容が古くても壊れても、実際のサイトには影響しません。
+
+`gh-pages` は orphan ブランチで、ビルド成果物だけを持ちます。`public/index.html` が無い場合は publish を拒否して失敗するため、壊れたビルドが既存のサイトを消すことはありません。内容に変化が無い実行では commit も push もしません。
 
 ## ファイル構成
 
 - `config/sources.yaml`: RSSソース
 - `config/preferences.yaml`: スコアリング設定とカテゴリ別キーワード
 - `config/prompts.yaml`: AI要約用プロンプト
+- `themes/example/`: 公開フィードだけで構成したサンプルテーマパック
+- `scripts/publish_gh_pages.sh`: ビルド成果物を `gh-pages` ブランチへ publish
+- `scripts/newsroom_config.py`: 設定・学習データの置き場所とフィードURL注入の解決
 - `scripts/fetch_rss.py`: RSS取得と要約
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
 - `scripts/build_site.py`: 静的HTML生成
@@ -141,6 +200,49 @@ HTML側は属性で指定し、`i18n.applyStaticText()` が差し替えます。
 多言語ファイルの追加は次段階です。`i18n.js` の `MESSAGES` に `en` などのオブジェクトを足し、`i18n.setLocale()` を呼ぶだけで切り替わります。コンポーネント側の変更は不要です。
 
 カテゴリ名は `config/sources.yaml` が正です。記事データにラベルが入っている場合はそちらを使い、記事0件時のフォールバック表示でのみ `i18n.js` の `category.*` を使います。
+
+## 設定とデータの置き場所
+
+`scripts/` は設定と学習データの場所を環境変数で差し替えられます。既定値はリポジトリ内の従来の配置なので、**何も設定しなければ挙動は変わりません**。
+
+| 環境変数 | 既定値 | 中身 |
+| --- | --- | --- |
+| `NEWSROOM_CONFIG_DIR` | `config/` | `sources.yaml` / `preferences.yaml` / `prompts.yaml` |
+| `NEWSROOM_STATE_DIR` | `data/` | `articles.json` / `feedback.json` / `run_history.json` / `source_recommendations.json` |
+
+リポジトリ外のテーマパックに対して実行する例:
+
+```powershell
+$env:NEWSROOM_CONFIG_DIR="C:/themes/personal"
+$env:NEWSROOM_STATE_DIR="C:/themes/personal/state"
+python scripts/fetch_rss.py
+```
+
+実行時にどちらを使ったかは `[source_config] config_dir=... , state_dir=...` としてログに出ます。
+
+### フィードURLを設定ファイルに書かずに注入する
+
+コミットしたくないフィードURL（GoogleアラートRSSなど）は、`sources.yaml` に名前だけ書いて値を環境変数から渡せます。
+
+```yaml
+- name: "Google Alert: スイーツ 新商品"
+  source_type: "google_alert"
+  url_env: "GOOGLE_ALERT_SWEETS"
+```
+
+解決順は次のとおりです。
+
+1. `url_env` と同名の環境変数
+2. `GOOGLE_ALERT_FEEDS`（名前とURLのJSONオブジェクト。1つのSecretに複数まとめる場合）
+3. 同じ項目の `url`（自分のURLを持つチェックアウトはこれで従来どおり動きます）
+
+```powershell
+$env:GOOGLE_ALERT_FEEDS='{"GOOGLE_ALERT_SWEETS":"https://...","GOOGLE_ALERT_EGG":"https://..."}'
+```
+
+どれも解決できない場合、そのソースは警告つきでスキップされ、他のソースの処理は続きます。ログには参照名だけが出て、URLは出ません。
+
+**注入されたURLはログから自動的に伏せられます。** 取得失敗時に requests が出す `Max retries exceeded with url: /alerts/feeds/...` にはホストとパスが分かれて現れ、GitHub のSecretマスクは完全一致でしか効かないためパスが素通りします。注入されたURLとそのパスは `[redacted]` に置換されます。`sources.yaml` に直書きされたURLは秘密ではないため置換しません。
 
 ## ログ設定
 

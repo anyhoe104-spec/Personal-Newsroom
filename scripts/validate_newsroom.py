@@ -6,11 +6,12 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from newsroom_config import state_path
 from newsroom_logging import get_logger
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLES_PATH = ROOT / "data" / "articles.json"
+ARTICLES_PATH = state_path("articles.json")
 INDEX_PATH = ROOT / "public" / "index.html"
 CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
 LOG = get_logger()

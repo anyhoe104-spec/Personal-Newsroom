@@ -25,3 +25,6 @@ async function checkCachedConnection() {
 }
 checkCachedConnection();
 window.addEventListener('online', checkCachedConnection);
+window.addEventListener('offline', () => {
+  document.getElementById('offline').hidden = false;
+});

@@ -8,14 +8,15 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
+from newsroom_config import state_path
 from newsroom_logging import get_logger
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTICLES_PATH = ROOT / "data" / "articles.json"
-FEEDBACK_PATH = ROOT / "data" / "feedback.json"
-HISTORY_PATH = ROOT / "data" / "run_history.json"
-RECOMMENDATIONS_PATH = ROOT / "data" / "source_recommendations.json"
+ARTICLES_PATH = state_path("articles.json")
+FEEDBACK_PATH = state_path("feedback.json")
+HISTORY_PATH = state_path("run_history.json")
+RECOMMENDATIONS_PATH = state_path("source_recommendations.json")
 PUBLIC_HISTORY_PATH = ROOT / "public" / "run_history.json"
 PUBLIC_RECOMMENDATIONS_PATH = ROOT / "public" / "source_recommendations.json"
 CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
