@@ -1,6 +1,8 @@
 # Personal-Newsroom
 
-自分専用のスマホ向けニュースMVPです。カテゴリ別RSSを取得し、要約、スコアリング、カテゴリ別10件表示、いいね / バッドのフィードバックUIを提供します。
+自分専用のスマホ向けニュースアプリです。RSSニュースを評価すると、端末内に評価を蓄積し、カテゴリ別の関心タグ・情報源からおすすめ順を自動調整します。検索、あとで読む、評価履歴、関心タグ編集、活用提案、ダークモード、バックアップ、オフライン起動に対応します。
+
+操作と公開前確認は [リリースガイド](docs/release-guide.md) を参照してください。
 
 要件と現在の改修方針は [`docs/requirements.md`](docs/requirements.md) に整理しています。
 
@@ -94,7 +96,11 @@ $env:ANTHROPIC_API_KEY="..."
 
 ## フィードバック
 
-ブラウザ上のいいね / バッドは、まず `localStorage` に保存されます。画面上部の「フィードバックをコピー」または「JSON保存」から `data/feedback.json` に反映し、次回スコアに反映したい場合は以下を実行します。
+「役に立った」「関心が薄い」は同じボタンをもう一度押すと取り消せます。評価はその場でおすすめ順に反映され、次の日の記事にも適用されます。学習はカテゴリ内に限定し、タグ・情報源の加減点には上限を設けています。「あなたの関心」で学習タグ・優先して追うタグ・情報源の見直し候補・活用提案を確認できます。
+
+データは端末のブラウザ内に保存します。設定からバックアップを保存・統合できます。クラウドへの自動送信や端末間の自動同期はありません。RSSの購読URL自体は自動変更しません。
+
+任意でパイプライン側にも反映する場合は、設定の「詳細：フィードバック書き出し」で保存した `feedback.json` を `data/feedback.json` に置き、以下を実行します。個人の評価を公開リポジトリにコミットする必要はありません。
 
 ```powershell
 python scripts/update_preferences.py
@@ -103,7 +109,7 @@ python scripts/build_site.py
 python scripts/analyze_source_feedback.py
 ```
 
-学習はカテゴリ内だけで行います。いいねは類似キーワードと同一ソースを上げ、バッドは下げます。`scripts/analyze_source_feedback.py` は `data/run_history.json` と `data/source_recommendations.json` を更新し、ソース差し替え候補を確認できるJSONも `public/` に出力します。
+`update_preferences.py` は編集用の `preferences.yaml` を変更せず、評価から再計算した `learned_tags` を `NEWSROOM_STATE_DIR/learned.yaml`（既定 `data/learned.yaml`）へ保存します。コメントも保持され、再実行で重みは増幅せず、取り消しも反映されます。サイト生成は編集用キーワードとこの学習語彙を読みます。情報源の評価は `score_articles.py` が `feedback.json` から直接使うため、未使用だった `learned_sources` は出力しません。`learned.yaml` は評価から再生成できる派生状態です。
 
 ## GoogleアラートRSSの追加方法
 

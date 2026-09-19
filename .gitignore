@@ -3,3 +3,5 @@ __pycache__/
 *.pyc.*
 logs/
 .state/
+data/learned.yaml
+data/learned.yaml.tmp

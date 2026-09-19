@@ -313,6 +313,8 @@ def feedback_score(article: dict, feedback_items: list[dict]) -> float:
     article_tokens = tokenize(" ".join((article.get("title", ""), article.get("original_title", ""), article.get("raw_summary", ""))))
     score = 0.0
     for item in feedback_items:
+        if item.get("value") not in {"like", "bad"}:
+            continue
         direction = 1 if item.get("value") == "like" else -1
         source_match = 1.0 if item.get("source") == article.get("source") else 0.0
         item_tokens = set(item.get("keywords", [])) or tokenize(item.get("title", ""))
@@ -464,6 +466,8 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
 
 
 def source_limit_for_category(category: str) -> int | None:
+    if category == "business":
+        return 6
     if category == "ai_dev":
         return 4
     if category == "egg":

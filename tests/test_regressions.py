@@ -766,5 +766,28 @@ class ExampleThemePackTests(unittest.TestCase):
         self.assertLessEqual(score, 100)
 
 
+class ReaderThemeIntegrationTests(unittest.TestCase):
+    def test_reader_vocabulary_uses_external_theme(self):
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "preferences.yaml").write_text(
+                "categories:\n  food:\n    boost_keywords: [external-topic]\n    learned_tags: {learned-topic: 2}\n",
+                encoding="utf-8",
+            )
+            index = root / "index.html"
+            with patch.dict(os.environ, {"NEWSROOM_CONFIG_DIR": str(root), "NEWSROOM_STATE_DIR": str(root)}), \
+                 patch.object(build_site, "load_articles", return_value=[]), \
+                 patch.object(build_site, "PUBLIC_DIR", root), \
+                 patch.object(build_site, "INDEX_PATH", index):
+                build_site.main()
+            payload = json.loads(re.search(
+                r'<script id="newsData" type="application/json">(.*?)</script>',
+                index.read_text(encoding="utf-8"), re.S,
+            ).group(1))
+            self.assertEqual(payload["vocabulary"], {"food": ["external-topic", "learned-topic"]})
+
+
 if __name__ == "__main__":
     unittest.main()

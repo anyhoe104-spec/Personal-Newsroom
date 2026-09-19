@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import re
 import logging
 from datetime import datetime, timezone
 
 import yaml
 from pathlib import Path
 
-from newsroom_config import state_path
+from newsroom_config import config_path, state_path
 from newsroom_logging import get_logger, log_capped, log_suppression_summary
 
 
@@ -52,6 +54,26 @@ def translation_usable(article: dict) -> bool:
         return False
     translated_summary = [line for line in article.get("translated_summary", []) if str(line).strip()]
     return bool(article.get("translated_title") and len(translated_summary) == 3 and article.get("impact"))
+
+
+def reader_vocabulary() -> dict:
+    preferences = yaml.safe_load(config_path("preferences.yaml").read_text(encoding="utf-8")) or {}
+    learned_path = state_path("learned.yaml")
+    learned = (yaml.safe_load(learned_path.read_text(encoding="utf-8")) or {}) if learned_path.exists() else {}
+    derived = learned.get("categories", {})
+    return {
+        key: list(dict.fromkeys(value.get("boost_keywords", []) + list(
+            derived.get(key, value).get("learned_tags", {})
+        )))
+        for key, value in preferences.get("categories", {}).items()
+    }
+
+
+def shell_digest(directory: Path) -> str:
+    # Daily news is network-first and must not invalidate all static assets.
+    names = ("app.js", "learning.js", "i18n.js", "style.css", "pwa.js",
+             "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png")
+    return hashlib.sha256(b"".join((directory / name).read_bytes() for name in names)).hexdigest()[:16]
 
 
 def main() -> None:
@@ -106,7 +128,7 @@ def main() -> None:
     }
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "vocabulary": {key: value.get("boost_keywords", []) for key, value in (yaml.safe_load((ROOT / "config/preferences.yaml").read_text(encoding="utf-8")) or {}).get("categories", {}).items()},
+        "vocabulary": reader_vocabulary(),
         "categories": categories,
         "articles": articles,
     }
@@ -119,6 +141,7 @@ def main() -> None:
   <title data-i18n="app.title">Personal-Newsroom</title>
   <meta name="theme-color" content="#123e35">
   <meta name="description" content="ニュースを評価して、あなたの関心に育てるパーソナルニュースルーム。">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
@@ -180,6 +203,10 @@ def main() -> None:
 </html>
 """
     INDEX_PATH.write_text(html, encoding="utf-8")
+    worker = PUBLIC_DIR / "sw.js"
+    if worker.exists():
+        digest = shell_digest(PUBLIC_DIR)
+        worker.write_text(re.sub(r"newsroom-shell-[a-z0-9]+", f"newsroom-shell-{digest}", worker.read_text(encoding="utf-8")), encoding="utf-8")
     log_suppression_summary()
     LOG.info(f"Built {INDEX_PATH}")
 
