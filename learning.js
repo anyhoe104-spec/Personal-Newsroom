@@ -18,7 +18,7 @@
     if (!object(a) || !text(a.id) || !categories.includes(a.category)) throw Error('invalid');
     return { id: text(a.id), category: a.category, title: text(a.title), source: text(a.source),
       url: safeURL(a.url), published_at: text(a.published_at), translated_title: text(a.translated_title),
-      summary: Array.isArray(a.summary) ? a.summary.slice(0, 3).map(text) : [], impact: text(a.impact),
+      summary: Array.isArray(a.translated_summary) && a.translated_summary.length ? a.translated_summary.slice(0, 3).map(text) : Array.isArray(a.summary) ? a.summary.slice(0, 3).map(text) : [], impact: text(a.impact),
       keywords: words(a.keywords), source_type: text(a.source_type), score: Number.isFinite(a.score) ? a.score : 0 };
   }
   const idKey = a => `${a.category}:${a.id}`;
@@ -37,7 +37,7 @@
         if (!object(row) || !['like', 'bad', 'none'].includes(row.value) || !validDate(row.at)) throw Error('invalid');
         const a = article({ ...row, category });
         const vote = { ...a, value: row.value, at: row.at };
-        if (!votes.has(a.id) || votes.get(a.id).at < vote.at) votes.set(a.id, vote);
+        if (!votes.has(a.id) || Date.parse(votes.get(a.id).at) < Date.parse(vote.at)) votes.set(a.id, vote);
       }
       state.feedback[category] = [...votes.values()];
     }
@@ -99,7 +99,7 @@
     function commit(next) { storage.setItem(KEY, JSON.stringify(next)); state = next; error = ''; return state; }
     return {
       get state() { return state; }, get error() { return error; },
-      update(fn) { const next = structuredClone(state); fn(next); return commit(normalize(next)); },
+      update(fn) { if (error) throw Error('storage'); const latest = storage.getItem(KEY); if (latest) state = normalize(JSON.parse(latest)); const next = structuredClone(state); fn(next); return commit(normalize(next)); },
       vote(a, value, vocabulary) {
         if (sample(a)) return state;
         return this.update(next => {
@@ -113,16 +113,19 @@
       markRead(a) { return this.update(next => { next.read[idKey(a)] = new Date().toISOString(); }); },
       import(input) {
         const incoming = normalize(input);
-        return this.update(next => {
+        const merge = next => {
+          if (input.version === 2) next.settings = incoming.settings;
           for (const c of categories) {
             const rows = new Map((next.feedback[c] || []).map(v => [v.id, v]));
-            for (const v of incoming.feedback[c] || []) if (!rows.has(v.id) || rows.get(v.id).at < v.at) rows.set(v.id, v);
+            for (const v of incoming.feedback[c] || []) if (!rows.has(v.id) || Date.parse(rows.get(v.id).at) < Date.parse(v.at)) rows.set(v.id, v);
             next.feedback[c] = [...rows.values()];
             next.tags[c] = words([...(next.tags[c] || []), ...(incoming.tags[c] || [])]);
           }
           next.saved = { ...next.saved, ...incoming.saved };
-          for (const [k, at] of Object.entries(incoming.read)) if (!next.read[k] || next.read[k] < at) next.read[k] = at;
-        });
+          for (const [k, at] of Object.entries(incoming.read)) if (!next.read[k] || Date.parse(next.read[k]) < Date.parse(at)) next.read[k] = at;
+        };
+        if (error) { const next = empty(); merge(next); return commit(normalize(next)); }
+        return this.update(merge);
       },
       reset() { const next = empty(); storage.setItem(KEY, JSON.stringify(next)); state = next; error = ''; },
       export() { return JSON.stringify(state, null, 2); },
