@@ -10,10 +10,28 @@ try { data = JSON.parse($('newsData').textContent); if (!Array.isArray(data.arti
 catch { data = { articles: [], categories: {} }; }
 const articles = data.articles.filter(a => a && L.categories.includes(a.category) && typeof a.id === 'string');
 let view = 'today', category = 'all', query = '', sort = 'recommended', unread = false;
+const categoriesByView = { today: 'all', saved: 'all', history: 'all', insights: 'all' };
+let historyLimit = 30;
+// Keep a reading session stable. Votes persist immediately; ranking is applied explicitly.
+let rankingState = structuredClone(store.state);
+const rankingSignature = s => JSON.stringify([s.feedback, s.tags, s.settings.learning]);
+const entityDecoder = document.createElement('textarea');
+function displayText(value) {
+  let text = String(value);
+  for (let i = 0; i < 3; i++) {
+    const decoded = text.replace(/&(?:#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]+);/gi, entity => {
+      // Only an entity token enters HTML parsing; decoded text is never markup.
+      entityDecoder.innerHTML = entity; return entityDecoder.value;
+    });
+    if (decoded === text) break;
+    text = decoded;
+  }
+  return text;
+}
 const label = c => t(`category.${c}`);
 const titleOf = a => a.translated_title || a.fallback_title || a.display_title || a.title;
 const vocabulary = c => [...(data.vocabulary?.[c] || []), ...(store.state.tags[c] || [])];
-function el(tag, text, className) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; }
+function el(tag, text, className) { const n = document.createElement(tag); if (text !== undefined) n.textContent = displayText(text); if (className) n.className = className; return n; }
 function button(text, action, className) { const b = el('button', text, className); b.type = 'button'; b.onclick = action; return b; }
 let noticeTimer;
 function notice(key) { const message = t(`reader.${key}`); $('feedbackStatus').textContent = message; if ($('settingsStatus')) $('settingsStatus').textContent = message; clearTimeout(noticeTimer); if (!['storage_error', 'save_failed'].includes(key)) noticeTimer = setTimeout(() => { $('feedbackStatus').textContent = ''; }, 5000); }
@@ -21,11 +39,13 @@ function update(fn) { try { fn(); render(); return true; } catch { notice('save_
 function download(content, name) { const url = URL.createObjectURL(new Blob([content], { type: 'application/json' })); const a = el('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 function relative(date) { const d = new Date(date); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : t('reader.unknown_date'); }
 function renderNav() {
+  const tabScroll = $('tabs').scrollLeft;
   $('tabs').replaceChildren();
   for (const c of ['all', ...L.categories]) {
-    const b = button(c === 'all' ? t('reader.all') : label(c), () => { category = c; render(); }, `tab ${category === c ? 'active' : ''}`);
+    const b = button(c === 'all' ? t('reader.all') : label(c), () => { category = c; historyLimit = 30; render(); }, `tab ${category === c ? 'active' : ''}`);
     b.setAttribute('aria-pressed', String(category === c)); $('tabs').append(b);
   }
+  $('tabs').scrollLeft = tabScroll;
   document.querySelectorAll('[data-view]').forEach(b => { b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'); });
 }
 function card(a) {
@@ -52,7 +72,9 @@ function card(a) {
   if (a.original_title && a.original_title !== titleOf(a)) details.append(el('p', t('article.original_title_prefix', { title: a.original_title }), 'original-title'));
   card.append(details);
   const actions = el('div', undefined, 'actions');
-  const vote = (store.state.feedback[a.category] || []).find(v => v.id === a.id)?.value;
+  const recorded = (store.state.feedback[a.category] || []).find(v => v.id === a.id);
+  const vote = recorded?.value;
+  if (recorded && vote !== 'none') card.append(el('p', t('reader.recorded_vote', { date: relative(recorded.at) }), 'muted vote-date'));
   for (const v of ['like', 'bad']) {
     const b = button(t(`feedback.${v}`), () => {
       const focus = `${a.category}:${a.id}:${v}`;
@@ -68,11 +90,16 @@ function renderArticles() {
   const pool = view === 'saved' ? Object.values(store.state.saved) : view === 'history'
     ? L.categories.flatMap(c => store.state.feedback[c] || []).filter(v => v.value !== 'none') : articles;
   const byKey = new Map(articles.map(a => [L.idKey(a), a]));
-  let ranked = L.rank(pool.map(a => byKey.get(L.idKey(a)) || a), store.state, data.vocabulary);
+  // History is a dated record, not another recommendation feed. Avoid tokenizing
+  // every past article or replacing the saved title with today's article data.
+  let ranked = view === 'history' ? [...pool].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    : L.rank(pool.map(a => byKey.get(L.idKey(a)) || a), rankingState, data.vocabulary);
   ranked = ranked.filter(a => (category === 'all' || a.category === category) && (!unread || !store.state.read[L.idKey(a)]) && `${titleOf(a)} ${a.source} ${(a.summary || []).join(' ')}`.toLowerCase().includes(query.toLowerCase()));
-  if (sort === 'latest') ranked.sort((a, b) => (Date.parse(b.published_at) || 0) - (Date.parse(a.published_at) || 0));
+  if (view !== 'history' && sort === 'latest') ranked.sort((a, b) => (Date.parse(b.published_at) || 0) - (Date.parse(a.published_at) || 0));
   $('resultCount').textContent = t('reader.results', { n: ranked.length });
-  $('app').replaceChildren(...ranked.map(card));
+  const visible = view === 'history' ? ranked.slice(0, historyLimit) : ranked;
+  $('app').replaceChildren(...visible.map(card));
+  if (visible.length < ranked.length) $('app').append(button(t('reader.more_history', { n: ranked.length - visible.length }), () => { historyLimit += 30; renderArticles(); }, 'more-history'));
   if (!ranked.length) { const panel = el('section', undefined, 'empty'); panel.append(el('h2', t(`reader.empty_${view}`)), el('p', t('reader.empty_hint'))); if (query || unread || category !== 'all') panel.append(button(t('reader.clear_filters'), () => { query = ''; unread = false; category = 'all'; $('search').value = ''; $('unread').checked = false; render(); })); $('app').append(panel); }
 }
 function renderInsights() {
@@ -105,22 +132,36 @@ function renderInsights() {
 function render() {
   document.documentElement.dataset.theme = store.state.settings.theme;
   document.body.classList.toggle('compact', store.state.settings.compact);
+  document.body.classList.toggle('secondary-view', view !== 'today');
+  document.querySelector('.hero').hidden = view !== 'today';
+  $('freshness').hidden = view !== 'today' || !staleNews;
   $('viewTitle').textContent = t(`reader.view_${view}`); renderNav();
   $('filters').hidden = view === 'insights';
+  $('sort').closest('label').hidden = view === 'history';
+  $('refreshRanking').hidden = view === 'history';
+  $('rankingHint').hidden = view === 'insights';
   view === 'insights' ? renderInsights() : renderArticles();
   const votes = L.categories.reduce((n, c) => n + L.profile(store.state, c).count, 0);
   $('learningCount').textContent = t(store.state.settings.learning ? 'reader.learning_count' : 'reader.learning_paused', { n: votes });
   $('learningToggle').checked = store.state.settings.learning; $('compactToggle').checked = store.state.settings.compact; $('theme').value = store.state.settings.theme;
+  const pending = rankingSignature(store.state) !== rankingSignature(rankingState);
+  $('refreshRanking').textContent = t(pending ? 'reader.refresh_pending' : 'reader.refresh_ranking');
+  $('rankingHint').textContent = t(view === 'history' ? 'reader.history_hint' : pending ? 'reader.ranking_pending' : 'reader.ranking_hint');
 }
 window.i18n.applyStaticText();
 $('generatedAt').textContent = data.generated_at ? new Date(data.generated_at).toLocaleString('ja-JP') : t('reader.unknown_date');
 const newest = Math.max(0, ...articles.filter(a => !L.sample(a)).map(a => Date.parse(a.published_at) || 0));
-if (!newest || Date.now() - newest > 172800000) $('freshness').hidden = false;
+const staleNews = !newest || Date.now() - newest > 172800000;
 if (store.error) notice('storage_error');
-$('search').oninput = e => { query = e.target.value; renderArticles(); };
+$('search').oninput = e => { query = e.target.value; historyLimit = 30; renderArticles(); };
 $('sort').onchange = e => { sort = e.target.value; renderArticles(); };
+$('refreshRanking').onclick = () => { rankingState = structuredClone(store.state); render(); notice('ranking_updated'); };
 $('unread').onchange = e => { unread = e.target.checked; renderArticles(); };
-document.querySelectorAll('[data-view]').forEach(b => { b.onclick = () => { view = b.dataset.view; render(); window.scrollTo({ top: 0, behavior: 'instant' }); }; });
+document.querySelectorAll('[data-view]').forEach(b => { b.onclick = () => {
+  categoriesByView[view] = category; view = b.dataset.view; category = categoriesByView[view];
+  query = ''; unread = false; historyLimit = 30; $('search').value = ''; $('unread').checked = false;
+  render(); window.scrollTo({ top: 0, behavior: 'instant' });
+}; });
 $('openSettings').onclick = () => $('settings').showModal();
 $('closeSettings').onclick = () => $('settings').close();
 $('learningToggle').onchange = e => update(() => store.update(n => { n.settings.learning = e.target.checked; }));
@@ -129,11 +170,19 @@ $('theme').onchange = e => update(() => store.update(n => { n.settings.theme = e
 $('downloadBackup').onclick = () => { let content = store.export(); if (store.error) { try { content = localStorage.getItem(L.KEY) || localStorage.getItem(L.LEGACY) || content; } catch {} } download(content, 'newsroom-backup.json'); };
 $('downloadFeedback').onclick = () => download(store.feedbackExport(), 'feedback.json');
 $('copyFeedback').onclick = async () => { try { await navigator.clipboard.writeText(store.feedbackExport()); notice('copied'); } catch { notice('copy_failed'); } };
+function importBackupText(text) {
+  try {
+    if (new Blob([text]).size > 5000000) throw Error();
+    const payload = JSON.parse(text.replace(/^\uFEFF/, ''));
+    store.import(payload); render(); notice('imported'); return true;
+  } catch { notice('import_failed'); return false; }
+}
 $('importBackup').onchange = async e => {
   const file = e.target.files[0]; if (!file) return;
-  try { if (file.size > 5000000) throw Error(); const payload = JSON.parse(await file.text()); store.import(payload); render(); notice('imported'); }
+  try { if (file.size > 5000000) throw Error(); importBackupText(await file.text()); }
   catch { notice('import_failed'); } finally { e.target.value = ''; }
 };
+$('importPastedBackup').onclick = () => { if (importBackupText($('backupText').value)) $('backupText').value = ''; };
 $('resetData').onclick = () => { if (window.confirm(t('reader.reset_confirm'))) { if (update(() => store.reset())) notice('reset_done'); } };
 window.addEventListener('storage', e => { if (e.key === L.KEY || e.key === null) { try { store = L.createStore(window.localStorage); render(); } catch { notice('storage_error'); } } });
 function connection() { $('offline').hidden = navigator.onLine; }
