@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-20T22:46:57.597543+00:00",
-  "history_runs": 18,
+  "generated_at": "2026-09-21T23:43:33.422992+00:00",
+  "history_runs": 19,
   "categories": {
     "ai_dev": {
       "Google AI Blog": {
@@ -14,9 +14,9 @@
         "recommendation": "keep"
       },
       "Google Alert: 生成AI 開発": {
-        "runs_seen": 16,
-        "average_displayed": 2.3,
-        "average_score": 62.4,
+        "runs_seen": 17,
+        "average_displayed": 2.4,
+        "average_score": 62.3,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -54,9 +54,9 @@
         "recommendation": "keep"
       },
       "Zenn AI": {
-        "runs_seen": 16,
-        "average_displayed": 2.7,
-        "average_score": 63.0,
+        "runs_seen": 17,
+        "average_displayed": 2.6,
+        "average_score": 63.1,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -64,9 +64,9 @@
         "recommendation": "keep"
       },
       "Zenn LLM": {
-        "runs_seen": 17,
-        "average_displayed": 2.8,
-        "average_score": 64.5,
+        "runs_seen": 18,
+        "average_displayed": 2.9,
+        "average_score": 64.4,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -76,9 +76,9 @@
     },
     "business": {
       "ITmedia ビジネス": {
-        "runs_seen": 18,
-        "average_displayed": 9.1,
-        "average_score": 48.4,
+        "runs_seen": 19,
+        "average_displayed": 8.9,
+        "average_score": 48.3,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -86,7 +86,7 @@
         "recommendation": "keep"
       },
       "NHK 経済": {
-        "runs_seen": 4,
+        "runs_seen": 5,
         "average_displayed": 4.0,
         "average_score": 28.6,
         "average_fallback": 0.0,
@@ -98,9 +98,9 @@
     },
     "egg": {
       "Food Dive": {
-        "runs_seen": 18,
+        "runs_seen": 19,
         "average_displayed": 2.5,
-        "average_score": 28.4,
+        "average_score": 28.3,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -108,9 +108,9 @@
         "recommendation": "keep"
       },
       "Food Industry Executive": {
-        "runs_seen": 18,
+        "runs_seen": 19,
         "average_displayed": 2.7,
-        "average_score": 27.8,
+        "average_score": 27.9,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -118,9 +118,9 @@
         "recommendation": "keep"
       },
       "Food Navigator": {
-        "runs_seen": 4,
-        "average_displayed": 2.0,
-        "average_score": 33.2,
+        "runs_seen": 5,
+        "average_displayed": 2.2,
+        "average_score": 31.8,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -148,9 +148,9 @@
         "recommendation": "keep"
       },
       "食品産業新聞社": {
-        "runs_seen": 14,
+        "runs_seen": 15,
         "average_displayed": 2.6,
-        "average_score": 28.8,
+        "average_score": 29.0,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -160,8 +160,8 @@
     },
     "food": {
       "Google Alert: スイーツ 新商品": {
-        "runs_seen": 18,
-        "average_displayed": 2.9,
+        "runs_seen": 19,
+        "average_displayed": 3.1,
         "average_score": 78.6,
         "average_fallback": 0.0,
         "likes": 0,
@@ -180,9 +180,9 @@
         "recommendation": "promote"
       },
       "グルメ Watch": {
-        "runs_seen": 18,
+        "runs_seen": 19,
         "average_displayed": 4.3,
-        "average_score": 75.5,
+        "average_score": 75.4,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,

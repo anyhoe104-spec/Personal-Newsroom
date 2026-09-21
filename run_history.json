@@ -2410,5 +2410,123 @@
         }
       }
     }
+  },
+  {
+    "generated_at": "articles:71eb5fcb137278ae",
+    "recorded_at": "2026-09-21T23:43:33.422652+00:00",
+    "categories": {
+      "business": {
+        "displayed": 10,
+        "unique_sources": 2,
+        "sources": {
+          "ITmedia ビジネス": {
+            "displayed": 6,
+            "average_score": 46.3,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "NHK 経済": {
+            "displayed": 4,
+            "average_score": 28.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "food": {
+        "displayed": 10,
+        "unique_sources": 2,
+        "sources": {
+          "Google Alert: スイーツ 新商品": {
+            "displayed": 6,
+            "average_score": 78.5,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "グルメ Watch": {
+            "displayed": 4,
+            "average_score": 74.0,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "ai_dev": {
+        "displayed": 10,
+        "unique_sources": 3,
+        "sources": {
+          "Google Alert: 生成AI 開発": {
+            "displayed": 4,
+            "average_score": 60.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn AI": {
+            "displayed": 2,
+            "average_score": 65.0,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn LLM": {
+            "displayed": 4,
+            "average_score": 63.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "egg": {
+        "displayed": 10,
+        "unique_sources": 4,
+        "sources": {
+          "Food Dive": {
+            "displayed": 3,
+            "average_score": 26.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Industry Executive": {
+            "displayed": 2,
+            "average_score": 28.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Navigator": {
+            "displayed": 3,
+            "average_score": 26.3,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "食品産業新聞社": {
+            "displayed": 2,
+            "average_score": 30.9,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      }
+    }
   }
 ]
