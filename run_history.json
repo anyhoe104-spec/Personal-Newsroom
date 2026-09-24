@@ -2804,5 +2804,139 @@
         }
       }
     }
+  },
+  {
+    "generated_at": "articles:7632223db4ef11bf",
+    "recorded_at": "2026-09-24T23:37:58.408261+00:00",
+    "categories": {
+      "business": {
+        "displayed": 10,
+        "unique_sources": 2,
+        "sources": {
+          "ITmedia ビジネス": {
+            "displayed": 6,
+            "average_score": 58.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "NHK 経済": {
+            "displayed": 4,
+            "average_score": 28.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "food": {
+        "displayed": 10,
+        "unique_sources": 3,
+        "sources": {
+          "Google Alert: スイーツ 新商品": {
+            "displayed": 5,
+            "average_score": 71.9,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "えん食べ": {
+            "displayed": 2,
+            "average_score": 69.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "グルメ Watch": {
+            "displayed": 3,
+            "average_score": 70.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "ai_dev": {
+        "displayed": 10,
+        "unique_sources": 3,
+        "sources": {
+          "Google Alert: 生成AI 開発": {
+            "displayed": 4,
+            "average_score": 66.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn AI": {
+            "displayed": 3,
+            "average_score": 60.9,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn LLM": {
+            "displayed": 3,
+            "average_score": 72.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "egg": {
+        "displayed": 10,
+        "unique_sources": 5,
+        "sources": {
+          "Food Dive": {
+            "displayed": 2,
+            "average_score": 38.5,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Industry Executive": {
+            "displayed": 1,
+            "average_score": 45.3,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Navigator": {
+            "displayed": 3,
+            "average_score": 35.2,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Google Alert: 卵 加工品": {
+            "displayed": 1,
+            "average_score": 37.4,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "食品産業新聞社": {
+            "displayed": 3,
+            "average_score": 29.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      }
+    }
   }
 ]
