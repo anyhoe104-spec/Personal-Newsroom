@@ -778,7 +778,8 @@ class ReaderThemeIntegrationTests(unittest.TestCase):
             )
             index = root / "index.html"
             with patch.dict(os.environ, {"NEWSROOM_CONFIG_DIR": str(root), "NEWSROOM_STATE_DIR": str(root)}), \
-                 patch.object(build_site, "load_articles", return_value=[]), \
+                 patch.object(build_site, "load_articles", return_value=[{
+                     "category": "food", "title": "external-topic learned-topic"}]), \
                  patch.object(build_site, "PUBLIC_DIR", root), \
                  patch.object(build_site, "INDEX_PATH", index):
                 build_site.main()
