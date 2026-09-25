@@ -57,6 +57,8 @@
 
 ### Gate 1：非公開側の日次実行を成立させる
 
+**現在地（2026-09-25 実測）：未着手。** `newsroom-themes` の PR #2 は open で未マージ、同リポジトリの Actions 実行回数は **0件**（preview を含め一度も走っていない）、`gh-pages` の最新コミット `398021e`（2026-09-24）の Publish 元は公開側 main `01f0b68`。`daily.yml` が main に無い間は `workflow_dispatch` の選択肢にも現れないため、マージが最初の一手になる。
+
 - [ ] `newsroom-themes` の PR #2（`daily.yml`）をマージする
 - [ ] **オーナー作業**：`newsroom-themes` の Actions secrets に登録する
   - `PAGES_PUSH_TOKEN`：fine-grained PAT。対象は `anyhoe104-spec/Personal-Newsroom` のみ、権限は **Contents: Read and write のみ**
