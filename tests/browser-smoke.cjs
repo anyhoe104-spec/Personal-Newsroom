@@ -28,6 +28,31 @@ const root = path.resolve(__dirname, '../public');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow at ${width}`);
     }
     await page.setViewportSize({ width: 390, height: 844 });
+    // Deep in the feed: taps must not rebuild DOM, change scroll, or show a toast.
+    const deep = page.locator('.card:has(.like:not(:disabled))').nth(4);
+    await deep.locator('details summary').click();
+    await deep.locator('.like').scrollIntoViewIfNeeded();
+    await page.evaluate(() => {
+      window.readerMutations = 0;
+      new MutationObserver(m => { window.readerMutations += m.length; }).observe(document.getElementById('app'), { childList: true });
+    });
+    const deepNode = await deep.elementHandle();
+    for (const [action, pressed] of [['.like', 'true'], ['.bad', 'true'], ['.bad', 'false'], ['.save', 'true'], ['.save', 'false']]) {
+      const b = deep.locator(action);
+      await b.evaluate(n => n.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      const before = await page.evaluate(() => window.scrollY);
+      const box = await b.boundingBox();
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      assert.ok(Math.abs(await page.evaluate(() => window.scrollY) - before) < 2, 'tap moved reading position');
+      assert.equal(await b.getAttribute('aria-pressed'), pressed, 'tap did not update persisted selection');
+      assert.equal(await deepNode.evaluate(n => n.isConnected), true, 'card was replaced');
+      assert.equal(await deep.locator('details').getAttribute('open'), null, 'collapsed summary reset');
+      assert.equal(await page.locator('#feedbackStatus').innerText(), '', 'tap showed a toast');
+    }
+    assert.equal(await page.evaluate(() => window.readerMutations), 0);
+    assert.equal(await deep.locator('.save').getAttribute('aria-pressed'), 'false');
+    await page.evaluate(() => localStorage.removeItem('personal-newsroom-state-v2')); await page.reload();
     const beforeVote = await page.locator('.card').evaluateAll(nodes => nodes.map(n => n.dataset.id));
     await page.locator('.like:not(:disabled)').first().click();
     assert.deepEqual(await page.locator('.card').evaluateAll(nodes => nodes.map(n => n.dataset.id)), beforeVote);
@@ -35,7 +60,7 @@ const root = path.resolve(__dirname, '../public');
     assert.deepEqual(await page.locator('.card').evaluateAll(nodes => nodes.map(n => n.dataset.id)), beforeVote);
     await page.locator('.bad.selected').click();
     await page.locator('.like:not(:disabled)').first().click();
-    assert.match(await page.locator('#refreshRanking').innerText(), /変更あり/);
+    assert.match(await page.locator('#refreshRanking').getAttribute('aria-label'), /変更あり/);
     await page.locator('#refreshRanking').click();
     assert.equal(await page.locator('#refreshRanking').innerText(), '順位を更新');
     assert.match(await page.locator('#learningCount').innerText(), /1/);
