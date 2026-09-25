@@ -4,7 +4,9 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-19 11:39 UTC / 作業者: Codex (Astra)。記録更新前のローカル作業リビジョン32c80fd、branch codex/release-integration。
+- 更新: 2026-09-25 / 作業者: Claude Code。branch claude/newsroom-weekly-tasks-5msgjt（main 01f0b68 起点）。文書のみの変更で本番は動かしていない。
+- 公開設定: Personal-Newsroom=public、newsroom-themes=private を実測で確認。計画どおりの向きであり、「本リポジトリをPrivate、newsroom-themesをPublic」とする逆向きの構成は決定記録が存在しない。繰り返しの確認を止めるため docs/repository-topology.md に方針・実測・採用しない理由を固定した。
+- 2026-09-19 11:39 UTC 時点の記録（作業者: Codex (Astra)、ローカル作業リビジョン32c80fd、branch codex/release-integration）は以下に保持する。
 - 完了: オーナーのSecret登録を受け、PR #26のアラートSecret切替、PR #18の競合解消/PWA/レビュー5点/RSS修復、PR #27の実機UI改善をmainへマージした（2026-09-19 GitHub API）。最終アプリmainは3dd9b02。コードはローカルとmainで一致。
 - 本番: Daily 35437648483（3dd9b02）のbuild/deployともsuccess、gh-pages d64b57aは同SHAをPublishと記録（2026-09-19 Actions API/git fetch）。Reader checks 35437591057と35437648485もsuccess。
 - Secret: GOOGLE_ALERT_FEEDSから5本すべて取得成功。スイーツ20/外食3/生成AI20/卵2/食品業界20件。各カテゴリ10件、fallback 0、history_runs=16（2026-09-19 最終buildログ）。Secret値は読んだり表示していない。Google側での旧URL無効化・再発行自体は確認していない。
@@ -16,6 +18,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 管理表: 2026-09-15 W38の大規模な設定層全面分離の10月末まで保留を維持。学習未接続/PR11未マージという8/25指摘は古い。今回の公開滞留とレビューは解消。dashboardは未変更。
 - 残件: 卵の意図しない評価は未再現。該当記事・選択ボタンの画像から保存評価日/IDを照合する。HBR404、Reddit429、農林水産省403は最終本番でも継続。他RSSにより40実記事は確保。fetch_rss重複定義はオーナー保留。
 - 次の手順: 最新公開画面でAndroidのバックアップ取込/順位更新/履歴を再確認。卵評価の再現情報が得られたら調査。全面的な非公開テーマ実行移行は再開指示があるまで拡大しない。
+- 次の手順（2026-09-25 追記）: 公開設定の方針PRをオーナーが確認する。Step 5〜7（実行主体の非公開側への切替、公開側からの実運用設定の除去、Googleアラートの作り直し）は引き続き再開指示待ち。
 
 ## Dated work reports
 
@@ -438,3 +441,15 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - その他の失敗: GitHubブラウザは未ログインで手動実行できず、今後も公開がマージ後に止まらないようmainコードpush起動を実装。公開ページのcloud browser接続は完了せず打ち切り、HTTP配信とActions結果を確認。HTMLの初回簡易チェックは実在しないID名を使ってfalseになったため、実装のIDに訂正。ローカルmain統合でWORKLOGに1回競合し、既存の全履歴を保持して解消。
 - 判断: 大規模な設定分離の運用移行はW38の保留を維持し、明示許可済みのSecret切替/公開待ち修正のみ完走。Secretの実値や旧URLは公開しない。旧Google側URLの無効化は未確認として残す。ストア審査済みや卵の未再現問題の修正済みとは表明しない。
 - 残件/次: Current handoff参照。公開停止・レビュー滞留・履歴遅延対策の未配送は解消。OS実機、卵評価、既存3媒体の取得不調と保留中の重複定義は残る。
+
+### 2026-09-25 - Claude Code, リポジトリ公開設定の方針記録
+
+- 目的: 「Personal-NewsroomをPrivateにし、newsroom-themesをPublicにする」という逆向きの構成が会話で言及されたが決定記録がない、というオーナーの指摘を受け、公開設定の方針を文書として固定し周知する。
+- 完了: `docs/repository-topology.md` を追加。方針（Public エンジン／Private テーマパック）、2026-09-25 時点の実測値、計画との差分（Step 1〜3済・4部分・5〜7未）、採用しない構成とその理由、将来変更する場合の前提を記載した。`docs/config-separation-plan.md` の状態行と「やってはいけないこと」から相互参照を張った。
+- 実測（すべて再現可能な手段で確認）: リポジトリ一覧APIで Personal-Newsroom=public / newsroom-themes=private。gh-pages 最新 398021e（2026-09-24）の Publish 元は Personal-Newsroom main 01f0b68 で、日次の実行主体は依然として公開側。gh-pages は 2026-09-19〜09-24 まで連日更新。newsroom-themes の最終 push は 2026-09-15 で、非公開側の日次実行は動いていない。`git grep 'alerts/feeds' -- config themes` は0件で、注入元は公開側の GOOGLE_ALERT_FEEDS Secret。
+- 判断の根拠: 逆向きの構成を採る記録は docs/WORKLOG/README のいずれにも無い。逆に Public のままとする判断は WORKLOG の 2026-09-09 エントリに「当初は Private 化を検討したが…」として残っている。無料プランでは Private リポジトリから GitHub Pages を配信できないため、本リポジトリの Private 化は配信停止を意味する。newsroom-themes の Public 化は分離で隠そうとしていた層そのものを公開する。
+- 影響: docs/repository-topology.md（新規）、docs/config-separation-plan.md（2行）、WORKLOG.md。コード・設定・ワークフローは変更していない。`daily_news.yml` の push トリガは public/scripts/config/requirements/ワークフローのみを対象とするため、この文書PRのマージでは日次実行は起動しない。
+- 検証: Python回帰テスト65件成功（コード無変更の確認として実行）。相互リンク先のファイル実在を確認。実測値は上記の手段で取得しており、推測は含めていない。
+- うまくいかなかったこと: 当初この指摘を「方針を逆向きへ変更してほしい」という依頼と読む可能性も検討したが、配信停止と分離目的の反転という不可逆な影響があるため、勝手に実行せず「採用しない構成」として前提条件だけを書き、判断をオーナーへ戻す形にした。
+- 残件: Step 5〜7 は未着手。旧GoogleアラートURLの無効化は未確認。オーナーが逆向きの構成を望む場合は、この文書の第4節の前提を満たす必要がある。
+- 次: オーナーの確認待ち。方針が確定したらこの文書へ追記する。
