@@ -4,18 +4,15 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-19 11:39 UTC / 作業者: Codex (Astra)。記録更新前のローカル作業リビジョン32c80fd、branch codex/release-integration。
-- 完了: オーナーのSecret登録を受け、PR #26のアラートSecret切替、PR #18の競合解消/PWA/レビュー5点/RSS修復、PR #27の実機UI改善をmainへマージした（2026-09-19 GitHub API）。最終アプリmainは3dd9b02。コードはローカルとmainで一致。
-- 本番: Daily 35437648483（3dd9b02）のbuild/deployともsuccess、gh-pages d64b57aは同SHAをPublishと記録（2026-09-19 Actions API/git fetch）。Reader checks 35437591057と35437648485もsuccess。
-- Secret: GOOGLE_ALERT_FEEDSから5本すべて取得成功。スイーツ20/外食3/生成AI20/卵2/食品業界20件。各カテゴリ10件、fallback 0、history_runs=16（2026-09-19 最終buildログ）。Secret値は読んだり表示していない。Google側での旧URL無効化・再発行自体は確認していない。
-- UI: 評価後の順位を固定し手動更新、バックアップのファイル選択制限解除と貼付け/BOM対応、安全な文字参照表示、カテゴリ追従/画面別選択、今日以外の上部情報整理、履歴30件ずつ/評価日時表示を公開済み。公開app.jsはHTTP200で修正版とバイト一致を確認（2026-09-19 HTTP取得）。
-- レビュー: config_path/state_path、静的アセット/全アイコンhash、学習state分離、unused learned_sources廃止、offline即表示を配送済み。PR18 inlineへ4052888070で回答しスレッドPRRT_kwDOSW5XRM6iu0sSを解決（2026-09-19 GitHub API）。
-- 検証: Python65/Node8/build/Chromium操作成功。実バックアップ復元・BOM・不正JSON・順位固定・履歴1000件・カテゴリ・文字参照非XSS・offline・4画面幅を確認。履歴先頭82msはこの環境の計測。Android/iOS実機の最終再確認とストア審査は未実施。
-- 公開運用: mainへpublic/scripts/config/requirements/Daily workflowの変更が入るとDaily実行。文書のみのpushは対象外。日次・手動も保持。Public側が実行主体、GitHub Pages URLは維持。
-- 記録: Claudeの設定分離とAstraの学習/UIを並行開発して競合した経緯・全過去レポートを保持。約500行のPR18、152行のPR27、文書・記録を別PRに分けた。実装はすべて配送済み。
-- 管理表: 2026-09-15 W38の大規模な設定層全面分離の10月末まで保留を維持。学習未接続/PR11未マージという8/25指摘は古い。今回の公開滞留とレビューは解消。dashboardは未変更。
-- 残件: 卵の意図しない評価は未再現。該当記事・選択ボタンの画像から保存評価日/IDを照合する。HBR404、Reddit429、農林水産省403は最終本番でも継続。他RSSにより40実記事は確保。fetch_rss重複定義はオーナー保留。
-- 次の手順: 最新公開画面でAndroidのバックアップ取込/順位更新/履歴を再確認。卵評価の再現情報が得られたら調査。全面的な非公開テーマ実行移行は再開指示があるまで拡大しない。
+- 更新: 2026-09-25 14:03 UTC / 作業者: Codex (Astra)。記録更新前 c9a0174、branch codex/fresh-news-stable-feedback。
+- 方針: 2026-09-25のオーナー指示とClaude PR #29のmigration-handoffを優先し、Gate 1→2→3→4で移行する。Personal-NewsroomはPublic、newsroom-themesはPrivateのまま。W38の全面分離保留は今回の明示指示により更新。dashboard自体は未変更。
+- 実測: 2026-09-25 GitHub APIとgit fetchで、private PR #2 open、Actions 0件、public main01f0b68、gh-pages398021eのPublish元もpublic mainと確認。Gate 1未完了。Secrets登録状況は読めない。公開側の配信設定は変更していない。
+- 今回完了: private PR #2へa444f4bを反映。publish既定false、自動実行はNEWSROOM_DAILY_ENABLED=trueのときだけ、dry runのstate commitを停止、40記事/fallbackなしの検査、public学習分析ファイルの除去。YAML/埋込みPythonの構文を検証、Actions実行は未実施。
+- 準備: public draft PR #30（2a4791f）は語彙案Bと学習分析state限定出力。Python67/Node8成功。Gate 2の実機確認前にはマージしない。追跡済みconfig/data/生成物の削除と公開Daily停止はまだ行っていない。
+- アプリ保留: ea5611bの古い記事除外と評価操作の部分更新を保持。本番未反映。今回Python68/Node8成功、9/22にbuild/Chromium操作確認済み。Gate 3完了までアプリを本番反映しない。
+- 次: オーナーがprivate PR #2をマージし、同repoにPAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDSを登録。publish=false→成果物検査→true、成功runのhead_shaとgh-pagesのPublish元を完全照合。未取得のローカルSHAだからprivate由来と推測しない。
+- Gate 2: オーナーがPagesをgh-pagesへ切替えスマホで当日ニュースを確認。その後public日次/配送を停止し、privateのNEWSROOM_DAILY_ENABLED=trueを設定。Gate 3でconfig/data/生成物削除・sample向けtests/CI修正・PR30反映。Gate 4で旧アラート再発行。機密値をチャットへ貼らない。
+- 残件: 当日40記事/fallback0の実行確認、実機確認、Gate 3削除/テスト調整、旧URL無効化、卵の未再現評価、既存媒体取得不調、保留された重複定義。移行完了とは報告しない。
 
 ## Dated work reports
 
@@ -438,3 +435,33 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - その他の失敗: GitHubブラウザは未ログインで手動実行できず、今後も公開がマージ後に止まらないようmainコードpush起動を実装。公開ページのcloud browser接続は完了せず打ち切り、HTTP配信とActions結果を確認。HTMLの初回簡易チェックは実在しないID名を使ってfalseになったため、実装のIDに訂正。ローカルmain統合でWORKLOGに1回競合し、既存の全履歴を保持して解消。
 - 判断: 大規模な設定分離の運用移行はW38の保留を維持し、明示許可済みのSecret切替/公開待ち修正のみ完走。Secretの実値や旧URLは公開しない。旧Google側URLの無効化は未確認として残す。ストア審査済みや卵の未再現問題の修正済みとは表明しない。
 - 残件/次: Current handoff参照。公開停止・レビュー滞留・履歴遅延対策の未配送は解消。OS実機、卵評価、既存3媒体の取得不調と保留中の重複定義は残る。
+
+### 2026-09-22 05:23 UTC - Codex (Astra), 古い記事と評価時の画面移動修正
+
+- 目的: 実機報告の古い記事混入、評価時のジャンプ/通知/カクつきを修正し公開する。
+- 完了: ea5611bで5ファイルを修正。fetch_rssの有効なfetch_sourceで7日制限、parse_dateのISO/RFC対応と未知日付保持。app.jsで評価と保存を部分更新にし一覧再生成/フォーカス/成功トーストを廃止。CSSは順位更新待ちを枠色で示す。記事履歴/保存の内容は削除しない。
+- 影響: public/app.js、public/style.css、scripts/fetch_rss.py、tests/browser-smoke.cjs、tests/test_freshness.py。検証生成HTML/SWは検証終了後に元へ戻した。
+- 検証: Python68/Node8/build/Chromium成功。日付境界・未来/不明/古い公開日の更新記事・有効collector除外を検証。5種類の実クリック後に選択状態、DOM保持、スクロール維持、要約開閉保持、通知なしを確認。既存のバックアップ/履歴/4画面幅/offlineテストも成功。履歴1000件の先頭77msは検証環境の値。
+- うまくいかなかったこと: 前回tree配送処理でstructuredContentが無くTypeErrorとなり配送未確認。再開後GitHub fetchを2回試しHTTP400 Invalid MCP request metadataを確認。通常git pushも1回実施したが認証未設定で失敗。ブラウザへの無断切替や認証情報探索はしていない。初回の操作テストに実選択の確認を追加して空振りクリックを検出できるよう強化し、再実行成功。
+- 判断: 7日以内を現在ニュースの条件とし、未知日付を今日として扱わない。保存/履歴は保持。評価時は画面構造を変更せず、順位更新ボタンの文言の長さも変えない。失敗通知は残し、保存失敗を成功扱いにしない。
+- 未完了: 今回のpush/PR/CI/merge/本番検証。git fetchで2026-09-22にmain01f0b68を確認したがMCPによるPR状態確認はできなかった。管理表の全面設定分離保留は継続。
+- 次: Current handoffの配送手順を再開し、実RSSの新鮮記事数と旧記事非包含を確認してから公開完了と報告する。
+
+### 2026-09-22 05:26 UTC - Codex (Astra), 接続再試行と公開構成の確認
+
+- 目的: ユーザーの再試行指示と、既存Private/themes Publicの方針が実装されたかという質問に対応。
+- 確認: MCPの両repo GETは同じmetadataエラー。公開APIからPersonal-Newsroom private=falseを確認。docs/config-separation-plan.mdとnewsroom-themes準備SETUPは既存Public/themes Privateを前提にしている。逆構成を実装済みとは説明しない。
+- 完了: 現行構成と未完了の本番移行を切り分けた。コード変更なし。直前の修正ea5611bと検証結果は保持。
+- 失敗: 接続再試行は復旧せず、PR作成/配送できない。公開設定を推測で変更していない。
+- 残件/次: GitHub接続復旧後に古い記事/評価操作修正を配送。本番移行を再開する際は、今回の説明と異なる新しい方針の記録があるか照合する。
+
+### 2026-09-25 14:03 UTC - Codex (Astra), Gate再検証と配送準備
+
+- 目的: 最新の移行指示書のGate 1現在地を実測し、順序を守って対応する。開始スキルresume-projectと終了スキルcheckpoint-projectを使用。
+- 完了: GitHub接続復旧を確認。private PR2/workflowを調べ、即時日次実行・publish既定trueを安全な手動検証先行に変更しa444f4bを反映（2026-09-25 GitHub API）。既存PR本文へ条件と次手順を追記。語彙案Bと分析state限定のpublic PR30をdraft作成（同日API）。
+- 検証: privacy Python67/Node8、保留UI Python68/Node8成功。private workflowはYAMLと埋込みPython構文検査のみ。Actions/実記事/本番は未検証。
+- 影響: private daily.yml、public build_site/analyze_source_feedbackとテスト。private状態がpublicへ再出力される経路も止め、ファイル削除だけで終わらないよう対応した。
+- うまくいかなかったこと: 初回contents APIの応答はJSONメタデータではなく復号済みYAMLで、JSON.parseが1回失敗。tree APIからblob SHAを取得して修正。以前のmetadata400は今回再現せず。Gate 1完了という推測は採用しなかった。
+- 判断: オーナー指定のPR2マージ/SecretsとGate2スマホ確認を飛ばさない。公開main/gh-pages/visibilityには書込みしていない。約束した本番変更は完了しておらず、PR準備と実行済みを明確に区別する。
+- 管理表: W38の保留より新しい2026-09-25の明示移行指示を適用。公開滞留対策はPR準備まで進め、取得不調/実機/卵評価など既存残件は維持。
+- 次: Current handoffのオーナー作業後にGate1実行を検証。Gate2確認前に削除PRをマージせず、Gate3後に保留アプリ修正を配送する。
