@@ -56,17 +56,32 @@ def translation_usable(article: dict) -> bool:
     return bool(article.get("translated_title") and len(translated_summary) == 3 and article.get("impact"))
 
 
-def reader_vocabulary() -> dict:
+def reader_vocabulary(articles: list[dict]) -> dict:
     preferences = yaml.safe_load(config_path("preferences.yaml").read_text(encoding="utf-8")) or {}
     learned_path = state_path("learned.yaml")
     learned = (yaml.safe_load(learned_path.read_text(encoding="utf-8")) or {}) if learned_path.exists() else {}
     derived = learned.get("categories", {})
-    return {
-        key: list(dict.fromkeys(value.get("boost_keywords", []) + list(
+    # Match learning.js tokens(): vocabulary must already occur in the same
+    # category's public article text. Never expose unused editorial/learned terms.
+    text_by_category: dict[str, list[str]] = {}
+    for article in articles:
+        text = " ".join([
+            article.get("title") or "", article.get("translated_title") or "",
+            article.get("raw_summary") or "", " ".join(article.get("summary") or []),
+        ]).lower()
+        text_by_category.setdefault(article.get("category"), []).append(text)
+    vocabulary = {}
+    for key, value in preferences.get("categories", {}).items():
+        candidates = value.get("boost_keywords", []) + list(
             derived.get(key, value).get("learned_tags", {})
-        )))
-        for key, value in preferences.get("categories", {}).items()
-    }
+        )
+        vocabulary[key] = list(dict.fromkeys(
+            word for word in candidates
+            if isinstance(word, str) and len(word) >= 2
+            and any(word.lower() in text for text in text_by_category.get(key, []))
+        ))
+    return vocabulary
+
 
 
 def shell_digest(directory: Path) -> str:
@@ -128,7 +143,7 @@ def main() -> None:
     }
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "vocabulary": reader_vocabulary(),
+        "vocabulary": reader_vocabulary(articles),
         "categories": categories,
         "articles": articles,
     }
