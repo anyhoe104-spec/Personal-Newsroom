@@ -14,6 +14,8 @@
 | `anyhoe104-spec/Personal-Newsroom` | エンジン（`scripts/` / `tests/` / `public/` テンプレート）と、`gh-pages` ブランチによる配信 | 🌐 **Public のまま** | 無料プランでは Public リポジトリからしか GitHub Pages を配信できない。加えて、外部の読者に見せる対象はエンジンであり、公開されていること自体に価値がある |
 | `anyhoe104-spec/newsroom-themes` | テーマパック（`sources` / `preferences` / `prompts`）と学習データ、および日次実行の主体 | 🔒 **Private のまま** | 個人の関心設定・学習の蓄積・GoogleアラートURLが入る層であり、分離の目的そのもの |
 
+2026-09-25、オーナーがこの方針を確定させた。あわせて「何を隠すか」も確定している：**関心キーワード・監視テーマ文・重み・プロンプト／GoogleアラートURL／評価・学習データは隠す。配信サイト（毎日の40記事）は公開のまま**とする。配信サイトはアプリ化したときのイメージとして「実際にこんな記事が並んでいる」ことを示す必要があり、公開されていることに価値があるという判断である。したがって有料プランへの移行は不要で、公開設定は上の表のまま変更しない。ここから先の手順は [migration-handoff.md](migration-handoff.md) にある。
+
 あわせて、次の2点も変更しない。
 
 - 配信URL `https://anyhoe104-spec.github.io/Personal-Newsroom/`（オーナーのホーム画面ショートカットが生きたままであること）
@@ -54,13 +56,14 @@
 1. **配信が止まる。** 無料プランでは Private リポジトリから GitHub Pages を配信できない。Personal-Newsroom を Private にした時点で、オーナーが毎朝読んでいるサイトが配信されなくなる
 2. **分離の目的が反転する。** `newsroom-themes` を Public にすると、個人の関心設定・学習の蓄積・アラートURLが公開される。これは分離によって隠そうとしていた層そのものである
 
-将来この向きへ変更する場合、少なくとも次が前提になる。判断はオーナーが行い、結論はこの文書へ追記する。
+**2026-09-25 のオーナー判断により、この向きへの変更は行わない。** 配信サイトを公開のまま保つ方針が確定したため、Private 化の動機自体が無くなった。以下は記録として残す。将来もう一度検討する場合、少なくとも次が前提になる。
 
 - 有料プランで Private リポジトリからの Pages 配信を有効にする、または配信専用の Public リポジトリを別に立てる（**後者は配信URLが変わるため、ホーム画面のショートカットが切れる**）
 - `newsroom-themes` から個人設定・学習データ・アラート参照を取り除く（取り除いた後の `newsroom-themes` は `themes/example/` と役割が重複する）
 
 ## 5. 参照
 
+- 移行の手順とゲート（アプリ改修側への指示書）：[migration-handoff.md](migration-handoff.md)
 - 手順と背景：[config-separation-plan.md](config-separation-plan.md)
 - アラートURLの差し替え：[alert-rotation.md](alert-rotation.md)
 - 本番確認の記録：[operations-verification.md](operations-verification.md)

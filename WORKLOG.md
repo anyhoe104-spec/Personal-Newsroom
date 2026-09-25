@@ -5,6 +5,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 ## Current handoff
 
 - 更新: 2026-09-25 / 作業者: Claude Code。branch claude/newsroom-weekly-tasks-5msgjt（main 01f0b68 起点）。文書のみの変更で本番は動かしていない。
+- 決定（2026-09-25 オーナー）: 関心キーワード/テーマ文/重み/プロンプト・GoogleアラートURL・評価学習データは隠す。配信サイトはアプリ化のイメージとして必要なため公開のまま。公開設定の入替は行わない。手順は docs/migration-handoff.md。
 - 公開設定: Personal-Newsroom=public、newsroom-themes=private を実測で確認。計画どおりの向きであり、「本リポジトリをPrivate、newsroom-themesをPublic」とする逆向きの構成は決定記録が存在しない。繰り返しの確認を止めるため docs/repository-topology.md に方針・実測・採用しない理由を固定した。
 - 2026-09-19 11:39 UTC 時点の記録（作業者: Codex (Astra)、ローカル作業リビジョン32c80fd、branch codex/release-integration）は以下に保持する。
 - 完了: オーナーのSecret登録を受け、PR #26のアラートSecret切替、PR #18の競合解消/PWA/レビュー5点/RSS修復、PR #27の実機UI改善をmainへマージした（2026-09-19 GitHub API）。最終アプリmainは3dd9b02。コードはローカルとmainで一致。
@@ -453,3 +454,15 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - うまくいかなかったこと: 当初この指摘を「方針を逆向きへ変更してほしい」という依頼と読む可能性も検討したが、配信停止と分離目的の反転という不可逆な影響があるため、勝手に実行せず「採用しない構成」として前提条件だけを書き、判断をオーナーへ戻す形にした。
 - 残件: Step 5〜7 は未着手。旧GoogleアラートURLの無効化は未確認。オーナーが逆向きの構成を望む場合は、この文書の第4節の前提を満たす必要がある。
 - 次: オーナーの確認待ち。方針が確定したらこの文書へ追記する。
+
+### 2026-09-25 (2) - Claude Code, 隠す対象の確定と移行指示書
+
+- 目的: オーナーの決定（①関心キーワード等/②アラートURL/③評価学習データは隠す、④配信サイトは公開のまま）を受け、移行を完了させるための手順をアプリ改修側が読める形で配送する。
+- 完了: `docs/migration-handoff.md` を追加（Gate 1〜4、停止条件、オーナー専任作業、完了条件）。`docs/repository-topology.md` に決定を追記し逆向き構成の検討を終了と記録。非公開 newsroom-themes に `daily.yml` を追加し PR #2 を作成（本番日次＋state コミット＋公開 gh-pages への配送、publish=false で配送なし実行も可）。SETUP.md に PAGES_PUSH_TOKEN と切替手順を反映。`tests/test_regressions.py` の設定層ガードの検出パターンを厳格化。
+- 実測（すべて再現した数値）: 公開ページに boost_keywords が埋め込まれている（新規事業/価格戦略/卵加工 各1件、downrank の 為替/株価 は0件）。用途は app.js:33,96 と learning.js:62,85,109 の端末内再ランキング。よって④を公開のまま保つ限り①は完全には隠れない。`config/`+`data/` を削除した複製でテストは 65件中 errors=2、`NEWSROOM_CONFIG_DIR=themes/example` を与えると errors=1。失敗するのは test_every_google_alert_names_an_injection_lookup（config/sources.yaml 直読み）と test_japanese_display_article_gets_localized_fields のみ。非公開側の themes/personal 3ファイルは公開側 config/ とバイト単位で同一。preview.yml は workflow_dispatch のみで配送ステップなし。公開の本番配信は今も actions/deploy-pages で、gh-pages は未使用の並走経路。
+- ガードの厳格化: 旧判定 `'ROOT / "config"' in source` は `ROOT / "config/preferences.yaml"` の形を取りこぼす。前方一致 `'ROOT / "config'` へ変更。現行 scripts では誤検出0件、故意に直書きを1行足すと検出して失敗することを確認（正のコントロール）。build_site.py は元に戻した。
+- 影響: docs/migration-handoff.md（新規）、docs/repository-topology.md、WORKLOG.md、tests/test_regressions.py（1行の判定変更）。newsroom-themes 側は .github/workflows/daily.yml と SETUP.md。公開側のコード・設定・ワークフローの挙動は変更していない。
+- 検証: Python 65件成功。ガードの正のコントロールを確認。daily.yml はYAMLとして妥当。**Actions 上での daily.yml 実行は未検証**（Secret 未登録のため実行できない）。publish_gh_pages.sh の挙動は公開側で既検証。
+- 意図的にやらなかったこと: ①の公開ページ残留（vocabulary）の修正を実装していない。build_site.py/app.js/learning.js をアプリ改修側が同時に触っているため、先に変更しても衝突して捨てられるだけだと判断した。案A/B/Cと推奨（B: その日の記事に出現する語だけに絞る）を指示書§5に書き、実装と判断を委ねた。Step 6 の削除PRを先に作らなかったのは、Gate 2 の実機確認前にマージされると配信が止まるため。
+- 残件: Gate 1 はオーナーの Secret 登録待ち（PAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDS）。Gate 2 の Pages 配信元切替、Gate 4 のアラート再発行もオーナー作業。①の完全な隠蔽は Gate 3 と §5 の対応の両方が揃ってから。
+- 次: newsroom-themes PR #2 のマージと Secret 登録の後、publish=false → true の順で手動実行して Gate 1 を閉じる。
