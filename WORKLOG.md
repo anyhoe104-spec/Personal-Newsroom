@@ -4,15 +4,14 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-25 14:03 UTC / 作業者: Codex (Astra)。記録更新前 c9a0174、branch codex/fresh-news-stable-feedback。
-- 方針: 2026-09-25のオーナー指示とClaude PR #29のmigration-handoffを優先し、Gate 1→2→3→4で移行する。Personal-NewsroomはPublic、newsroom-themesはPrivateのまま。W38の全面分離保留は今回の明示指示により更新。dashboard自体は未変更。
-- 実測: 2026-09-25 GitHub APIとgit fetchで、private PR #2 open、Actions 0件、public main01f0b68、gh-pages398021eのPublish元もpublic mainと確認。Gate 1未完了。Secrets登録状況は読めない。公開側の配信設定は変更していない。
-- 今回完了: private PR #2へa444f4bを反映。publish既定false、自動実行はNEWSROOM_DAILY_ENABLED=trueのときだけ、dry runのstate commitを停止、40記事/fallbackなしの検査、public学習分析ファイルの除去。YAML/埋込みPythonの構文を検証、Actions実行は未実施。
-- 準備: public draft PR #30（2a4791f）は語彙案Bと学習分析state限定出力。Python67/Node8成功。Gate 2の実機確認前にはマージしない。追跡済みconfig/data/生成物の削除と公開Daily停止はまだ行っていない。
-- アプリ保留: ea5611bの古い記事除外と評価操作の部分更新を保持。本番未反映。今回Python68/Node8成功、9/22にbuild/Chromium操作確認済み。Gate 3完了までアプリを本番反映しない。
-- 次: オーナーがprivate PR #2をマージし、同repoにPAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDSを登録。publish=false→成果物検査→true、成功runのhead_shaとgh-pagesのPublish元を完全照合。未取得のローカルSHAだからprivate由来と推測しない。
-- Gate 2: オーナーがPagesをgh-pagesへ切替えスマホで当日ニュースを確認。その後public日次/配送を停止し、privateのNEWSROOM_DAILY_ENABLED=trueを設定。Gate 3でconfig/data/生成物削除・sample向けtests/CI修正・PR30反映。Gate 4で旧アラート再発行。機密値をチャットへ貼らない。
-- 残件: 当日40記事/fallback0の実行確認、実機確認、Gate 3削除/テスト調整、旧URL無効化、卵の未再現評価、既存媒体取得不調、保留された重複定義。移行完了とは報告しない。
+- 更新: 2026-09-29 JST / 作業者: Codex (Astra)。記録前local4326884、branch codex/fresh-news-stable-feedback。リモートPR31のebdce73とは同じtree、main11b1552とは分岐中。未解決の作業ツリー変更なしで開始。
+- Gate 1完了: dry run36211146193は9/26成功、成果物40記事/fallback0/分析JSONとalert URLなしを検査済み。private配送run36533412291は9/29 15:53 JSTに成功。gh-pages31fe091のPublish元fae4e04563495456fda972ae12ee31bc8a7d5e6dが同run.head_shaと一致（9/29 GitHub API実測）。全カテゴリ10記事、翻訳API10件成功、localization/synthetic fallbackとも0。
+- 前回失敗: 9/26 run36213099156は翻訳12件成功後の再選定で別の未翻訳記事1件が入り品質検査で停止。APIキー不良ではない。その後Claudeのprivate fae4e04がfallback_titleを停止条件から外し、synthetic fallbackだけ拒否するよう変更。今回成功結果は従来条件でも合格。条件緩和を今回の成功原因と断定しない。
+- Gate 2未確認: オーナーがpublic Personal-Newsroom Settings/PagesでDeploy from a branch、gh-pages、/(root)を選び保存し、スマホで当日記事を確認する。切替済みか実測できていない。確認前にpublic日次停止/config/data削除をしない。
+- 後続: Gate2実機確認後にpublic日次配送を停止しprivate NEWSROOM_DAILY_ENABLED=trueを設定。Gate3でconfig/data/生成物削除、sample CI、PR30語彙案B/分析state限定を反映。その後アプリ修正。Gate4は旧アラート再発行。
+- PR: public30/31/32/33 open（9/29 API）。31と33は評価スクロール修正が重複し得るため統合前に比較する。PR29はmainへ統合済み。今回コード変更なし。
+- 管理表: W39のGate1未確認は今回解消。pr10-quality-metrics孤立記録とPR32整理は別残件。古い8/25の学習未接続/PR11未統合は現状を表さない。ユーザーの明示移行継続に従う。
+- その他残件: 鮮度・評価操作修正はPR31で本番未反映。卵の意図しない評価、取得先不調、重複定義は継続。Pages実機・日次継続稼働・Gate3/4は完了扱いにしない。
 
 ## Dated work reports
 
@@ -465,3 +464,14 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 判断: オーナー指定のPR2マージ/SecretsとGate2スマホ確認を飛ばさない。公開main/gh-pages/visibilityには書込みしていない。約束した本番変更は完了しておらず、PR準備と実行済みを明確に区別する。
 - 管理表: W38の保留より新しい2026-09-25の明示移行指示を適用。公開滞留対策はPR準備まで進め、取得不調/実機/卵評価など既存残件は維持。
 - 次: Current handoffのオーナー作業後にGate1実行を検証。Gate2確認前に削除PRをマージせず、Gate3後に保留アプリ修正を配送する。
+
+### 2026-09-29 JST - Codex (Astra), 非公開配送の成功確認
+
+- 目的: 開始スキルで中断した配送検証を再開。終了スキルで確認結果を引き継ぐ。
+- 完了: 最新run36533412291の全工程成功、40記事、翻訳fallback0、配送元SHA完全一致を9/29 GitHub API/ログで確認。Gate1完了と判定。
+- 影響: WORKLOGのみ。public/privateのコード、Pages設定、Secretsは変更していない。
+- 検証: 9/26の失敗ログと9/29の成功ログ、private修正commit、public main/gh-pages/PR一覧を照合。ローカルテストは文書のみのため再実行していない。
+- うまくいかなかったこと: 9/26配送は翻訳後の再選定で未翻訳1件が入り停止。キーの再設定は不要だった。再開時のAPI応答を全文表示して1回切詰めとなり、必要フィールド抽出に変更して確認した。
+- 判断: Claude側の検査緩和は保持。最新出力のfallbackは実測0であり、単に緩和で通ったとは報告しない。9/26失敗実行を再実行せず最新成功を採用。
+- 管理表: W39のGate1未確認を解消。孤立記録/PR滞留の整理、Gate2実機、Gate3/4は残る。管理表自体は更新していない。
+- 次: オーナーのPages切替とスマホ確認を受けてpublic配送停止・private日次有効化・Gate3へ進む。PR31と新PR33の重複を統合前に比較する。
