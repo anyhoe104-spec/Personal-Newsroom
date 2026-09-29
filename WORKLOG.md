@@ -4,18 +4,13 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-19 11:39 UTC / 作業者: Codex (Astra)。記録更新前のローカル作業リビジョン32c80fd、branch codex/release-integration。
-- 完了: オーナーのSecret登録を受け、PR #26のアラートSecret切替、PR #18の競合解消/PWA/レビュー5点/RSS修復、PR #27の実機UI改善をmainへマージした（2026-09-19 GitHub API）。最終アプリmainは3dd9b02。コードはローカルとmainで一致。
-- 本番: Daily 35437648483（3dd9b02）のbuild/deployともsuccess、gh-pages d64b57aは同SHAをPublishと記録（2026-09-19 Actions API/git fetch）。Reader checks 35437591057と35437648485もsuccess。
-- Secret: GOOGLE_ALERT_FEEDSから5本すべて取得成功。スイーツ20/外食3/生成AI20/卵2/食品業界20件。各カテゴリ10件、fallback 0、history_runs=16（2026-09-19 最終buildログ）。Secret値は読んだり表示していない。Google側での旧URL無効化・再発行自体は確認していない。
-- UI: 評価後の順位を固定し手動更新、バックアップのファイル選択制限解除と貼付け/BOM対応、安全な文字参照表示、カテゴリ追従/画面別選択、今日以外の上部情報整理、履歴30件ずつ/評価日時表示を公開済み。公開app.jsはHTTP200で修正版とバイト一致を確認（2026-09-19 HTTP取得）。
-- レビュー: config_path/state_path、静的アセット/全アイコンhash、学習state分離、unused learned_sources廃止、offline即表示を配送済み。PR18 inlineへ4052888070で回答しスレッドPRRT_kwDOSW5XRM6iu0sSを解決（2026-09-19 GitHub API）。
-- 検証: Python65/Node8/build/Chromium操作成功。実バックアップ復元・BOM・不正JSON・順位固定・履歴1000件・カテゴリ・文字参照非XSS・offline・4画面幅を確認。履歴先頭82msはこの環境の計測。Android/iOS実機の最終再確認とストア審査は未実施。
-- 公開運用: mainへpublic/scripts/config/requirements/Daily workflowの変更が入るとDaily実行。文書のみのpushは対象外。日次・手動も保持。Public側が実行主体、GitHub Pages URLは維持。
-- 記録: Claudeの設定分離とAstraの学習/UIを並行開発して競合した経緯・全過去レポートを保持。約500行のPR18、152行のPR27、文書・記録を別PRに分けた。実装はすべて配送済み。
-- 管理表: 2026-09-15 W38の大規模な設定層全面分離の10月末まで保留を維持。学習未接続/PR11未マージという8/25指摘は古い。今回の公開滞留とレビューは解消。dashboardは未変更。
-- 残件: 卵の意図しない評価は未再現。該当記事・選択ボタンの画像から保存評価日/IDを照合する。HBR404、Reddit429、農林水産省403は最終本番でも継続。他RSSにより40実記事は確保。fetch_rss重複定義はオーナー保留。
-- 次の手順: 最新公開画面でAndroidのバックアップ取込/順位更新/履歴を再確認。卵評価の再現情報が得られたら調査。全面的な非公開テーマ実行移行は再開指示があるまで拡大しない。
+- 更新: 2026-09-29 UTC / 作業者: Claude Code。branch claude/affectionate-hopper-477rf2（main 01f0b68 基点）。
+- 完了: 評価ボタンを押すと一覧が作り直されスクロールが先頭付近へ飛ぶ不具合を修正（評価・保存は該当カードだけ差替え）。カテゴリタブを左右フリックで移動できるようにした。browser-smokeへ両方の回帰チェックを追加。
+- 本番の実行主体（2026-09-29 GitHub Actions API/git fetchで確認）: **まだ公開側**。gh-pagesの直近10件はすべて公開側 Daily（run #157〜166、main 01f0b68）の「Publish site 01f0b68…」。Pagesへの配信も公開側のdeploy-pagesのまま。
+- 非公開側 newsroom-themes（2026-09-29 Actions API）: Private newsroom daily は手動4回（9/26: #1,#2,#4 failure、#3 success）、schedule 3回（9/27〜29）はすべて skipped（`vars.NEWSROOM_DAILY_ENABLED` 未設定のため）。#4 は収集・検証まで成功したが公開ゲート「Fallback articles prohibit production publication」で停止。原因は翻訳失敗のai_dev実記事1件（localization_fallback=1、fallback_title付き）。validate_newsroom.pyは合格扱い、公開側は同種の記事を毎日公開している。gh-pagesに非公開側からのpushは1度もない。
+- 要オーナー判断: 公開ゲートを「合成fallback（source_type=fallback）のみ拒否」に緩めるか。Claudeが変更を試みたが本番安全チェックの緩和として自動審査に拒否されたため未変更。
+- 残件: 上記ゲート判断 → publish=true手動実行 → Pages配信元をgh-pagesへ切替 → 実機確認 → 公開側schedule停止/NEWSROOM_DAILY_ENABLED=true。SETUP.mdが参照する docs/migration-handoff.md は公開リポジトリに存在しない。公開gh-pagesにrun_history.json/source_recommendations.jsonが出ている（非公開側は除去するが公開側は出力）。卵の意図しない評価は未再現。HBR404/Reddit429/農林水産省403継続。fetch_rss重複定義はオーナー保留。
+- 次の手順: このブランチのUI修正をレビュー・マージし、スマホでフリックと評価位置を確認する。非公開側移行は上記ゲート判断から。
 
 ## Dated work reports
 
@@ -438,3 +433,14 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - その他の失敗: GitHubブラウザは未ログインで手動実行できず、今後も公開がマージ後に止まらないようmainコードpush起動を実装。公開ページのcloud browser接続は完了せず打ち切り、HTTP配信とActions結果を確認。HTMLの初回簡易チェックは実在しないID名を使ってfalseになったため、実装のIDに訂正。ローカルmain統合でWORKLOGに1回競合し、既存の全履歴を保持して解消。
 - 判断: 大規模な設定分離の運用移行はW38の保留を維持し、明示許可済みのSecret切替/公開待ち修正のみ完走。Secretの実値や旧URLは公開しない。旧Google側URLの無効化は未確認として残す。ストア審査済みや卵の未再現問題の修正済みとは表明しない。
 - 残件/次: Current handoff参照。公開停止・レビュー滞留・履歴遅延対策の未配送は解消。OS実機、卵評価、既存3媒体の取得不調と保留中の重複定義は残る。
+
+### 2026-09-29 UTC - Claude Code, 評価時スクロール修正・タブのフリック移動・切替状況の確認
+
+- 目的: 開始スキルで現状確認し、公開/非公開リポジトリ分離後の本番切替状況を検証。評価時に先頭へ戻る不具合とタブのフリック移動を実装する。
+- 完了: `public/app.js` に `updateCard()` を追加し、評価と保存は該当カードのみ `replaceWith` で差し替え、件数・順位ヒントは新設の `renderStatus()` だけ更新する。`selectCategory()`・`revealActiveTab()`・`enableSwipeTabs()` を追加し、`.page-shell` 上の横フリック（60px以上、横が縦の1.5倍以上、800ms以内）で隣のタブへ移動。タブ列・入力欄・画面端24px（OSの戻る操作）は対象外。移動後は一覧先頭がタブ直下に来るよう必要な時だけ上へスクロールし、アクティブタブを横スクロールで表示する。
+- 影響: public/app.js、public/sw.js（ビルドによるキャッシュ名更新）、tests/browser-smoke.cjs、WORKLOG.md。生成index.htmlは含めない。
+- 検証: Python 65件OK（venv）、Node 8件OK、node --check OK、browser-smoke PASS（追加したタッチ評価位置・フリック往復を含む）。修正前のapp.jsで追加チェックが「vote moved the card from 134 to 3303」で失敗することを確認。本番gh-pagesのデータでPixel 7エミュレーション: 修正前scrollY 3805→388、修正後は対象カードの画面位置243px→243pxで不変。フリックは全→経済→スイーツ→AI→卵、端で停止、逆方向で戻る、縦スワイプ・画面端では変化なし、分析画面でも動作、ページエラー0。
+- 原因: 評価のたびに `render()` がタブと `#app` を `replaceChildren` で作り直し、Chromeがスクロール位置を#app先頭付近へ補正していた。履歴画面では評価日時順のため、評価した記事が先頭へ並び替わる動きも同じ経路で起きていた（今回の差替え方式で再描画まで位置を維持）。
+- うまくいかなかったこと: フリック判定を最初 `#app` にだけ付けたところ、見出しや順位ヒント上の操作が効かず、テストで2回目以降の移動が止まった。`.page-shell` 全体へ広げた。移動後のスクロール基準を最初に見出し(section-heading)にしたが、生成HTMLでは見出しがタブより上にあるため常に先頭へ戻ってしまい、#app基準へ修正（計3回）。ローカルのpip installはsgmllib3kのビルドで失敗し、venvで解決。非公開側の公開ゲート緩和は自動審査に拒否され未変更、同じ変更を別経路で試していない。
+- 管理表: W38の「設定層分離は10月末まで保留」に対し、非公開daily（PR #2）は9/26にマージ済みで手動試行も行われている。管理表側は古い。dashboardは未変更。
+- 次: Current handoff参照。
