@@ -502,7 +502,10 @@ class ConfigLocationTests(unittest.TestCase):
             if path.name == "newsroom_config.py":
                 continue
             source = path.read_text(encoding="utf-8")
-            if 'ROOT / "data"' in source or 'ROOT / "config"' in source:
+            # Match the prefix, not the exact string: ROOT / "config/preferences.yaml"
+            # slipped past the closed-quote form and read the public config even
+            # when a theme pack was configured.
+            if 'ROOT / "data' in source or 'ROOT / "config' in source:
                 offenders.append(path.name)
         self.assertEqual(offenders, [])
 
