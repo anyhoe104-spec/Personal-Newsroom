@@ -3656,5 +3656,155 @@
         }
       }
     }
+  },
+  {
+    "generated_at": "articles:42983a5f0ee7b208",
+    "recorded_at": "2026-10-01T00:14:20.519948+00:00",
+    "categories": {
+      "business": {
+        "displayed": 10,
+        "unique_sources": 2,
+        "sources": {
+          "ITmedia ビジネス": {
+            "displayed": 6,
+            "average_score": 51.3,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "NHK 経済": {
+            "displayed": 4,
+            "average_score": 28.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "food": {
+        "displayed": 10,
+        "unique_sources": 2,
+        "sources": {
+          "Google Alert: スイーツ 新商品": {
+            "displayed": 4,
+            "average_score": 72.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "グルメ Watch": {
+            "displayed": 6,
+            "average_score": 74.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "ai_dev": {
+        "displayed": 10,
+        "unique_sources": 5,
+        "sources": {
+          "Google Alert: 生成AI 開発": {
+            "displayed": 1,
+            "average_score": 66.5,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "OpenAI Blog": {
+            "displayed": 1,
+            "average_score": 64.7,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Reddit r/ChatGPT": {
+            "displayed": 1,
+            "average_score": 58.6,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn AI": {
+            "displayed": 4,
+            "average_score": 63.8,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Zenn LLM": {
+            "displayed": 3,
+            "average_score": 59.8,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      },
+      "egg": {
+        "displayed": 10,
+        "unique_sources": 6,
+        "sources": {
+          "Food Business News": {
+            "displayed": 1,
+            "average_score": 31.0,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Dive": {
+            "displayed": 3,
+            "average_score": 27.4,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Industry Executive": {
+            "displayed": 1,
+            "average_score": 38.3,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Food Navigator": {
+            "displayed": 1,
+            "average_score": 40.9,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Google Alert: 卵 加工品": {
+            "displayed": 2,
+            "average_score": 44.1,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          },
+          "Google Alert: 食品業界 ニュース": {
+            "displayed": 2,
+            "average_score": 42.5,
+            "fallback_count": 0,
+            "likes": 0,
+            "bads": 0,
+            "net_feedback": 0
+          }
+        }
+      }
+    }
   }
 ]
