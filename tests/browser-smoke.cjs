@@ -110,6 +110,25 @@ const root = path.resolve(__dirname, '../public');
     await page.evaluate(() => localStorage.setItem('personal-newsroom-state-v2', '{broken')); await page.reload();
     assert.ok(await page.locator('.card').count() > 0); await page.locator('.like:not(:disabled)').first().click();
     assert.equal(await page.evaluate(() => localStorage.getItem('personal-newsroom-state-v2')), '{broken');
+    // Touch device: a vote keeps the reader where they were, and a flick moves between category tabs.
+    const touch = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const phone = await touch.newPage(); phone.on('pageerror', e => errors.push(e.message));
+    await phone.goto(url); await phone.waitForSelector('.card');
+    const deep = phone.locator('#app .card').filter({ has: phone.locator('.like:not(:disabled)') }).nth(5);
+    await deep.scrollIntoViewIfNeeded(); const deepId = await deep.getAttribute('data-id');
+    const yBefore = (await deep.boundingBox()).y; await deep.locator('.like').tap();
+    const yAfter = (await phone.locator(`#app .card[data-id="${deepId}"]`).boundingBox()).y;
+    assert.ok(Math.abs(yAfter - yBefore) < 2, `vote moved the card from ${yBefore} to ${yAfter}`);
+    const cdp = await touch.newCDPSession(phone), activeTab = () => phone.locator('.tab.active').textContent();
+    const flick = async (x1, x2) => {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x1, y: 600 }] });
+      for (let i = 1; i <= 6; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x1 + (x2 - x1) * i / 6, y: 600 }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    const firstTab = await activeTab(); await flick(300, 100);
+    const secondTab = await activeTab(); assert.notEqual(secondTab, firstTab, 'left flick did not move to the next tab');
+    await flick(100, 300); assert.equal(await activeTab(), firstTab, 'right flick did not move back');
+    await touch.close();
     assert.deepEqual(errors, []);
     if (process.env.QA_OUTPUT) {
       fs.mkdirSync(process.env.QA_OUTPUT, { recursive: true });
@@ -122,6 +141,6 @@ const root = path.resolve(__dirname, '../public');
       await page.screenshot({ path: path.join(process.env.QA_OUTPUT, 'mobile.png') });
       await page.setViewportSize({ width: 1280, height: 900 }); await page.screenshot({ path: path.join(process.env.QA_OUTPUT, 'desktop.png') });
     }
-    console.log('PASS: mobile/desktop, votes, reload, saved/history, search, tags, settings, backup/import, offline, corrupt storage; no page errors');
+    console.log('PASS: mobile/desktop, votes, reload, saved/history, search, tags, settings, backup/import, offline, corrupt storage, touch vote position, tab flick; no page errors');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); process.exit(1); });

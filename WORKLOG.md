@@ -7,7 +7,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 更新: 2026-10-03 UTC / 作業者: Claude Code。branch claude/stop-public-daily（main 11b1552 基点、PR #34）。
 - 移行状況（docs/migration-handoff.md）: Gate 1 完了（newsroom-themes run #8 が 2026-09-29 に gh-pages を bfdac02..31fe091 へ更新、Actionsログで確認）。Gate 2: オーナーが 2026-10-03 に Pages 配信元を gh-pages へ切替、スマホで当日ニュースを確認（オーナー報告）。公開側 daily_news.yml の schedule/push/配送/deploy 停止は PR #34（未マージ）。
 - 非公開側: newsroom-themes PR #3（公開前チェックを合成fallbackのみ拒否）を 2026-10-03 までにマージ済み（git fetch で確認）。`NEWSROOM_DAILY_ENABLED` はオーナー作業。このセッションからは Pages設定・Actions変数をAPIで読めず（proxy 403）、設定済みかは未確認。
-- PR #33（評価時のスクロール維持・タブのフリック移動）は 2026-10-03 時点で未マージ。
+- PR #33（評価時のスクロール維持・タブのフリック移動）は 2026-10-03 時点で未マージ。main との WORKLOG.md 競合を解消済み（main を取り込み）。
 - 未着手: Gate 3（config/ 3件・data/ 4件・public の生成物3件の削除、.gitignore、テスト2件、checks.yml を themes/example と合成記事フィクスチャへ向ける）。Claudeが着手したがファイル削除が自動審査に拒否され、オーナーの明示判断待ち。Gate 4（Googleアラート作り直し）はオーナー作業。§5（vocabulary埋め込みの扱い）は未判断。
 - 次の手順: PR #34 をマージ → 翌朝 gh-pages 最新コミットの SHA が公開側に存在しないこと（非公開側配送）を確認 → Gate 3 をオーナーの明示許可で実施。
 
@@ -457,6 +457,17 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 残件: Gate 1 はオーナーの Secret 登録待ち（PAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDS）。Gate 2 の Pages 配信元切替、Gate 4 のアラート再発行もオーナー作業。①の完全な隠蔽は Gate 3 と §5 の対応の両方が揃ってから。
 - 次: newsroom-themes PR #2 のマージと Secret 登録の後、publish=false → true の順で手動実行して Gate 1 を閉じる。
 
+
+### 2026-09-29 UTC - Claude Code, 評価時スクロール修正・タブのフリック移動・切替状況の確認
+
+- 目的: 開始スキルで現状確認し、公開/非公開リポジトリ分離後の本番切替状況を検証。評価時に先頭へ戻る不具合とタブのフリック移動を実装する。
+- 完了: `public/app.js` に `updateCard()` を追加し、評価と保存は該当カードのみ `replaceWith` で差し替え、件数・順位ヒントは新設の `renderStatus()` だけ更新する。`selectCategory()`・`revealActiveTab()`・`enableSwipeTabs()` を追加し、`.page-shell` 上の横フリック（60px以上、横が縦の1.5倍以上、800ms以内）で隣のタブへ移動。タブ列・入力欄・画面端24px（OSの戻る操作）は対象外。移動後は一覧先頭がタブ直下に来るよう必要な時だけ上へスクロールし、アクティブタブを横スクロールで表示する。
+- 影響: public/app.js、public/sw.js（ビルドによるキャッシュ名更新）、tests/browser-smoke.cjs、WORKLOG.md。生成index.htmlは含めない。
+- 検証: Python 65件OK（venv）、Node 8件OK、node --check OK、browser-smoke PASS（追加したタッチ評価位置・フリック往復を含む）。修正前のapp.jsで追加チェックが「vote moved the card from 134 to 3303」で失敗することを確認。本番gh-pagesのデータでPixel 7エミュレーション: 修正前scrollY 3805→388、修正後は対象カードの画面位置243px→243pxで不変。フリックは全→経済→スイーツ→AI→卵、端で停止、逆方向で戻る、縦スワイプ・画面端では変化なし、分析画面でも動作、ページエラー0。
+- 原因: 評価のたびに `render()` がタブと `#app` を `replaceChildren` で作り直し、Chromeがスクロール位置を#app先頭付近へ補正していた。履歴画面では評価日時順のため、評価した記事が先頭へ並び替わる動きも同じ経路で起きていた（今回の差替え方式で再描画まで位置を維持）。
+- うまくいかなかったこと: フリック判定を最初 `#app` にだけ付けたところ、見出しや順位ヒント上の操作が効かず、テストで2回目以降の移動が止まった。`.page-shell` 全体へ広げた。移動後のスクロール基準を最初に見出し(section-heading)にしたが、生成HTMLでは見出しがタブより上にあるため常に先頭へ戻ってしまい、#app基準へ修正（計3回）。ローカルのpip installはsgmllib3kのビルドで失敗し、venvで解決。非公開側の公開ゲート緩和は自動審査に拒否され未変更、同じ変更を別経路で試していない。
+- 管理表: W38の「設定層分離は10月末まで保留」に対し、非公開daily（PR #2）は9/26にマージ済みで手動試行も行われている。管理表側は古い。dashboardは未変更。
+- 次: Current handoff参照。
 
 ### 2026-10-03 UTC - Claude Code, 本番切替（Gate 1〜2）
 
