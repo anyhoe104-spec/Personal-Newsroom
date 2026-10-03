@@ -23,9 +23,9 @@ jobs:
       # so the rotating file is only useful for local runs.
       NEWSROOM_LOG_FILE: ""
       # The personal pack is private now; check the engine against the sample
-      # pack, and keep the state it writes out of the checkout.
+      # pack. .state/ is gitignored. (runner.* is not available in job-level env.)
       NEWSROOM_CONFIG_DIR: ${{ github.workspace }}/themes/example
-      NEWSROOM_STATE_DIR: ${{ runner.temp }}/newsroom-state
+      NEWSROOM_STATE_DIR: ${{ github.workspace }}/.state
     steps:
       - name: Checkout
         uses: actions/checkout@v4
