@@ -87,16 +87,16 @@ git cat-file -e <SHA>^{commit}                    # 公開側に無ければ exi
 
 ### Gate 3：公開側から①③を除去する（ここが「隠す」の本体）
 
-- [ ] 削除する（7ファイル）
+- [x] 削除する（7ファイル）
 
 ```
 config/sources.yaml  config/preferences.yaml  config/prompts.yaml
 data/articles.json  data/feedback.json  data/run_history.json  data/source_recommendations.json
 ```
 
-- [ ] 生成物も削除する。**`public/index.html` には①のキーワードが埋め込まれている**（`新規事業` `価格戦略` `卵加工` の存在を確認済み）。`public/index.html`、`public/run_history.json`、`public/source_recommendations.json` はビルド成果物であり、配信は `gh-pages` から行われるので main に置く必要がない
-- [ ] `.gitignore` に `config/` `data/` `public/index.html` `public/run_history.json` `public/source_recommendations.json` を追加する（ローカル実行の再コミット防止）
-- [ ] `daily_news.yml`（手動のサンプル検証用に残る分）を `themes/example` へ向ける
+- [x] 生成物も削除する。**`public/index.html` には①のキーワードが埋め込まれている**（`新規事業` `価格戦略` `卵加工` の存在を確認済み）。`public/index.html`、`public/run_history.json`、`public/source_recommendations.json` はビルド成果物であり、配信は `gh-pages` から行われるので main に置く必要がない
+- [x] `.gitignore` に `config/` `data/` `public/index.html` `public/run_history.json` `public/source_recommendations.json` を追加する（ローカル実行の再コミット防止）
+- [x] `daily_news.yml`（手動のサンプル検証用に残る分）を `themes/example` へ向ける。CI（`checks.yml`）のビルドは `themes/example` と合成記事 `tests/fixtures/state/` を使う
 
 ```yaml
 env:
@@ -104,7 +104,7 @@ env:
   NEWSROOM_STATE_DIR: ${{ runner.temp }}/newsroom-state
 ```
 
-- [ ] 回帰テストを直す。**削除後に失敗するのは2件だけである（実測）**
+- [x] 回帰テストを直す（2件目は `fetch_rss.PREFERENCES_PATH` が読込時に固定されるため、環境変数ではなくテスト内でパスを差し替えた）。**削除後に失敗するのは2件だけである（実測）**
 
 | テスト | 原因 | 対応 |
 |---|---|---|
@@ -113,8 +113,8 @@ env:
 
 実測の内訳：`config/` と `data/` を削除した複製で `python -m unittest discover -s tests` を実行 → 65件中 **errors=2**。`NEWSROOM_CONFIG_DIR=themes/example` を与えると **errors=1**（残るのは上の表の1件目）。
 
-- [ ] `grep -r "alerts/feeds" .` が `themes/example/` を含めて0件であることを確認する
-- [ ] ①のキーワードが追跡ファイルに残っていないことを確認する
+- [x] `grep -r "alerts/feeds" .` が `themes/example/` を含めて0件であることを確認する（実URL0件。残るヒットはダミー値・説明文・テストのみ、2026-10-03）
+- [ ] ①のキーワードが追跡ファイルに残っていないことを確認する（2026-10-03 未達：`scripts/score_articles.py`・`scripts/fetch_rss.py`・`public/i18n.js` の直書きと `themes/example/preferences.yaml` に残存。エンジンからの除去は別作業）
 
 ```
 git grep -n -E '新規事業|価格戦略|卵加工|domestic_ratio' -- . ':!docs' ':!WORKLOG.md'
