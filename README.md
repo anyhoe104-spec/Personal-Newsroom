@@ -134,18 +134,9 @@ categories:
 
 ## GitHub Pages
 
-現在の配信元は **GitHub Actions** です。`daily_news.yml` が毎日 `public/` を生成し、Pages artifact としてアップロードします。
+GitHub Pages は **`gh-pages` ブランチ**を配信しています（2026-10 切替）。毎日のビルドと配送は非公開リポジトリ `newsroom-themes` の `Private newsroom daily` が行い、`scripts/publish_gh_pages.sh` で成果物をこのリポジトリの `gh-pages` へ push します。
 
-あわせて、同じ成果物を **`gh-pages` ブランチにも push** しています（`scripts/publish_gh_pages.sh`）。設定分離計画（`docs/config-separation-plan.md`）の Step 5 で、Pages の配信元をこのブランチへ切り替える準備です。
-
-**この時点では配信元を切り替えないでください。** 順序は計画書の Step 5 のとおりです。
-
-1. `gh-pages` に正しい内容が入っていることを確認する
-2. Pages の配信元を `gh-pages` ブランチへ変更する（オーナーの手作業）
-3. スマホで当日のニュースが表示されることを確認する
-4. 確認できてから、旧経路（`Configure Pages` / `Upload artifact` / `deploy` ジョブ）を外す
-
-切り替えるまでの間は両方の経路が動きます。配信しているのは従来どおり Actions 経由の方なので、`gh-pages` の内容が古くても壊れても、実際のサイトには影響しません。
+このリポジトリの `daily_news.yml` は手動実行のみで、エンジンの動作確認に使います。配送はしません。経緯とゲートは `docs/migration-handoff.md` を参照してください。
 
 `gh-pages` は orphan ブランチで、ビルド成果物だけを持ちます。`public/index.html` が無い場合は publish を拒否して失敗するため、壊れたビルドが既存のサイトを消すことはありません。内容に変化が無い実行では commit も push もしません。
 
