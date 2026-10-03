@@ -4,22 +4,12 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-25 / 作業者: Claude Code。branch claude/newsroom-weekly-tasks-5msgjt（main 01f0b68 起点）。文書のみの変更で本番は動かしていない。
-- 決定（2026-09-25 オーナー）: 関心キーワード/テーマ文/重み/プロンプト・GoogleアラートURL・評価学習データは隠す。配信サイトはアプリ化のイメージとして必要なため公開のまま。公開設定の入替は行わない。手順は docs/migration-handoff.md。
-- 公開設定: Personal-Newsroom=public、newsroom-themes=private を実測で確認。計画どおりの向きであり、「本リポジトリをPrivate、newsroom-themesをPublic」とする逆向きの構成は決定記録が存在しない。繰り返しの確認を止めるため docs/repository-topology.md に方針・実測・採用しない理由を固定した。
-- 2026-09-19 11:39 UTC 時点の記録（作業者: Codex (Astra)、ローカル作業リビジョン32c80fd、branch codex/release-integration）は以下に保持する。
-- 完了: オーナーのSecret登録を受け、PR #26のアラートSecret切替、PR #18の競合解消/PWA/レビュー5点/RSS修復、PR #27の実機UI改善をmainへマージした（2026-09-19 GitHub API）。最終アプリmainは3dd9b02。コードはローカルとmainで一致。
-- 本番: Daily 35437648483（3dd9b02）のbuild/deployともsuccess、gh-pages d64b57aは同SHAをPublishと記録（2026-09-19 Actions API/git fetch）。Reader checks 35437591057と35437648485もsuccess。
-- Secret: GOOGLE_ALERT_FEEDSから5本すべて取得成功。スイーツ20/外食3/生成AI20/卵2/食品業界20件。各カテゴリ10件、fallback 0、history_runs=16（2026-09-19 最終buildログ）。Secret値は読んだり表示していない。Google側での旧URL無効化・再発行自体は確認していない。
-- UI: 評価後の順位を固定し手動更新、バックアップのファイル選択制限解除と貼付け/BOM対応、安全な文字参照表示、カテゴリ追従/画面別選択、今日以外の上部情報整理、履歴30件ずつ/評価日時表示を公開済み。公開app.jsはHTTP200で修正版とバイト一致を確認（2026-09-19 HTTP取得）。
-- レビュー: config_path/state_path、静的アセット/全アイコンhash、学習state分離、unused learned_sources廃止、offline即表示を配送済み。PR18 inlineへ4052888070で回答しスレッドPRRT_kwDOSW5XRM6iu0sSを解決（2026-09-19 GitHub API）。
-- 検証: Python65/Node8/build/Chromium操作成功。実バックアップ復元・BOM・不正JSON・順位固定・履歴1000件・カテゴリ・文字参照非XSS・offline・4画面幅を確認。履歴先頭82msはこの環境の計測。Android/iOS実機の最終再確認とストア審査は未実施。
-- 公開運用: mainへpublic/scripts/config/requirements/Daily workflowの変更が入るとDaily実行。文書のみのpushは対象外。日次・手動も保持。Public側が実行主体、GitHub Pages URLは維持。
-- 記録: Claudeの設定分離とAstraの学習/UIを並行開発して競合した経緯・全過去レポートを保持。約500行のPR18、152行のPR27、文書・記録を別PRに分けた。実装はすべて配送済み。
-- 管理表: 2026-09-15 W38の大規模な設定層全面分離の10月末まで保留を維持。学習未接続/PR11未マージという8/25指摘は古い。今回の公開滞留とレビューは解消。dashboardは未変更。
-- 残件: 卵の意図しない評価は未再現。該当記事・選択ボタンの画像から保存評価日/IDを照合する。HBR404、Reddit429、農林水産省403は最終本番でも継続。他RSSにより40実記事は確保。fetch_rss重複定義はオーナー保留。
-- 次の手順: 最新公開画面でAndroidのバックアップ取込/順位更新/履歴を再確認。卵評価の再現情報が得られたら調査。全面的な非公開テーマ実行移行は再開指示があるまで拡大しない。
-- 次の手順（2026-09-25 追記）: 公開設定の方針PRをオーナーが確認する。Step 5〜7（実行主体の非公開側への切替、公開側からの実運用設定の除去、Googleアラートの作り直し）は引き続き再開指示待ち。
+- 更新: 2026-10-03 UTC / 作業者: Claude Code。branch claude/stop-public-daily（main 11b1552 基点、PR #34）。
+- 移行状況（docs/migration-handoff.md）: Gate 1 完了（newsroom-themes run #8 が 2026-09-29 に gh-pages を bfdac02..31fe091 へ更新、Actionsログで確認）。Gate 2: オーナーが 2026-10-03 に Pages 配信元を gh-pages へ切替、スマホで当日ニュースを確認（オーナー報告）。公開側 daily_news.yml の schedule/push/配送/deploy 停止は PR #34（未マージ）。
+- 非公開側: newsroom-themes PR #3（公開前チェックを合成fallbackのみ拒否）を 2026-10-03 までにマージ済み（git fetch で確認）。`NEWSROOM_DAILY_ENABLED` はオーナー作業。このセッションからは Pages設定・Actions変数をAPIで読めず（proxy 403）、設定済みかは未確認。
+- PR #33（評価時のスクロール維持・タブのフリック移動）は 2026-10-03 時点で未マージ。
+- 未着手: Gate 3（config/ 3件・data/ 4件・public の生成物3件の削除、.gitignore、テスト2件、checks.yml を themes/example と合成記事フィクスチャへ向ける）。Claudeが着手したがファイル削除が自動審査に拒否され、オーナーの明示判断待ち。Gate 4（Googleアラート作り直し）はオーナー作業。§5（vocabulary埋め込みの扱い）は未判断。
+- 次の手順: PR #34 をマージ → 翌朝 gh-pages 最新コミットの SHA が公開側に存在しないこと（非公開側配送）を確認 → Gate 3 をオーナーの明示許可で実施。
 
 ## Dated work reports
 
@@ -466,3 +456,12 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 意図的にやらなかったこと: ①の公開ページ残留（vocabulary）の修正を実装していない。build_site.py/app.js/learning.js をアプリ改修側が同時に触っているため、先に変更しても衝突して捨てられるだけだと判断した。案A/B/Cと推奨（B: その日の記事に出現する語だけに絞る）を指示書§5に書き、実装と判断を委ねた。Step 6 の削除PRを先に作らなかったのは、Gate 2 の実機確認前にマージされると配信が止まるため。
 - 残件: Gate 1 はオーナーの Secret 登録待ち（PAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDS）。Gate 2 の Pages 配信元切替、Gate 4 のアラート再発行もオーナー作業。①の完全な隠蔽は Gate 3 と §5 の対応の両方が揃ってから。
 - 次: newsroom-themes PR #2 のマージと Secret 登録の後、publish=false → true の順で手動実行して Gate 1 を閉じる。
+
+
+### 2026-10-03 UTC - Claude Code, 本番切替（Gate 1〜2）
+
+- 目的: オーナー指示「公開チェックを緩めて切り替えを優先」に従い、非公開側からの本番配送へ切り替える。
+- 完了: newsroom-themes の公開前チェックを `source_type == "fallback"` のみ拒否に変更し（PR #3、マージ済み）、ブランチ上で publish=true を手動実行（run #8 success、gh-pages bfdac02..31fe091）。オーナーが Pages 配信元を gh-pages に切替・実機確認。公開側 daily_news.yml を手動実行のみの動作確認に縮小（PR #34）。README と migration-handoff のチェック欄を更新。
+- 検証: run #8 の全ステップ成功と publish ログを Actions API で確認。gh-pages の 9/30〜10/3 のコミットは公開側 main 11b1552 由来（オーナーのスクリーンショットと git cat-file）。YAML構文解析OK。
+- うまくいかなかったこと: 公開前チェックの緩和は初回、オーナー判断前に試みて自動審査に拒否された（1回）。オーナー承認後に実施。公開側ワークフロー関連の読み取りと gh-pages の確認も一時、本番デプロイとして拒否された（2回）。SETUP.md のリンクを「存在しない」と判断して書き換えたが、9/29 の PR #29 で docs/migration-handoff.md が追加済みだったため戻した。Gate 3 の削除は自動審査に拒否され未実施。
+- 次: Current handoff 参照。
