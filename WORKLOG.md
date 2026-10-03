@@ -4,13 +4,12 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-29 UTC / 作業者: Claude Code。branch claude/affectionate-hopper-477rf2（main 01f0b68 基点）。
-- 完了: 評価ボタンを押すと一覧が作り直されスクロールが先頭付近へ飛ぶ不具合を修正（評価・保存は該当カードだけ差替え）。カテゴリタブを左右フリックで移動できるようにした。browser-smokeへ両方の回帰チェックを追加。
-- 本番の実行主体（2026-09-29 GitHub Actions API/git fetchで確認）: **まだ公開側**。gh-pagesの直近10件はすべて公開側 Daily（run #157〜166、main 01f0b68）の「Publish site 01f0b68…」。Pagesへの配信も公開側のdeploy-pagesのまま。
-- 非公開側 newsroom-themes（2026-09-29 Actions API）: Private newsroom daily は手動4回（9/26: #1,#2,#4 failure、#3 success）、schedule 3回（9/27〜29）はすべて skipped（`vars.NEWSROOM_DAILY_ENABLED` 未設定のため）。#4 は収集・検証まで成功したが公開ゲート「Fallback articles prohibit production publication」で停止。原因は翻訳失敗のai_dev実記事1件（localization_fallback=1、fallback_title付き）。validate_newsroom.pyは合格扱い、公開側は同種の記事を毎日公開している。gh-pagesに非公開側からのpushは1度もない。
-- 要オーナー判断: 公開ゲートを「合成fallback（source_type=fallback）のみ拒否」に緩めるか。Claudeが変更を試みたが本番安全チェックの緩和として自動審査に拒否されたため未変更。
-- 残件: 上記ゲート判断 → publish=true手動実行 → Pages配信元をgh-pagesへ切替 → 実機確認 → 公開側schedule停止/NEWSROOM_DAILY_ENABLED=true。SETUP.mdが参照する docs/migration-handoff.md は公開リポジトリに存在しない。公開gh-pagesにrun_history.json/source_recommendations.jsonが出ている（非公開側は除去するが公開側は出力）。卵の意図しない評価は未再現。HBR404/Reddit429/農林水産省403継続。fetch_rss重複定義はオーナー保留。
-- 次の手順: このブランチのUI修正をレビュー・マージし、スマホでフリックと評価位置を確認する。非公開側移行は上記ゲート判断から。
+- 更新: 2026-10-03 UTC / 作業者: Claude Code。branch claude/stop-public-daily（main 11b1552 基点、PR #34）。
+- 移行状況（docs/migration-handoff.md）: Gate 1 完了（newsroom-themes run #8 が 2026-09-29 に gh-pages を bfdac02..31fe091 へ更新、Actionsログで確認）。Gate 2: オーナーが 2026-10-03 に Pages 配信元を gh-pages へ切替、スマホで当日ニュースを確認（オーナー報告）。公開側 daily_news.yml の schedule/push/配送/deploy 停止は PR #34（未マージ）。
+- 非公開側: newsroom-themes PR #3（公開前チェックを合成fallbackのみ拒否）を 2026-10-03 までにマージ済み（git fetch で確認）。`NEWSROOM_DAILY_ENABLED` はオーナー作業。このセッションからは Pages設定・Actions変数をAPIで読めず（proxy 403）、設定済みかは未確認。
+- PR #33（評価時のスクロール維持・タブのフリック移動）は 2026-10-03 時点で未マージ。main との WORKLOG.md 競合を解消済み（main を取り込み）。
+- 未着手: Gate 3（config/ 3件・data/ 4件・public の生成物3件の削除、.gitignore、テスト2件、checks.yml を themes/example と合成記事フィクスチャへ向ける）。Claudeが着手したがファイル削除が自動審査に拒否され、オーナーの明示判断待ち。Gate 4（Googleアラート作り直し）はオーナー作業。§5（vocabulary埋め込みの扱い）は未判断。
+- 次の手順: PR #34 をマージ → 翌朝 gh-pages 最新コミットの SHA が公開側に存在しないこと（非公開側配送）を確認 → Gate 3 をオーナーの明示許可で実施。
 
 ## Dated work reports
 
@@ -434,6 +433,31 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 判断: 大規模な設定分離の運用移行はW38の保留を維持し、明示許可済みのSecret切替/公開待ち修正のみ完走。Secretの実値や旧URLは公開しない。旧Google側URLの無効化は未確認として残す。ストア審査済みや卵の未再現問題の修正済みとは表明しない。
 - 残件/次: Current handoff参照。公開停止・レビュー滞留・履歴遅延対策の未配送は解消。OS実機、卵評価、既存3媒体の取得不調と保留中の重複定義は残る。
 
+### 2026-09-25 - Claude Code, リポジトリ公開設定の方針記録
+
+- 目的: 「Personal-NewsroomをPrivateにし、newsroom-themesをPublicにする」という逆向きの構成が会話で言及されたが決定記録がない、というオーナーの指摘を受け、公開設定の方針を文書として固定し周知する。
+- 完了: `docs/repository-topology.md` を追加。方針（Public エンジン／Private テーマパック）、2026-09-25 時点の実測値、計画との差分（Step 1〜3済・4部分・5〜7未）、採用しない構成とその理由、将来変更する場合の前提を記載した。`docs/config-separation-plan.md` の状態行と「やってはいけないこと」から相互参照を張った。
+- 実測（すべて再現可能な手段で確認）: リポジトリ一覧APIで Personal-Newsroom=public / newsroom-themes=private。gh-pages 最新 398021e（2026-09-24）の Publish 元は Personal-Newsroom main 01f0b68 で、日次の実行主体は依然として公開側。gh-pages は 2026-09-19〜09-24 まで連日更新。newsroom-themes の最終 push は 2026-09-15 で、非公開側の日次実行は動いていない。`git grep 'alerts/feeds' -- config themes` は0件で、注入元は公開側の GOOGLE_ALERT_FEEDS Secret。
+- 判断の根拠: 逆向きの構成を採る記録は docs/WORKLOG/README のいずれにも無い。逆に Public のままとする判断は WORKLOG の 2026-09-09 エントリに「当初は Private 化を検討したが…」として残っている。無料プランでは Private リポジトリから GitHub Pages を配信できないため、本リポジトリの Private 化は配信停止を意味する。newsroom-themes の Public 化は分離で隠そうとしていた層そのものを公開する。
+- 影響: docs/repository-topology.md（新規）、docs/config-separation-plan.md（2行）、WORKLOG.md。コード・設定・ワークフローは変更していない。`daily_news.yml` の push トリガは public/scripts/config/requirements/ワークフローのみを対象とするため、この文書PRのマージでは日次実行は起動しない。
+- 検証: Python回帰テスト65件成功（コード無変更の確認として実行）。相互リンク先のファイル実在を確認。実測値は上記の手段で取得しており、推測は含めていない。
+- うまくいかなかったこと: 当初この指摘を「方針を逆向きへ変更してほしい」という依頼と読む可能性も検討したが、配信停止と分離目的の反転という不可逆な影響があるため、勝手に実行せず「採用しない構成」として前提条件だけを書き、判断をオーナーへ戻す形にした。
+- 残件: Step 5〜7 は未着手。旧GoogleアラートURLの無効化は未確認。オーナーが逆向きの構成を望む場合は、この文書の第4節の前提を満たす必要がある。
+- 次: オーナーの確認待ち。方針が確定したらこの文書へ追記する。
+
+### 2026-09-25 (2) - Claude Code, 隠す対象の確定と移行指示書
+
+- 目的: オーナーの決定（①関心キーワード等/②アラートURL/③評価学習データは隠す、④配信サイトは公開のまま）を受け、移行を完了させるための手順をアプリ改修側が読める形で配送する。
+- 完了: `docs/migration-handoff.md` を追加（Gate 1〜4、停止条件、オーナー専任作業、完了条件）。`docs/repository-topology.md` に決定を追記し逆向き構成の検討を終了と記録。非公開 newsroom-themes に `daily.yml` を追加し PR #2 を作成（本番日次＋state コミット＋公開 gh-pages への配送、publish=false で配送なし実行も可）。SETUP.md に PAGES_PUSH_TOKEN と切替手順を反映。`tests/test_regressions.py` の設定層ガードの検出パターンを厳格化。
+- 実測（すべて再現した数値）: 公開ページに boost_keywords が埋め込まれている（新規事業/価格戦略/卵加工 各1件、downrank の 為替/株価 は0件）。用途は app.js:33,96 と learning.js:62,85,109 の端末内再ランキング。よって④を公開のまま保つ限り①は完全には隠れない。`config/`+`data/` を削除した複製でテストは 65件中 errors=2、`NEWSROOM_CONFIG_DIR=themes/example` を与えると errors=1。失敗するのは test_every_google_alert_names_an_injection_lookup（config/sources.yaml 直読み）と test_japanese_display_article_gets_localized_fields のみ。非公開側の themes/personal 3ファイルは公開側 config/ とバイト単位で同一。preview.yml は workflow_dispatch のみで配送ステップなし。公開の本番配信は今も actions/deploy-pages で、gh-pages は未使用の並走経路。
+- ガードの厳格化: 旧判定 `'ROOT / "config"' in source` は `ROOT / "config/preferences.yaml"` の形を取りこぼす。前方一致 `'ROOT / "config'` へ変更。現行 scripts では誤検出0件、故意に直書きを1行足すと検出して失敗することを確認（正のコントロール）。build_site.py は元に戻した。
+- 影響: docs/migration-handoff.md（新規）、docs/repository-topology.md、WORKLOG.md、tests/test_regressions.py（1行の判定変更）。newsroom-themes 側は .github/workflows/daily.yml と SETUP.md。公開側のコード・設定・ワークフローの挙動は変更していない。
+- 検証: Python 65件成功。ガードの正のコントロールを確認。daily.yml はYAMLとして妥当。**Actions 上での daily.yml 実行は未検証**（Secret 未登録のため実行できない）。publish_gh_pages.sh の挙動は公開側で既検証。
+- 意図的にやらなかったこと: ①の公開ページ残留（vocabulary）の修正を実装していない。build_site.py/app.js/learning.js をアプリ改修側が同時に触っているため、先に変更しても衝突して捨てられるだけだと判断した。案A/B/Cと推奨（B: その日の記事に出現する語だけに絞る）を指示書§5に書き、実装と判断を委ねた。Step 6 の削除PRを先に作らなかったのは、Gate 2 の実機確認前にマージされると配信が止まるため。
+- 残件: Gate 1 はオーナーの Secret 登録待ち（PAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDS）。Gate 2 の Pages 配信元切替、Gate 4 のアラート再発行もオーナー作業。①の完全な隠蔽は Gate 3 と §5 の対応の両方が揃ってから。
+- 次: newsroom-themes PR #2 のマージと Secret 登録の後、publish=false → true の順で手動実行して Gate 1 を閉じる。
+
+
 ### 2026-09-29 UTC - Claude Code, 評価時スクロール修正・タブのフリック移動・切替状況の確認
 
 - 目的: 開始スキルで現状確認し、公開/非公開リポジトリ分離後の本番切替状況を検証。評価時に先頭へ戻る不具合とタブのフリック移動を実装する。
@@ -444,3 +468,11 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - うまくいかなかったこと: フリック判定を最初 `#app` にだけ付けたところ、見出しや順位ヒント上の操作が効かず、テストで2回目以降の移動が止まった。`.page-shell` 全体へ広げた。移動後のスクロール基準を最初に見出し(section-heading)にしたが、生成HTMLでは見出しがタブより上にあるため常に先頭へ戻ってしまい、#app基準へ修正（計3回）。ローカルのpip installはsgmllib3kのビルドで失敗し、venvで解決。非公開側の公開ゲート緩和は自動審査に拒否され未変更、同じ変更を別経路で試していない。
 - 管理表: W38の「設定層分離は10月末まで保留」に対し、非公開daily（PR #2）は9/26にマージ済みで手動試行も行われている。管理表側は古い。dashboardは未変更。
 - 次: Current handoff参照。
+
+### 2026-10-03 UTC - Claude Code, 本番切替（Gate 1〜2）
+
+- 目的: オーナー指示「公開チェックを緩めて切り替えを優先」に従い、非公開側からの本番配送へ切り替える。
+- 完了: newsroom-themes の公開前チェックを `source_type == "fallback"` のみ拒否に変更し（PR #3、マージ済み）、ブランチ上で publish=true を手動実行（run #8 success、gh-pages bfdac02..31fe091）。オーナーが Pages 配信元を gh-pages に切替・実機確認。公開側 daily_news.yml を手動実行のみの動作確認に縮小（PR #34）。README と migration-handoff のチェック欄を更新。
+- 検証: run #8 の全ステップ成功と publish ログを Actions API で確認。gh-pages の 9/30〜10/3 のコミットは公開側 main 11b1552 由来（オーナーのスクリーンショットと git cat-file）。YAML構文解析OK。
+- うまくいかなかったこと: 公開前チェックの緩和は初回、オーナー判断前に試みて自動審査に拒否された（1回）。オーナー承認後に実施。公開側ワークフロー関連の読み取りと gh-pages の確認も一時、本番デプロイとして拒否された（2回）。SETUP.md のリンクを「存在しない」と判断して書き換えたが、9/29 の PR #29 で docs/migration-handoff.md が追加済みだったため戻した。Gate 3 の削除は自動審査に拒否され未実施。
+- 次: Current handoff 参照。

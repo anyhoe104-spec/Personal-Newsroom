@@ -1,7 +1,7 @@
 # 設定層の分離計画（テーマパック化）
 
 - 起案：2026-09-09
-- 状態：Step 1〜3は実装済み、非公開テーマ準備PRはマージ済み。2026-09-18のオーナー指示でアラートURL差替えのみ先行し、現行の公開側ActionsでもSecret注入できるようにする。運用主体の切替は未完了。手順は [alert-rotation.md](alert-rotation.md) を参照。
+- 状態：Step 1〜3は実装済み、非公開テーマ準備PRはマージ済み。2026-09-18のオーナー指示でアラートURL差替えのみ先行し、現行の公開側ActionsでもSecret注入できるようにする。運用主体の切替は未完了。手順は [alert-rotation.md](alert-rotation.md) を参照。公開設定の確定した方針と実測値は [repository-topology.md](repository-topology.md) にある。
 - 起案の経緯：`project-dashboard` での公開戦略の検討（`strategy/2026-09-09-publication-strategy.md`）
 
 このドキュメントは、次に作業するエージェントが会話履歴なしで着手できることを目的に書かれている。
@@ -164,7 +164,7 @@ GitHub Pages は無料プランでは Public リポジトリからしか配信�
 
 ## 6. やってはいけないこと
 
-- **本リポジトリを Private にしない。** 外部の読者に見せる対象はエンジンであり、Public であることに価値がある
+- **本リポジトリを Private にしない。** 外部の読者に見せる対象はエンジンであり、Public であることに価値がある。加えて無料プランでは Private リポジトリから GitHub Pages を配信できないため、Private 化は配信の停止を意味する。「本リポジトリを Private、`newsroom-themes` を Public」とする逆向きの構成は採用しない（[repository-topology.md](repository-topology.md)）
 - **リポジトリ名を変えない。** 配信URLが変わり、ホーム画面のショートカットが切れる
 - **git 履歴を書き換えない。** 既に公開済みであり、効果に対してリスクが見合わない
 - **サンプルテーマパックを作り込みすぎない。** 将来の製品と競合する
