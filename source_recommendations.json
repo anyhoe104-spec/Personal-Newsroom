@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-02T00:18:13.385545+00:00",
-  "history_runs": 29,
+  "generated_at": "2026-10-03T00:03:30.628400+00:00",
+  "history_runs": 30,
   "categories": {
     "ai_dev": {
       "Google AI Blog": {
@@ -14,7 +14,7 @@
         "recommendation": "keep"
       },
       "Google Alert: 生成AI 開発": {
-        "runs_seen": 26,
+        "runs_seen": 27,
         "average_displayed": 2.6,
         "average_score": 62.4,
         "average_fallback": 0.0,
@@ -24,7 +24,7 @@
         "recommendation": "keep"
       },
       "OpenAI Blog": {
-        "runs_seen": 16,
+        "runs_seen": 17,
         "average_displayed": 1.4,
         "average_score": 62.3,
         "average_fallback": 0.0,
@@ -34,9 +34,9 @@
         "recommendation": "keep"
       },
       "Qiita AI": {
-        "runs_seen": 10,
+        "runs_seen": 11,
         "average_displayed": 1.4,
-        "average_score": 59.5,
+        "average_score": 59.6,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -54,9 +54,9 @@
         "recommendation": "keep"
       },
       "Zenn AI": {
-        "runs_seen": 26,
+        "runs_seen": 27,
         "average_displayed": 2.6,
-        "average_score": 62.8,
+        "average_score": 62.9,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -64,9 +64,9 @@
         "recommendation": "keep"
       },
       "Zenn LLM": {
-        "runs_seen": 28,
+        "runs_seen": 29,
         "average_displayed": 2.9,
-        "average_score": 63.2,
+        "average_score": 63.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -76,9 +76,9 @@
     },
     "business": {
       "ITmedia ビジネス": {
-        "runs_seen": 29,
+        "runs_seen": 30,
         "average_displayed": 7.9,
-        "average_score": 49.6,
+        "average_score": 49.7,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -86,7 +86,7 @@
         "recommendation": "keep"
       },
       "NHK 経済": {
-        "runs_seen": 15,
+        "runs_seen": 16,
         "average_displayed": 4.0,
         "average_score": 28.6,
         "average_fallback": 0.0,
@@ -108,9 +108,9 @@
         "recommendation": "keep"
       },
       "Food Dive": {
-        "runs_seen": 29,
-        "average_displayed": 2.4,
-        "average_score": 29.4,
+        "runs_seen": 30,
+        "average_displayed": 2.3,
+        "average_score": 29.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -118,7 +118,7 @@
         "recommendation": "keep"
       },
       "Food Industry Executive": {
-        "runs_seen": 28,
+        "runs_seen": 29,
         "average_displayed": 2.2,
         "average_score": 30.8,
         "average_fallback": 0.0,
@@ -128,9 +128,9 @@
         "recommendation": "keep"
       },
       "Food Navigator": {
-        "runs_seen": 15,
+        "runs_seen": 16,
         "average_displayed": 2.9,
-        "average_score": 34.2,
+        "average_score": 34.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -138,9 +138,9 @@
         "recommendation": "keep"
       },
       "Google Alert: 卵 加工品": {
-        "runs_seen": 17,
+        "runs_seen": 18,
         "average_displayed": 2.1,
-        "average_score": 47.9,
+        "average_score": 47.8,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -158,9 +158,9 @@
         "recommendation": "keep"
       },
       "食品産業新聞社": {
-        "runs_seen": 21,
+        "runs_seen": 22,
         "average_displayed": 2.4,
-        "average_score": 28.2,
+        "average_score": 28.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -170,9 +170,9 @@
     },
     "food": {
       "Google Alert: スイーツ 新商品": {
-        "runs_seen": 29,
-        "average_displayed": 3.5,
-        "average_score": 77.1,
+        "runs_seen": 30,
+        "average_displayed": 3.6,
+        "average_score": 77.0,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
@@ -190,7 +190,7 @@
         "recommendation": "promote"
       },
       "えん食べ": {
-        "runs_seen": 25,
+        "runs_seen": 26,
         "average_displayed": 2.5,
         "average_score": 73.0,
         "average_fallback": 0.0,
@@ -200,9 +200,9 @@
         "recommendation": "promote"
       },
       "グルメ Watch": {
-        "runs_seen": 29,
-        "average_displayed": 4.3,
-        "average_score": 74.6,
+        "runs_seen": 30,
+        "average_displayed": 4.2,
+        "average_score": 74.5,
         "average_fallback": 0.0,
         "likes": 0,
         "bads": 0,
