@@ -59,12 +59,12 @@
 
 **現在地（2026-09-25 実測）：未着手。** `newsroom-themes` の PR #2 は open で未マージ、同リポジトリの Actions 実行回数は **0件**（preview を含め一度も走っていない）、`gh-pages` の最新コミット `398021e`（2026-09-24）の Publish 元は公開側 main `01f0b68`。`daily.yml` が main に無い間は `workflow_dispatch` の選択肢にも現れないため、マージが最初の一手になる。
 
-- [ ] `newsroom-themes` の PR #2（`daily.yml`）をマージする
-- [ ] **オーナー作業**：`newsroom-themes` の Actions secrets に登録する
+- [x] `newsroom-themes` の PR #2（`daily.yml`）をマージする（2026-09-26）
+- [x] **オーナー作業**：`newsroom-themes` の Actions secrets に登録する
   - `PAGES_PUSH_TOKEN`：fine-grained PAT。対象は `anyhoe104-spec/Personal-Newsroom` のみ、権限は **Contents: Read and write のみ**
   - `ANTHROPIC_API_KEY`、`GOOGLE_ALERT_FEEDS`（5キーのJSON）、任意で `OPENAI_API_KEY`
-- [ ] `Private newsroom daily` を **`publish=false`** で手動実行し、成果物を確認する
-- [ ] `publish=true` で手動実行し、`gh-pages` が更新されることを確認する
+- [x] `Private newsroom daily` を **`publish=false`** で手動実行し、成果物を確認する（2026-09-26 run #3 success）
+- [x] `publish=true` で手動実行し、`gh-pages` が更新されることを確認する（2026-09-29 run #8 が `bfdac02..31fe091` を push。先に公開前チェックを合成fallbackのみ拒否へ修正：newsroom-themes PR #3）
 
 **配送元の判別方法**：`publish_gh_pages.sh` はコミットメッセージに `GITHUB_SHA` を書く。非公開側で走ると、そこに入るのは **`newsroom-themes` の SHA** である。`gh-pages` 最新コミットの SHA が公開リポジトリに存在しなければ、非公開側が配送元になっている。
 
@@ -78,10 +78,10 @@ git cat-file -e <SHA>^{commit}                    # 公開側に無ければ exi
 
 ### Gate 2：配信元を切り替え、公開側の日次実行を止める
 
-- [ ] **オーナー作業**：Settings → Pages の配信元を **`gh-pages` ブランチ**へ変更する（1クリック）
-- [ ] スマホで `https://anyhoe104-spec.github.io/Personal-Newsroom/` を開き、**当日のニュースが表示されることを確認する**
-- [ ] 確認できてから、`daily_news.yml` から `schedule` と `push` トリガを外す（`workflow_dispatch` は残す）
-- [ ] 同じ変更で `Publish site to gh-pages` / `Configure Pages` / `Upload artifact` ステップと `deploy` ジョブを削除する（配送は非公開側に一本化される）
+- [x] **オーナー作業**：Settings → Pages の配信元を **`gh-pages` ブランチ**へ変更する（2026-10-03）
+- [x] スマホで `https://anyhoe104-spec.github.io/Personal-Newsroom/` を開き、**当日のニュースが表示されることを確認する**（2026-10-03 オーナーが実機で確認）
+- [x] 確認できてから、`daily_news.yml` から `schedule` と `push` トリガを外す（`workflow_dispatch` は残す）
+- [x] 同じ変更で `Publish site to gh-pages` / `Configure Pages` / `Upload artifact` ステップと `deploy` ジョブを削除する（配送は非公開側に一本化される）
 
 **停止条件**：スマホで当日のニュースが出ない場合、Pages の配信元を元に戻す。公開側のワークフローはまだ生きているので復旧できる。**この確認を飛ばしてはいけない。**
 
