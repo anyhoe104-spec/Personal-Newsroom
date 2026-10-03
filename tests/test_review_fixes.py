@@ -50,11 +50,11 @@ class ReviewFixTests(unittest.TestCase):
                 update_preferences.main()
                 self.assertEqual(learned.read_bytes(), first)
                 self.assertEqual(preferences.read_text(encoding="utf-8"), editorial)
-                self.assertEqual(build_site.reader_vocabulary(), {"egg": ["editorial-marker", "new-marker"]})
+                self.assertEqual(build_site.reader_vocabulary([{"category": "egg", "title": "editorial-marker new-marker"}]), {"egg": ["editorial-marker", "new-marker"]})
                 self.assertNotIn("learned_sources", yaml.safe_load(first)["categories"]["egg"])
                 feedback.write_text(json.dumps({"egg": [{**vote, "value": "none"}]}))
                 update_preferences.main()
-                self.assertEqual(build_site.reader_vocabulary(), {"egg": ["editorial-marker"]})
+                self.assertEqual(build_site.reader_vocabulary([{"category": "egg", "title": "editorial-marker new-marker"}]), {"egg": ["editorial-marker"]})
                 self.assertEqual(preferences.read_text(encoding="utf-8"), editorial)
 
 
