@@ -142,10 +142,7 @@ GitHub Pages は **`gh-pages` ブランチ**を配信しています（2026-10 �
 
 ## ファイル構成
 
-- `config/sources.yaml`: RSSソース
-- `config/preferences.yaml`: スコアリング設定とカテゴリ別キーワード
-- `config/prompts.yaml`: AI要約用プロンプト
-- `themes/example/`: 公開フィードだけで構成したサンプルテーマパック
+- `themes/example/`: 公開フィードだけで構成したサンプルテーマパック（`sources.yaml` / `preferences.yaml` / `prompts.yaml`）。運用中の個人テーマは非公開リポジトリ `newsroom-themes` にあります
 - `scripts/publish_gh_pages.sh`: ビルド成果物を `gh-pages` ブランチへ publish
 - `scripts/newsroom_config.py`: 設定・学習データの置き場所とフィードURL注入の解決
 - `scripts/fetch_rss.py`: RSS取得と要約
@@ -155,14 +152,13 @@ GitHub Pages は **`gh-pages` ブランチ**を配信しています（2026-10 �
 - `scripts/analyze_source_feedback.py`: スコアとフィードバック履歴からソース別の差し替え候補を集計
 - `scripts/update_preferences.py`: `feedback.json` から好み設定を更新
 - `scripts/collectors/`: RSS、GoogleアラートRSS、将来API取得の入口
-- `public/index.html`: GitHub Pages用HTML
+- `public/index.html`: `build_site.py` が生成するHTML（コミットしない。配信は `gh-pages`）
 - `public/style.css`: スマホ優先CSS
 - `public/app.js`: タブ表示とフィードバックUI
 - `public/i18n.js`: UI固定文言の翻訳キー辞書と `t()` フック
-- `data/articles.json`: 記事データ
-- `data/feedback.json`: 次回スコア反映用フィードバック
-- `data/run_history.json`: ソース別表示状況の蓄積
-- `data/source_recommendations.json`: ソース別の維持・強化・監視・差し替え候補
+- `tests/fixtures/state/`: CI のビルドとブラウザ検証に使う合成記事
+
+`config/` と `data/` は `.gitignore` 済みです。ローカルで既定値のまま動かす場合はここに置くか、下の環境変数で `themes/example` などを指定してください。
 
 ## UI文言の翻訳フック（i18n）
 

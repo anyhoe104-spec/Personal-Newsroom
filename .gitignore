@@ -5,3 +5,11 @@ logs/
 .state/
 data/learned.yaml
 data/learned.yaml.tmp
+# Personal configuration, learning state and the built page live in the
+# private newsroom-themes repository; gh-pages serves the site.
+# See docs/migration-handoff.md (Gate 3).
+config/
+data/
+public/index.html
+public/run_history.json
+public/source_recommendations.json

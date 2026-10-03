@@ -22,6 +22,10 @@ jobs:
       # The runner is discarded after the run and GitHub keeps the console log,
       # so the rotating file is only useful for local runs.
       NEWSROOM_LOG_FILE: ""
+      # The personal pack is private now; check the engine against the sample
+      # pack, and keep the state it writes out of the checkout.
+      NEWSROOM_CONFIG_DIR: ${{ github.workspace }}/themes/example
+      NEWSROOM_STATE_DIR: ${{ runner.temp }}/newsroom-state
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +47,6 @@ jobs:
       - name: Fetch RSS
         run: python scripts/fetch_rss.py
         env:
-          GOOGLE_ALERT_FEEDS: ${{ secrets.GOOGLE_ALERT_FEEDS }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
