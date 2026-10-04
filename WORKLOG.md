@@ -6,7 +6,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 - 更新: 2026-10-03 UTC / 作業者: Claude Code。プロジェクト作業のリビジョンは main 4ca5f7a（このチェックポイント前）、branch claude/affectionate-hopper-477rf2（main から作り直し）。
 - 完了（2026-10-03 GitHub API・git fetch で確認）: PR #33（評価時のスクロール維持・タブのフリック移動）、#34（公開側の日次実行と配送の停止）、#35（公開側の config/・data/・生成物の削除、Gate 3）がマージ済み。newsroom-themes PR #3（公開前チェックを合成fallbackのみ拒否）もマージ済み。
-- 本番（2026-10-03 確認）: 配信は非公開側に一本化。Pages は gh-pages ブランチを配信（オーナーが切替・実機確認）。`NEWSROOM_DAILY_ENABLED=true`（オーナーのスクリーンショットで確認）。newsroom-themes の手動実行 #13（main 12bc59b）が成功し、アラート5本 20/8/20/2/20件、4カテゴリ×10件、gh-pages を 3f0c706..abc0e26 に更新（Actions ログ）。最初の自動実行は 10/3 21:00 UTC（10/4 06:00 JST）の予定。これまでの実績では1〜3時間遅れて起動している。まだ未確認。
+- 本番（2026-10-03 確認）: 配信は非公開側に一本化。ただし 2026-10-04 にオーナーのスマホで README が表示され、Pages の配信元が gh-pages ではなく main/(root) だったと判明（pages build and deployment run #1〜3 がすべて head_branch=main、2026-10-04 Actions API）。10/3 の実機確認は端末のオフライン用キャッシュが表示されていたとみられる。オーナーが Settings → Pages の Branch を gh-pages に変更する必要がある（10/4 依頼済み、未確認）。newsroom-themes の自動実行 #14（2026-10-03 23:29 UTC）は success。`NEWSROOM_DAILY_ENABLED=true`（オーナーのスクリーンショットで確認）。newsroom-themes の手動実行 #13（main 12bc59b）が成功し、アラート5本 20/8/20/2/20件、4カテゴリ×10件、gh-pages を 3f0c706..abc0e26 に更新（Actions ログ）。最初の自動実行は 10/3 21:00 UTC（10/4 06:00 JST）の予定。これまでの実績では1〜3時間遅れて起動している。まだ未確認。
 - このチェックポイントの修正: PR #35 で daily_news.yml のジョブ単位 env に `${{ runner.temp }}` を書き、ワークフローファイルが無効になっていた（main push の run #172 が0秒で failure）。`${{ github.workspace }}/.state`（gitignore 済み）に変更した。actionlint で修正前のエラー再現と修正後の合格を確認。
 - 残件:
   - 関心キーワードがエンジンのコード（score_articles.py・fetch_rss.py・i18n.js）と themes/example に直書きで残る（Gate 3 のキーワード確認は未達）。
@@ -14,7 +14,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
   - Gate 4: 新しいアラートURLの取得は確認済み。旧URL5本が無効化されたかは、このセッションから google.com に接続できず未確認。公開側の旧 Secret はオーナーが削除済み（オーナー報告）。
   - HBR 404・Reddit 429・農林水産省 403 は継続。fetch_rss の重複定義はオーナー判断で保留。卵の意図しない評価は未再現。
 - 管理表: W38 の「設定層分離は10月末まで保留」は、実際には 10/3 に Gate 1〜3 まで完了した。08-25 の学習未接続・PR11 未マージの指摘は古い。dashboard は未変更。
-- 次の手順: 10/4 朝に newsroom-themes の自動実行が成功し、gh-pages の最新コミットが newsroom-themes の SHA で更新されたかを確認する。その後、§5 の判断とキーワード除去を別PRで進める。
+- 次の手順: Pages の配信元が gh-pages になり、pages build and deployment が gh-pages で動いたことと、スマホで当日のニュースが表示されることを確認する（キャッシュの影響を避けるため再読み込みする）。その後、§5 の判断とキーワード除去を別PRで進める。
 
 ## Dated work reports
 
