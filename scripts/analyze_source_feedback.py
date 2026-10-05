@@ -17,8 +17,6 @@ ARTICLES_PATH = state_path("articles.json")
 FEEDBACK_PATH = state_path("feedback.json")
 HISTORY_PATH = state_path("run_history.json")
 RECOMMENDATIONS_PATH = state_path("source_recommendations.json")
-PUBLIC_HISTORY_PATH = ROOT / "public" / "run_history.json"
-PUBLIC_RECOMMENDATIONS_PATH = ROOT / "public" / "source_recommendations.json"
 CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
 LOG = get_logger()
 
@@ -178,8 +176,6 @@ def main() -> None:
     recommendations = build_recommendations(history)
     write_json(HISTORY_PATH, history)
     write_json(RECOMMENDATIONS_PATH, recommendations)
-    write_json(PUBLIC_HISTORY_PATH, history)
-    write_json(PUBLIC_RECOMMENDATIONS_PATH, recommendations)
     LOG.info(f"[source_feedback] history_runs={len(history)}")
     for category, sources in recommendations["categories"].items():
         replace_candidates = [
