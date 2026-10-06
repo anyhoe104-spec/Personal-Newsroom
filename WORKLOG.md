@@ -8,8 +8,8 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - main の確認: PR #30・#33・#34・#35 は取り込み済み（2026-10-06、git fetch と main 履歴で確認）。Gate 3 の個人設定・データ削除と vocabulary 案B（公開HTMLは記事由来の語彙だけ）が実装済み。古い「Gate 3 未着手」「§5 未判断」は現在地ではない。
 - PR #31: main と統合し、評価・保存をボタン部分だけ更新。スクロール、カードDOM、要約の開閉を維持し、成功通知を出さない。main のスワイプ操作を維持。収集時に7日超・日付不明・大きな未来日付を除外する。
 - PR #32: main の PWA・原データ保護・明示的な復旧の実装を維持。旧画面と旧ワークフローを戻さず、保存処理7件の回帰テストを現行 learning.js へ移植し、CI対象のファイル名に変更。
-- 検証: #31 Python 70件 OK（skip 1）、Node 8件 pass、合成16記事ビルド・JS構文・diffチェック合格。#32 Python 67件 OK（skip 1）、Node 15件 pass。ローカルのブラウザ取得がHTML応答で失敗したため、画面テストは更新後の Reader checks で確認する。skip は個人設定のない公開チェックアウト向け。
-- PR #36: workflow のジョブ env で無効な runner.temp を github.workspace/.state に変更する修正は妥当。記録の「vocabulary 案Bは未判断」と自動実行の確認状況には、PR #30 マージ後の情報への更新をレビューで指摘する。PR #36 は今回変更しない（2026-10-06 API・差分確認）。
+- 検証: #31 Python 70件 OK（skip 1）、Node 8件 pass、合成16記事ビルド・JS構文・diffチェック合格。#32 Python 67件 OK（skip 1）、Node 15件 pass。ローカルのブラウザ取得はHTML応答で失敗したが、更新headの Reader checks はブラウザテストを含め成功（2026-10-06 Actions API、#31 run 37395746061 / #32 run 37395776444）。skip は個人設定のない公開チェックアウト向け。
+- PR #36: workflow のジョブ env で無効な runner.temp を github.workspace/.state に変更する修正は妥当。記録の「vocabulary 案Bは未判断」と自動実行の確認状況には、PR #30 マージ後の情報への更新をレビューで指摘する。PR #36 自体は変更しない。main由来の無効ワークフローが失敗表示を出すため、レビュー済みの #36 を両ブランチにも取り込み、コード修正と履歴を共有した（2026-10-06 API・差分確認）。
 - 外部運用: 今回は本番配信、Pages設定、非公開側の日次実行、旧アラート失効を再検証していない。以前の運用記録は下記履歴を参照し、現在の成功と取り違えない。
 - 管理表（2026-10-06 GitHubから確認）: W39 の PR #32 滞留は今回解消作業の対象。品質指標の記録だけの未PRブランチ、ソース集中度・重複・翻訳品質の運用調整は範囲外。08-25 の学習未接続・PR11未マージという記述は現行実装より古い。dashboard は未変更。
 - 次: #31・#32 の最新headの Reader checks が成功したことを確認し、オーナーがマージ。#36 は記録の現在地を調整してマージ判断。個人設定や本番記事を公開側へ戻さない。
@@ -562,7 +562,34 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 目的: 同時進行で衝突した PR #31・#32 を最新 main と統合し、PR #36 をレビューする。
 - 完了: #31 のカード更新と記録、#32 の旧保存UI・日次ワークフローと記録の競合を解消。両方の歴史を残し、共通の現在地を記録した。公開側の個人設定削除、PWA、スワイプ、明示復旧を維持した。
 - 影響範囲: #31 は public/app.js・style.css、scripts/fetch_rss.py、tests/browser-smoke.cjs・test_freshness.py。#32 は tests/feedback-storage.test.cjs（旧 test_feedback_storage.cjs を現行保存処理へ移植）。両方に WORKLOG.md。
-- 検証: #31 Python 70件 OK（skip 1）、Node 8件 pass、合成ビルド成功、JS構文と diff 合格。#32 Python 67件 OK（skip 1）、Node 15件 pass。ブラウザテストはローカルで完走していない。
+- 検証: #31 Python 70件 OK（skip 1）、Node 8件 pass、合成ビルド成功、JS構文と diff 合格。#32 Python 67件 OK（skip 1）、Node 15件 pass。ブラウザテストはローカルで完走していないが、両PRの Reader checks で合格した（2026-10-06 Actions API、#31 run 37395746061 / #32 run 37395776444）。
 - うまくいかなかったこと: ブラウザテストの自動マージ結果で const deep が重複し構文エラーになった（1回、タッチ側の変数名を修正）。ブラウザ本体がなく実行失敗し、npx はローカル依存がないため導入できなかった。共有ランタイムのCLIで再試行したがダウンロード先がZIPでなくHTMLを返し、取得を断念した。画面の検証結果を合格とは記録しない。
 - 判断: #32 の旧実装は main のより強い保存データ保護に置き換わっているため、破損データの黙示的な破棄を復活させず、CIで動く回帰テストとして意図を引き継いだ。#36 のコードは妥当で、古くなった現状記録を非ブロッキングのレビュー項目とする。
-- 残件と次: 最新headのCI確認とオーナーによるマージ。dashboardの品質指標の記録ブランチや本番運用再確認は別件。現在地は上記 Current handoff を参照。
+- 追加統合: Reader checks は成功したが、main由来の daily_news.yml の無効式により別の実行が failure。レビュー済み #36 の履歴と修正を両ブランチへ取り込み、公開側の配送停止を維持した。
+- 残件と次: #36 取り込み後の最新headのCI確認とオーナーによるマージ。dashboardの品質指標の記録ブランチや本番運用再確認は別件。現在地は上記 Current handoff を参照。
+
+
+### 2026-10-03 UTC - Claude Code, Gate 3・PR #33 の競合解消・チェックポイント
+
+- 目的: Gate 3 の実施（オーナーの許可あり）、Gate 4 の確認、PR #33 の競合解消、終了処理。
+- 完了:
+  - PR #33 の競合解消。WORKLOG.md の Current handoff を PR #29・#34 も書き換えていたのが原因で、main 側を採用し、9/29 の作業記録を時系列の位置に残した（cffdad4）。
+  - Gate 3 を PR #35 として実施:
+    - config/ 3件・data/ 4件・public の生成物3件を削除し、.gitignore に追加。
+    - CI は themes/example と合成記事16件（tests/fixtures/state/）でビルドするようにした。
+    - テスト2件を修正。
+  - newsroom-themes の手動実行 #13 で、非公開側からの本番配信を確認。
+  - daily_news.yml の無効な式を修正。
+- 影響範囲: .github/workflows/daily_news.yml、WORKLOG.md（このチェックポイント）。それ以前の変更は PR #33・#35 に含まれる。
+- 検証:
+  - PR #35 時点: Python 65件 OK（skip 1）、Node 8件 pass、合成データでのビルド後のブラウザテストは main 版・PR #33 版とも PASS。
+  - main 4ca5f7a の Reader checks run #22 は success（2026-10-03 Actions API）。
+  - actionlint: 修正前は「context "runner" is not allowed here」を再現、修正後は全ワークフローがエラー0。
+- うまくいかなかったこと:
+  - PR #35 で daily_news.yml のジョブ単位 env に runner.temp を使った。YAML の構文解析だけで確認していたため見逃し、マージ後に main の run #172 が無効なワークフローとして失敗した。今回 actionlint で検出・修正した。
+  - テスト修正の初回は NEWSROOM_CONFIG_DIR を mock.patch.dict で差し替えたが、fetch_rss.PREFERENCES_PATH は読み込み時に決まるため失敗した。パス自体の差し替えに変えた（2回）。
+  - Gate 3 の削除は、初回はオーナーの明示許可前で自動審査に拒否された。許可後に実施。
+  - 旧アラートURLの HTTP 確認は、ネットワークポリシーで google.com に到達できず（HTTP 000）断念した。URL はログやチャットに出していない。
+  - Pages 設定と Actions 変数は gh api では読めず（proxy 403）、オーナーのスクリーンショットで確認した。
+- 判断: PR #35 で Googleアラート参照のテストは、チェックアウト内にアラートを持つパックがなければ skip する形にした（手順書の指示どおり）。キーワードのエンジンからの除去は順位付けの挙動が変わるため、範囲外とした。
+- 次: Current handoff 参照。
