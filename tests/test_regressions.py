@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -149,7 +150,10 @@ class TranslationRegressionTests(unittest.TestCase):
             impact="",
         )
 
-        count = fetch_rss.ensure_ai_dev_japanese_display_articles_localized([item])
+        # The engine's own config/ is gone; read the sample theme pack instead.
+        example = Path(__file__).resolve().parents[1] / "themes" / "example" / "preferences.yaml"
+        with mock.patch.object(fetch_rss, "PREFERENCES_PATH", example):
+            count = fetch_rss.ensure_ai_dev_japanese_display_articles_localized([item])
 
         self.assertEqual(count, 1)
         self.assertEqual(item["translated_title"], item["original_title"])
@@ -502,7 +506,10 @@ class ConfigLocationTests(unittest.TestCase):
             if path.name == "newsroom_config.py":
                 continue
             source = path.read_text(encoding="utf-8")
-            if 'ROOT / "data"' in source or 'ROOT / "config"' in source:
+            # Match the prefix, not the exact string: ROOT / "config/preferences.yaml"
+            # slipped past the closed-quote form and read the public config even
+            # when a theme pack was configured.
+            if 'ROOT / "data' in source or 'ROOT / "config' in source:
                 offenders.append(path.name)
         self.assertEqual(offenders, [])
 
@@ -594,18 +601,21 @@ class FeedUrlInjectionTests(unittest.TestCase):
 class SourcesConfigTests(unittest.TestCase):
     def test_every_google_alert_names_an_injection_lookup(self):
         # Production alert endpoints are supplied only through Actions secrets.
+        # The production pack lives in the private newsroom-themes repository
+        # now, so check whichever packs this checkout still carries.
         import yaml
 
-        config = yaml.safe_load(
-            (Path(__file__).resolve().parents[1] / "config" / "sources.yaml").read_text(encoding="utf-8")
-        )
+        root = Path(__file__).resolve().parents[1]
+        packs = [p for p in [root / "config" / "sources.yaml", *sorted(root.glob("themes/*/sources.yaml"))] if p.exists()]
         alerts = [
             source
-            for category in config["categories"].values()
+            for pack in packs
+            for category in (yaml.safe_load(pack.read_text(encoding="utf-8")) or {}).get("categories", {}).values()
             for source in category.get("sources", [])
             if source.get("source_type") == "google_alert"
         ]
-        self.assertTrue(alerts)
+        if not alerts:
+            self.skipTest("no theme pack in this checkout declares a Google Alert")
         missing = [source["name"] for source in alerts if not source.get("url_env")]
         self.assertEqual(missing, [])
         self.assertTrue(all("url" not in source for source in alerts))
@@ -778,7 +788,8 @@ class ReaderThemeIntegrationTests(unittest.TestCase):
             )
             index = root / "index.html"
             with patch.dict(os.environ, {"NEWSROOM_CONFIG_DIR": str(root), "NEWSROOM_STATE_DIR": str(root)}), \
-                 patch.object(build_site, "load_articles", return_value=[]), \
+                 patch.object(build_site, "load_articles", return_value=[{
+                     "category": "food", "title": "external-topic learned-topic"}]), \
                  patch.object(build_site, "PUBLIC_DIR", root), \
                  patch.object(build_site, "INDEX_PATH", index):
                 build_site.main()

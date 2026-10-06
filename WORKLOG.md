@@ -4,14 +4,15 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 
 ## Current handoff
 
-- 更新: 2026-09-29 JST / 作業者: Codex (Astra)。記録前local4326884、branch codex/fresh-news-stable-feedback。リモートPR31のebdce73とは同じtree、main11b1552とは分岐中。未解決の作業ツリー変更なしで開始。
-- Gate 1完了: dry run36211146193は9/26成功、成果物40記事/fallback0/分析JSONとalert URLなしを検査済み。private配送run36533412291は9/29 15:53 JSTに成功。gh-pages31fe091のPublish元fae4e04563495456fda972ae12ee31bc8a7d5e6dが同run.head_shaと一致（9/29 GitHub API実測）。全カテゴリ10記事、翻訳API10件成功、localization/synthetic fallbackとも0。
-- 前回失敗: 9/26 run36213099156は翻訳12件成功後の再選定で別の未翻訳記事1件が入り品質検査で停止。APIキー不良ではない。その後Claudeのprivate fae4e04がfallback_titleを停止条件から外し、synthetic fallbackだけ拒否するよう変更。今回成功結果は従来条件でも合格。条件緩和を今回の成功原因と断定しない。
-- Gate 2未確認: オーナーがpublic Personal-Newsroom Settings/PagesでDeploy from a branch、gh-pages、/(root)を選び保存し、スマホで当日記事を確認する。切替済みか実測できていない。確認前にpublic日次停止/config/data削除をしない。
-- 後続: Gate2実機確認後にpublic日次配送を停止しprivate NEWSROOM_DAILY_ENABLED=trueを設定。Gate3でconfig/data/生成物削除、sample CI、PR30語彙案B/分析state限定を反映。その後アプリ修正。Gate4は旧アラート再発行。
-- PR: public30/31/32/33 open（9/29 API）。31と33は評価スクロール修正が重複し得るため統合前に比較する。PR29はmainへ統合済み。今回コード変更なし。
-- 管理表: W39のGate1未確認は今回解消。pr10-quality-metrics孤立記録とPR32整理は別残件。古い8/25の学習未接続/PR11未統合は現状を表さない。ユーザーの明示移行継続に従う。
-- その他残件: 鮮度・評価操作修正はPR31で本番未反映。卵の意図しない評価、取得先不調、重複定義は継続。Pages実機・日次継続稼働・Gate3/4は完了扱いにしない。
+- 更新: 2026-10-06 00:42 UTC / 作業者: Astra。目的は PR #31・#32 の競合解消と PR #36 のレビュー。基点は main `1e425c2`、作業リビジョン（この記録前）は #31 `0c97605` / #32 `94706ea`。
+- main の確認: PR #30・#33・#34・#35 は取り込み済み（2026-10-06、git fetch と main 履歴で確認）。Gate 3 の個人設定・データ削除と vocabulary 案B（公開HTMLは記事由来の語彙だけ）が実装済み。古い「Gate 3 未着手」「§5 未判断」は現在地ではない。
+- PR #31: main と統合し、評価・保存をボタン部分だけ更新。スクロール、カードDOM、要約の開閉を維持し、成功通知を出さない。main のスワイプ操作を維持。収集時に7日超・日付不明・大きな未来日付を除外する。
+- PR #32: main の PWA・原データ保護・明示的な復旧の実装を維持。旧画面と旧ワークフローを戻さず、保存処理7件の回帰テストを現行 learning.js へ移植し、CI対象のファイル名に変更。
+- 検証: #31 Python 70件 OK（skip 1）、Node 8件 pass、合成16記事ビルド・JS構文・diffチェック合格。#32 Python 67件 OK（skip 1）、Node 15件 pass。ローカルのブラウザ取得がHTML応答で失敗したため、画面テストは更新後の Reader checks で確認する。skip は個人設定のない公開チェックアウト向け。
+- PR #36: workflow のジョブ env で無効な runner.temp を github.workspace/.state に変更する修正は妥当。記録の「vocabulary 案Bは未判断」と自動実行の確認状況には、PR #30 マージ後の情報への更新をレビューで指摘する。PR #36 は今回変更しない（2026-10-06 API・差分確認）。
+- 外部運用: 今回は本番配信、Pages設定、非公開側の日次実行、旧アラート失効を再検証していない。以前の運用記録は下記履歴を参照し、現在の成功と取り違えない。
+- 管理表（2026-10-06 GitHubから確認）: W39 の PR #32 滞留は今回解消作業の対象。品質指標の記録だけの未PRブランチ、ソース集中度・重複・翻訳品質の運用調整は範囲外。08-25 の学習未接続・PR11未マージという記述は現行実装より古い。dashboard は未変更。
+- 次: #31・#32 の最新headの Reader checks が成功したことを確認し、オーナーがマージ。#36 は記録の現在地を調整してマージ判断。個人設定や本番記事を公開側へ戻さない。
 
 ## Dated work reports
 
@@ -435,6 +436,50 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 判断: 大規模な設定分離の運用移行はW38の保留を維持し、明示許可済みのSecret切替/公開待ち修正のみ完走。Secretの実値や旧URLは公開しない。旧Google側URLの無効化は未確認として残す。ストア審査済みや卵の未再現問題の修正済みとは表明しない。
 - 残件/次: Current handoff参照。公開停止・レビュー滞留・履歴遅延対策の未配送は解消。OS実機、卵評価、既存3媒体の取得不調と保留中の重複定義は残る。
 
+### 2026-09-25 - Claude Code, リポジトリ公開設定の方針記録
+
+- 目的: 「Personal-NewsroomをPrivateにし、newsroom-themesをPublicにする」という逆向きの構成が会話で言及されたが決定記録がない、というオーナーの指摘を受け、公開設定の方針を文書として固定し周知する。
+- 完了: `docs/repository-topology.md` を追加。方針（Public エンジン／Private テーマパック）、2026-09-25 時点の実測値、計画との差分（Step 1〜3済・4部分・5〜7未）、採用しない構成とその理由、将来変更する場合の前提を記載した。`docs/config-separation-plan.md` の状態行と「やってはいけないこと」から相互参照を張った。
+- 実測（すべて再現可能な手段で確認）: リポジトリ一覧APIで Personal-Newsroom=public / newsroom-themes=private。gh-pages 最新 398021e（2026-09-24）の Publish 元は Personal-Newsroom main 01f0b68 で、日次の実行主体は依然として公開側。gh-pages は 2026-09-19〜09-24 まで連日更新。newsroom-themes の最終 push は 2026-09-15 で、非公開側の日次実行は動いていない。`git grep 'alerts/feeds' -- config themes` は0件で、注入元は公開側の GOOGLE_ALERT_FEEDS Secret。
+- 判断の根拠: 逆向きの構成を採る記録は docs/WORKLOG/README のいずれにも無い。逆に Public のままとする判断は WORKLOG の 2026-09-09 エントリに「当初は Private 化を検討したが…」として残っている。無料プランでは Private リポジトリから GitHub Pages を配信できないため、本リポジトリの Private 化は配信停止を意味する。newsroom-themes の Public 化は分離で隠そうとしていた層そのものを公開する。
+- 影響: docs/repository-topology.md（新規）、docs/config-separation-plan.md（2行）、WORKLOG.md。コード・設定・ワークフローは変更していない。`daily_news.yml` の push トリガは public/scripts/config/requirements/ワークフローのみを対象とするため、この文書PRのマージでは日次実行は起動しない。
+- 検証: Python回帰テスト65件成功（コード無変更の確認として実行）。相互リンク先のファイル実在を確認。実測値は上記の手段で取得しており、推測は含めていない。
+- うまくいかなかったこと: 当初この指摘を「方針を逆向きへ変更してほしい」という依頼と読む可能性も検討したが、配信停止と分離目的の反転という不可逆な影響があるため、勝手に実行せず「採用しない構成」として前提条件だけを書き、判断をオーナーへ戻す形にした。
+- 残件: Step 5〜7 は未着手。旧GoogleアラートURLの無効化は未確認。オーナーが逆向きの構成を望む場合は、この文書の第4節の前提を満たす必要がある。
+- 次: オーナーの確認待ち。方針が確定したらこの文書へ追記する。
+
+### 2026-09-25 (2) - Claude Code, 隠す対象の確定と移行指示書
+
+- 目的: オーナーの決定（①関心キーワード等/②アラートURL/③評価学習データは隠す、④配信サイトは公開のまま）を受け、移行を完了させるための手順をアプリ改修側が読める形で配送する。
+- 完了: `docs/migration-handoff.md` を追加（Gate 1〜4、停止条件、オーナー専任作業、完了条件）。`docs/repository-topology.md` に決定を追記し逆向き構成の検討を終了と記録。非公開 newsroom-themes に `daily.yml` を追加し PR #2 を作成（本番日次＋state コミット＋公開 gh-pages への配送、publish=false で配送なし実行も可）。SETUP.md に PAGES_PUSH_TOKEN と切替手順を反映。`tests/test_regressions.py` の設定層ガードの検出パターンを厳格化。
+- 実測（すべて再現した数値）: 公開ページに boost_keywords が埋め込まれている（新規事業/価格戦略/卵加工 各1件、downrank の 為替/株価 は0件）。用途は app.js:33,96 と learning.js:62,85,109 の端末内再ランキング。よって④を公開のまま保つ限り①は完全には隠れない。`config/`+`data/` を削除した複製でテストは 65件中 errors=2、`NEWSROOM_CONFIG_DIR=themes/example` を与えると errors=1。失敗するのは test_every_google_alert_names_an_injection_lookup（config/sources.yaml 直読み）と test_japanese_display_article_gets_localized_fields のみ。非公開側の themes/personal 3ファイルは公開側 config/ とバイト単位で同一。preview.yml は workflow_dispatch のみで配送ステップなし。公開の本番配信は今も actions/deploy-pages で、gh-pages は未使用の並走経路。
+- ガードの厳格化: 旧判定 `'ROOT / "config"' in source` は `ROOT / "config/preferences.yaml"` の形を取りこぼす。前方一致 `'ROOT / "config'` へ変更。現行 scripts では誤検出0件、故意に直書きを1行足すと検出して失敗することを確認（正のコントロール）。build_site.py は元に戻した。
+- 影響: docs/migration-handoff.md（新規）、docs/repository-topology.md、WORKLOG.md、tests/test_regressions.py（1行の判定変更）。newsroom-themes 側は .github/workflows/daily.yml と SETUP.md。公開側のコード・設定・ワークフローの挙動は変更していない。
+- 検証: Python 65件成功。ガードの正のコントロールを確認。daily.yml はYAMLとして妥当。**Actions 上での daily.yml 実行は未検証**（Secret 未登録のため実行できない）。publish_gh_pages.sh の挙動は公開側で既検証。
+- 意図的にやらなかったこと: ①の公開ページ残留（vocabulary）の修正を実装していない。build_site.py/app.js/learning.js をアプリ改修側が同時に触っているため、先に変更しても衝突して捨てられるだけだと判断した。案A/B/Cと推奨（B: その日の記事に出現する語だけに絞る）を指示書§5に書き、実装と判断を委ねた。Step 6 の削除PRを先に作らなかったのは、Gate 2 の実機確認前にマージされると配信が止まるため。
+- 残件: Gate 1 はオーナーの Secret 登録待ち（PAGES_PUSH_TOKEN/ANTHROPIC_API_KEY/GOOGLE_ALERT_FEEDS）。Gate 2 の Pages 配信元切替、Gate 4 のアラート再発行もオーナー作業。①の完全な隠蔽は Gate 3 と §5 の対応の両方が揃ってから。
+- 次: newsroom-themes PR #2 のマージと Secret 登録の後、publish=false → true の順で手動実行して Gate 1 を閉じる。
+
+
+### 2026-09-29 UTC - Claude Code, 評価時スクロール修正・タブのフリック移動・切替状況の確認
+
+- 目的: 開始スキルで現状確認し、公開/非公開リポジトリ分離後の本番切替状況を検証。評価時に先頭へ戻る不具合とタブのフリック移動を実装する。
+- 完了: `public/app.js` に `updateCard()` を追加し、評価と保存は該当カードのみ `replaceWith` で差し替え、件数・順位ヒントは新設の `renderStatus()` だけ更新する。`selectCategory()`・`revealActiveTab()`・`enableSwipeTabs()` を追加し、`.page-shell` 上の横フリック（60px以上、横が縦の1.5倍以上、800ms以内）で隣のタブへ移動。タブ列・入力欄・画面端24px（OSの戻る操作）は対象外。移動後は一覧先頭がタブ直下に来るよう必要な時だけ上へスクロールし、アクティブタブを横スクロールで表示する。
+- 影響: public/app.js、public/sw.js（ビルドによるキャッシュ名更新）、tests/browser-smoke.cjs、WORKLOG.md。生成index.htmlは含めない。
+- 検証: Python 65件OK（venv）、Node 8件OK、node --check OK、browser-smoke PASS（追加したタッチ評価位置・フリック往復を含む）。修正前のapp.jsで追加チェックが「vote moved the card from 134 to 3303」で失敗することを確認。本番gh-pagesのデータでPixel 7エミュレーション: 修正前scrollY 3805→388、修正後は対象カードの画面位置243px→243pxで不変。フリックは全→経済→スイーツ→AI→卵、端で停止、逆方向で戻る、縦スワイプ・画面端では変化なし、分析画面でも動作、ページエラー0。
+- 原因: 評価のたびに `render()` がタブと `#app` を `replaceChildren` で作り直し、Chromeがスクロール位置を#app先頭付近へ補正していた。履歴画面では評価日時順のため、評価した記事が先頭へ並び替わる動きも同じ経路で起きていた（今回の差替え方式で再描画まで位置を維持）。
+- うまくいかなかったこと: フリック判定を最初 `#app` にだけ付けたところ、見出しや順位ヒント上の操作が効かず、テストで2回目以降の移動が止まった。`.page-shell` 全体へ広げた。移動後のスクロール基準を最初に見出し(section-heading)にしたが、生成HTMLでは見出しがタブより上にあるため常に先頭へ戻ってしまい、#app基準へ修正（計3回）。ローカルのpip installはsgmllib3kのビルドで失敗し、venvで解決。非公開側の公開ゲート緩和は自動審査に拒否され未変更、同じ変更を別経路で試していない。
+- 管理表: W38の「設定層分離は10月末まで保留」に対し、非公開daily（PR #2）は9/26にマージ済みで手動試行も行われている。管理表側は古い。dashboardは未変更。
+- 次: Current handoff参照。
+
+### 2026-10-03 UTC - Claude Code, 本番切替（Gate 1〜2）
+
+- 目的: オーナー指示「公開チェックを緩めて切り替えを優先」に従い、非公開側からの本番配送へ切り替える。
+- 完了: newsroom-themes の公開前チェックを `source_type == "fallback"` のみ拒否に変更し（PR #3、マージ済み）、ブランチ上で publish=true を手動実行（run #8 success、gh-pages bfdac02..31fe091）。オーナーが Pages 配信元を gh-pages に切替・実機確認。公開側 daily_news.yml を手動実行のみの動作確認に縮小（PR #34）。README と migration-handoff のチェック欄を更新。
+- 検証: run #8 の全ステップ成功と publish ログを Actions API で確認。gh-pages の 9/30〜10/3 のコミットは公開側 main 11b1552 由来（オーナーのスクリーンショットと git cat-file）。YAML構文解析OK。
+- うまくいかなかったこと: 公開前チェックの緩和は初回、オーナー判断前に試みて自動審査に拒否された（1回）。オーナー承認後に実施。公開側ワークフロー関連の読み取りと gh-pages の確認も一時、本番デプロイとして拒否された（2回）。SETUP.md のリンクを「存在しない」と判断して書き換えたが、9/29 の PR #29 で docs/migration-handoff.md が追加済みだったため戻した。Gate 3 の削除は自動審査に拒否され未実施。
+- 次: Current handoff 参照。
+
 ### 2026-09-22 05:23 UTC - Codex (Astra), 古い記事と評価時の画面移動修正
 
 - 目的: 実機報告の古い記事混入、評価時のジャンプ/通知/カクつきを修正し公開する。
@@ -446,6 +491,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 未完了: 今回のpush/PR/CI/merge/本番検証。git fetchで2026-09-22にmain01f0b68を確認したがMCPによるPR状態確認はできなかった。管理表の全面設定分離保留は継続。
 - 次: Current handoffの配送手順を再開し、実RSSの新鮮記事数と旧記事非包含を確認してから公開完了と報告する。
 
+
 ### 2026-09-22 05:26 UTC - Codex (Astra), 接続再試行と公開構成の確認
 
 - 目的: ユーザーの再試行指示と、既存Private/themes Publicの方針が実装されたかという質問に対応。
@@ -453,6 +499,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 完了: 現行構成と未完了の本番移行を切り分けた。コード変更なし。直前の修正ea5611bと検証結果は保持。
 - 失敗: 接続再試行は復旧せず、PR作成/配送できない。公開設定を推測で変更していない。
 - 残件/次: GitHub接続復旧後に古い記事/評価操作修正を配送。本番移行を再開する際は、今回の説明と異なる新しい方針の記録があるか照合する。
+
 
 ### 2026-09-25 14:03 UTC - Codex (Astra), Gate再検証と配送準備
 
@@ -465,6 +512,7 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 管理表: W38の保留より新しい2026-09-25の明示移行指示を適用。公開滞留対策はPR準備まで進め、取得不調/実機/卵評価など既存残件は維持。
 - 次: Current handoffのオーナー作業後にGate1実行を検証。Gate2確認前に削除PRをマージせず、Gate3後に保留アプリ修正を配送する。
 
+
 ### 2026-09-29 JST - Codex (Astra), 非公開配送の成功確認
 
 - 目的: 開始スキルで中断した配送検証を再開。終了スキルで確認結果を引き継ぐ。
@@ -475,3 +523,46 @@ This file is the shared source of truth for cross-device and cross-agent handoff
 - 判断: Claude側の検査緩和は保持。最新出力のfallbackは実測0であり、単に緩和で通ったとは報告しない。9/26失敗実行を再実行せず最新成功を採用。
 - 管理表: W39のGate1未確認を解消。孤立記録/PR滞留の整理、Gate2実機、Gate3/4は残る。管理表自体は更新していない。
 - 次: オーナーのPages切替とスマホ確認を受けてpublic配送停止・private日次有効化・Gate3へ進む。PR31と新PR33の重複を統合前に比較する。
+
+
+### 2026-09-08 12:35 +09:00 - Codex
+
+- Objective: Place development alongside the user's existing Obsidian projects.
+- Completed work: Inspected both locations; confirmed the Obsidian folder contained project notes, not another clone. Fetched remote references. Copied the full repository into its Personal-Newsroom subfolder after a direct move failed due to an open-process lock.
+- Affected areas: Local repository placement and WORKLOG.md; existing Obsidian notes unchanged.
+- Validation: After copy completion, SHA-256 matched for all 332 files, including Git files. Destination status was clean before this report; expected origin verified. Application tests not run; application code unchanged.
+- Decisions: Preserve the numbered Obsidian project name and use the GitHub repository name for its code subfolder. No commit, push, branch switch, or remote integration performed.
+- Unresolved issues: Original folder remains locked and retained. App project location still requires switching. Remote tracking branch is one commit ahead.
+- Exact next actions: Use the Obsidian copy for further work; open that folder in the development app, then inspect remote updates before integrating. Remove the old copy only after verifying the app has switched and obtaining deletion authorization.
+
+
+### 2026-09-08T13:19+09:00 - Codex
+
+- Objective: Resume in the Obsidian repository and implement a remaining reliability fix.
+- Completed work: Read the full local handoff and inspected local/remote history. Fetched origin/main through f58ecb2, which includes PR14; avoided duplicating merged translation, logging, history, and script-embedding fixes. Reproduced frontend startup failures with malformed JSON, invalid stored shapes, invalid vote entries, and denied storage reads. Added defensive loading that preserves valid votes and never rewrites storage during startup. Added seven tests using Node's built-in runner with a minimal DOM stub and scheduled them in the daily workflow.
+- Affected areas: public/app.js; tests/test_feedback_storage.cjs; .github/workflows/daily_news.yml; WORKLOG.md. Secondary repository was not edited.
+- Validation: Before fix: frontend 2 passed, 5 failed. After fix: frontend 7 passed; JavaScript syntax passed. Initial Python run failed because requests was missing; after temporary dependency installation, local Python 12 passed. Latest main was exported to a temporary directory without switching branches: unpatched frontend exited 1, focused patch applied with one context line, patched frontend 7 passed and latest Python 31 passed. Default three-context-line patch did not apply because latest main changed a nearby locale call; reducing context resolved this without altering implementation. No real-browser, live RSS/API, deployment, or production Actions tests run.
+- Decisions: Kept the change focused on loading feedback so damaged optional data cannot block reading news. Added no frontend dependencies or new display text. Original stored data remains untouched on startup. Existing local dated reports preserved.
+- Unresolved issues: Current branch still predates latest main; integration and review remain necessary. Storage writes can still fail if storage is unavailable. Existing production Actions/history-cache verification remains outstanding. Changes are uncommitted.
+- Exact next actions: Review the four affected files. With authorization, integrate latest main while preserving both sets of dated reports, rerun the regression suites, and commit/push/open a PR. Verify production history restoration after integration.
+
+
+### 2026-09-08T15:08+09:00 - Codex
+
+- Objective: Commit and push the completed change at the user's request.
+- Completed work: Rechecked the four affected files and origin configuration; fetched remote refs. Chose the new publication branch codex/feedback-storage-recovery to preserve the newer remote PR11 branch without rewriting history.
+- Affected areas: public/app.js, tests/test_feedback_storage.cjs, .github/workflows/daily_news.yml, WORKLOG.md.
+- Validation: No code changes since the verified 7 frontend / 12 local Python / 31 latest-main Python tests in the preceding report. Whitespace check is run before commit; remote branch hash will be checked after push.
+- Decisions: Commit all four reviewed files and publish to origin on a new branch. Keep the current checkout and secondary repository unchanged in location. Do not merge, rebase, switch branches, or force push.
+- Unresolved issues: Latest-main integration is pending; no deployment or production Actions check performed.
+- Exact next actions: Complete commit/push and verify remote HEAD; then review latest-main integration before opening or merging a PR.
+
+### 2026-10-06 00:42 UTC - Astra, PR #31・#32 の統合と PR #36 レビュー
+
+- 目的: 同時進行で衝突した PR #31・#32 を最新 main と統合し、PR #36 をレビューする。
+- 完了: #31 のカード更新と記録、#32 の旧保存UI・日次ワークフローと記録の競合を解消。両方の歴史を残し、共通の現在地を記録した。公開側の個人設定削除、PWA、スワイプ、明示復旧を維持した。
+- 影響範囲: #31 は public/app.js・style.css、scripts/fetch_rss.py、tests/browser-smoke.cjs・test_freshness.py。#32 は tests/feedback-storage.test.cjs（旧 test_feedback_storage.cjs を現行保存処理へ移植）。両方に WORKLOG.md。
+- 検証: #31 Python 70件 OK（skip 1）、Node 8件 pass、合成ビルド成功、JS構文と diff 合格。#32 Python 67件 OK（skip 1）、Node 15件 pass。ブラウザテストはローカルで完走していない。
+- うまくいかなかったこと: ブラウザテストの自動マージ結果で const deep が重複し構文エラーになった（1回、タッチ側の変数名を修正）。ブラウザ本体がなく実行失敗し、npx はローカル依存がないため導入できなかった。共有ランタイムのCLIで再試行したがダウンロード先がZIPでなくHTMLを返し、取得を断念した。画面の検証結果を合格とは記録しない。
+- 判断: #32 の旧実装は main のより強い保存データ保護に置き換わっているため、破損データの黙示的な破棄を復活させず、CIで動く回帰テストとして意図を引き継いだ。#36 のコードは妥当で、古くなった現状記録を非ブロッキングのレビュー項目とする。
+- 残件と次: 最新headのCI確認とオーナーによるマージ。dashboardの品質指標の記録ブランチや本番運用再確認は別件。現在地は上記 Current handoff を参照。

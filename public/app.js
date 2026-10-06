@@ -59,14 +59,48 @@ function renderNav() {
   const tabScroll = $('tabs').scrollLeft;
   $('tabs').replaceChildren();
   for (const c of ['all', ...L.categories]) {
-    const b = button(c === 'all' ? t('reader.all') : label(c), () => { category = c; historyLimit = 30; render(); }, `tab ${category === c ? 'active' : ''}`);
+    const b = button(c === 'all' ? t('reader.all') : label(c), () => selectCategory(c), `tab ${category === c ? 'active' : ''}`);
     b.setAttribute('aria-pressed', String(category === c)); $('tabs').append(b);
   }
   $('tabs').scrollLeft = tabScroll;
   document.querySelectorAll('[data-view]').forEach(b => { b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'); });
 }
+const tabOrder = ['all', ...L.categories];
+function selectCategory(c) { category = c; historyLimit = 30; render(); }
+// Horizontal scroll only: scrollIntoView would also move the page vertically.
+function revealActiveTab() {
+  const tabs = $('tabs'), active = tabs.querySelector('.tab.active'); if (!active) return;
+  const left = active.offsetLeft - tabs.offsetLeft, right = left + active.offsetWidth;
+  if (left < tabs.scrollLeft) tabs.scrollLeft = left - 16;
+  else if (right > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = right - tabs.clientWidth + 16;
+}
+// A flick across the list moves to the neighbouring category tab. Vertical
+// scrolling, the tab strip's own scrolling, form controls and the screen edges
+// (the system back gesture) are left alone.
+function enableSwipeTabs(area) {
+  let start = null;
+  area.addEventListener('touchstart', e => {
+    const p = e.touches[0];
+    start = e.touches.length === 1 && !e.target.closest('input,textarea,select,form,.tabs') && p.clientX > 24 && p.clientX < window.innerWidth - 24
+      ? { x: p.clientX, y: p.clientY, at: Date.now() } : null;
+  }, { passive: true });
+  area.addEventListener('touchmove', e => { if (e.touches.length !== 1) start = null; }, { passive: true });
+  area.addEventListener('touchend', e => {
+    if (!start) return;
+    const p = e.changedTouches[0], dx = p.clientX - start.x, dy = p.clientY - start.y, took = Date.now() - start.at; start = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5 || took > 800) return;
+    const next = tabOrder.indexOf(category) + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= tabOrder.length) return;
+    selectCategory(tabOrder[next]); revealActiveTab();
+    // Start the new category at its first article, just below the sticky tab strip.
+    const nav = $('tabs').closest('.category-nav') || $('tabs');
+    const gap = $('app').getBoundingClientRect().top - nav.getBoundingClientRect().bottom - 12;
+    if (gap < 0) window.scrollBy({ top: gap, behavior: 'instant' });
+  }, { passive: true });
+  area.addEventListener('touchcancel', () => { start = null; }, { passive: true });
+}
 function card(a) {
-  const card = el('article', undefined, 'card'); card.dataset.id = a.id;
+  const card = el('article', undefined, 'card'); card.dataset.id = a.id; card.dataset.category = a.category;
   const top = el('div', undefined, 'card-top');
   top.append(el('span', `${label(a.category)} · ${a.source || ''}`, 'source'), el('time', relative(a.published_at), 'date')); card.append(top);
   const h = el('h2'), link = el('a', titleOf(a), 'title'); const url = L.safeURL(a.url);
@@ -157,6 +191,9 @@ function render() {
   $('refreshRanking').hidden = view === 'history';
   $('rankingHint').hidden = view === 'insights';
   view === 'insights' ? renderInsights() : renderArticles();
+  renderStatus();
+}
+function renderStatus() {
   const votes = L.categories.reduce((n, c) => n + L.profile(store.state, c).count, 0);
   $('learningCount').textContent = t(store.state.settings.learning ? 'reader.learning_count' : 'reader.learning_paused', { n: votes });
   $('learningToggle').checked = store.state.settings.learning; $('compactToggle').checked = store.state.settings.compact; $('theme').value = store.state.settings.theme;
@@ -204,5 +241,6 @@ $('importPastedBackup').onclick = () => { if (importBackupText($('backupText').v
 $('resetData').onclick = () => { if (window.confirm(t('reader.reset_confirm'))) { if (update(() => store.reset())) notice('reset_done'); } };
 window.addEventListener('storage', e => { if (e.key === L.KEY || e.key === null) { try { store = L.createStore(window.localStorage); render(); } catch { notice('storage_error'); } } });
 function connection() { $('offline').hidden = navigator.onLine; }
+enableSwipeTabs(document.querySelector('.page-shell'));
 window.addEventListener('online', connection); window.addEventListener('offline', connection); connection();
 render();
