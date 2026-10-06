@@ -36,14 +36,22 @@ function button(text, action, className) { const b = el('button', text, classNam
 let noticeTimer;
 function notice(key) { const message = t(`reader.${key}`); $('feedbackStatus').textContent = message; if ($('settingsStatus')) $('settingsStatus').textContent = message; clearTimeout(noticeTimer); if (!['storage_error', 'save_failed'].includes(key)) noticeTimer = setTimeout(() => { $('feedbackStatus').textContent = ''; }, 5000); }
 function update(fn) { try { fn(); render(); return true; } catch { notice('save_failed'); return false; } }
-// Rebuilding the whole list lets the browser re-anchor the scroll position, which
-// threw the reader back to the first article after every vote. A vote or save only
-// changes its own card, so swap that card in place and keep the list where it is.
-function updateCard(a, fn) {
-  try { fn(); } catch { notice('save_failed'); return false; }
-  const current = [...$('app').querySelectorAll('.card')].find(n => n.dataset.id === a.id && n.dataset.category === a.category);
-  if (current) { current.replaceWith(card(a)); renderStatus(); } else render();
-  return true;
+// Persist without rebuilding the list, moving focus, or showing a success toast.
+function updateAction(fn, actions, a) {
+  try {
+    fn();
+    const value = (store.state.feedback[a.category] || []).find(v => v.id === a.id)?.value;
+    for (const v of ['like', 'bad']) {
+      const b = actions.querySelector(`.${v}`);
+      b.classList.toggle('selected', value === v); b.setAttribute('aria-pressed', String(value === v));
+    }
+    const saved = Boolean(store.state.saved[L.idKey(a)]), b = actions.querySelector('.save');
+    b.classList.toggle('selected', saved); b.setAttribute('aria-pressed', String(saved));
+    b.textContent = t(saved ? 'reader.saved' : 'reader.save');
+    const pending = rankingSignature(store.state) !== rankingSignature(rankingState);
+    $('refreshRanking').setAttribute('aria-label', t(pending ? 'reader.refresh_pending' : 'reader.refresh_ranking'));
+    $('refreshRanking').dataset.pending = String(pending);
+  } catch { notice('save_failed'); }
 }
 function download(content, name) { const url = URL.createObjectURL(new Blob([content], { type: 'application/json' })); const a = el('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 function relative(date) { const d = new Date(date); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : t('reader.unknown_date'); }
@@ -120,13 +128,12 @@ function card(a) {
   if (recorded && vote !== 'none') card.append(el('p', t('reader.recorded_vote', { date: relative(recorded.at) }), 'muted vote-date'));
   for (const v of ['like', 'bad']) {
     const b = button(t(`feedback.${v}`), () => {
-      const focus = `${a.category}:${a.id}:${v}`;
-      if (updateCard(a, () => store.vote(a, v, vocabulary(a.category)))) { notice('learned'); document.querySelectorAll('[data-focus]').forEach(n => { if (n.dataset.focus === focus) n.focus({ preventScroll: true }); }); }
+      updateAction(() => store.vote(a, v, vocabulary(a.category)), actions, a);
     }, `feedback ${v} ${vote === v ? 'selected' : ''}`);
     b.dataset.focus = `${a.category}:${a.id}:${v}`; b.disabled = L.sample(a); b.setAttribute('aria-pressed', String(vote === v)); actions.append(b);
   }
   const saved = Boolean(store.state.saved[L.idKey(a)]);
-  const save = button(t(saved ? 'reader.saved' : 'reader.save'), () => { if (updateCard(a, () => store.save(a))) notice(saved ? 'unsaved' : 'saved_notice'); }, `save ${saved ? 'selected' : ''}`);
+  const save = button(t(saved ? 'reader.saved' : 'reader.save'), () => updateAction(() => store.save(a), actions, a), `save ${saved ? 'selected' : ''}`);
   save.disabled = L.sample(a); save.setAttribute('aria-pressed', String(saved)); actions.append(save); card.append(actions); return card;
 }
 function renderArticles() {
@@ -191,7 +198,9 @@ function renderStatus() {
   $('learningCount').textContent = t(store.state.settings.learning ? 'reader.learning_count' : 'reader.learning_paused', { n: votes });
   $('learningToggle').checked = store.state.settings.learning; $('compactToggle').checked = store.state.settings.compact; $('theme').value = store.state.settings.theme;
   const pending = rankingSignature(store.state) !== rankingSignature(rankingState);
-  $('refreshRanking').textContent = t(pending ? 'reader.refresh_pending' : 'reader.refresh_ranking');
+  $('refreshRanking').textContent = t('reader.refresh_ranking');
+  $('refreshRanking').setAttribute('aria-label', t(pending ? 'reader.refresh_pending' : 'reader.refresh_ranking'));
+  $('refreshRanking').dataset.pending = String(pending);
   $('rankingHint').textContent = t(view === 'history' ? 'reader.history_hint' : pending ? 'reader.ranking_pending' : 'reader.ranking_hint');
 }
 window.i18n.applyStaticText();
