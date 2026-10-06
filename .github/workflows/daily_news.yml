@@ -1,22 +1,31 @@
 name: Daily Personal Newsroom
 
+# Production moved to the private newsroom-themes repository, which builds the
+# site and pushes it to this repository's gh-pages branch; GitHub Pages serves
+# that branch. This workflow no longer runs on a schedule or publishes anything.
+# It stays as a manual end-to-end check of the engine.
+# See docs/migration-handoff.md (Gate 2).
+
 on:
-  schedule:
-    - cron: "0 21 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Console level for every pipeline step. Set DEBUG on a manual run to get the
+      # per-article translation diagnostics back.
+      NEWSROOM_LOG_LEVEL: INFO
+      # The runner is discarded after the run and GitHub keeps the console log,
+      # so the rotating file is only useful for local runs.
+      NEWSROOM_LOG_FILE: ""
+      # The personal pack is private now; check the engine against the sample
+      # pack, and keep the state it writes out of the checkout.
+      NEWSROOM_CONFIG_DIR: ${{ github.workspace }}/themes/example
+      NEWSROOM_STATE_DIR: ${{ runner.temp }}/newsroom-state
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,13 +41,8 @@ jobs:
       - name: Run regression tests
         run: python -m unittest discover -s tests -v
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Test feedback storage recovery
-        run: node --test tests/test_feedback_storage.cjs
+      - name: Update derived RSS tags
+        run: python scripts/update_preferences.py
 
       - name: Fetch RSS
         run: python scripts/fetch_rss.py
@@ -54,25 +58,3 @@ jobs:
 
       - name: Validate newsroom output
         run: python scripts/validate_newsroom.py
-
-      - name: Analyze source feedback
-        run: python scripts/analyze_source_feedback.py
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

@@ -1,0 +1,54 @@
+# Sample theme pack — public feeds only.
+#
+# This exists so anyone who clones the repository can run the pipeline without
+# owning any private configuration. It is deliberately minimal: it proves the
+# engine works, it is not a curated product.
+#
+# No Google Alert feeds here. Those are personal, cannot be rotated, and belong
+# in a private theme pack that injects them through url_env. See README.
+#
+# The category keys below (business / food / ai_dev / egg) are currently fixed:
+# the pipeline and the page still hardcode them. A theme pack can change the
+# labels and the sources, but not yet the set of keys.
+categories:
+  business:
+    label: "経済・ビジネス"
+    sources:
+      - name: "NHK 経済"
+        source_type: "rss"
+        url: "https://www3.nhk.or.jp/rss/news/cat5.xml"
+      - name: "ITmedia ビジネス"
+        source_type: "rss"
+        url: "https://rss.itmedia.co.jp/rss/2.0/business.xml"
+  food:
+    label: "スイーツ・飲食"
+    focus: "外食、スイーツ、新商品、限定メニュー"
+    sources:
+      - name: "グルメ Watch"
+        source_type: "rss"
+        url: "https://gourmet.watch.impress.co.jp/data/rss/1.0/grw/feed.rdf"
+      - name: "えん食べ"
+        source_type: "rss"
+        url: "https://entabe.jp/news/feed.rss"
+  ai_dev:
+    label: "AI・活用"
+    focus: "生成AIの活用事例、開発ツール、AIトレンド"
+    sources:
+      - name: "Zenn AI"
+        source_type: "rss"
+        url: "https://zenn.dev/topics/ai/feed"
+      - name: "OpenAI Blog"
+        source_type: "rss"
+        url: "https://openai.com/news/rss.xml"
+  egg:
+    label: "卵・食品開発"
+    focus: "食品の商品開発、製法、素材"
+    sources:
+      - name: "Food Dive"
+        source_type: "rss"
+        url: "https://www.fooddive.com/feeds/news/"
+        region: "global"
+      - name: "Food Navigator"
+        source_type: "rss"
+        url: "https://www.foodnavigator.com/Info/Latest-News/RSS"
+        region: "global"

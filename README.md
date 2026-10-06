@@ -1,6 +1,8 @@
 # Personal-Newsroom
 
-自分専用のスマホ向けニュースMVPです。カテゴリ別RSSを取得し、要約、スコアリング、カテゴリ別10件表示、いいね / バッドのフィードバックUIを提供します。
+自分専用のスマホ向けニュースアプリです。RSSニュースを評価すると、端末内に評価を蓄積し、カテゴリ別の関心タグ・情報源からおすすめ順を自動調整します。検索、あとで読む、評価履歴、関心タグ編集、活用提案、ダークモード、バックアップ、オフライン起動に対応します。
+
+操作と公開前確認は [リリースガイド](docs/release-guide.md) を参照してください。
 
 要件と現在の改修方針は [`docs/requirements.md`](docs/requirements.md) に整理しています。
 
@@ -8,8 +10,51 @@
 
 - 経済・ビジネス
 - スイーツ・飲食
-- AI・開発
+- AI・活用
 - 卵（加工品・ゆで卵・温泉卵・煮卵・商品開発・技術トレンド）
+
+## サンプルテーマパックで動かす（clone した方はここから）
+
+`themes/example/` に、公開フィードだけで構成した最小のテーマパックがあります。個人の設定を持っていなくても、clone すればそのまま動きます。
+
+```bash
+git clone https://github.com/anyhoe104-spec/Personal-Newsroom.git
+cd Personal-Newsroom
+python -m pip install -r requirements.txt
+
+export NEWSROOM_CONFIG_DIR="$PWD/themes/example"
+export NEWSROOM_STATE_DIR="$PWD/.state"
+
+python scripts/fetch_rss.py
+python scripts/score_articles.py
+python scripts/build_site.py
+python scripts/validate_newsroom.py
+```
+
+PowerShell の場合:
+
+```powershell
+$env:NEWSROOM_CONFIG_DIR="$PWD/themes/example"
+$env:NEWSROOM_STATE_DIR="$PWD/.state"
+```
+
+生成された `public/index.html` をブラウザで開くと確認できます。APIキーは不要です（未設定なら記事タイトルとRSS概要から仮要約を作ります）。`NEWSROOM_STATE_DIR` は初回実行時に作られるので、事前に用意する必要はありません。
+
+### サンプルパックの構成
+
+| ファイル | 内容 |
+| --- | --- |
+| `themes/example/sources.yaml` | 4カテゴリ・8ソース。公開RSSのみ |
+| `themes/example/preferences.yaml` | スコアリングの重みとカテゴリ別キーワード |
+| `themes/example/prompts.yaml` | 要約プロンプト（**現時点ではパイプラインから読まれていません**。テーマパックの構成を揃えるために置いています） |
+
+GoogleアラートRSSは含めていません。個人に紐づきローテーションもできないため、Private なテーマパック側から `url_env` で注入する想定です（「設定とデータの置き場所」を参照）。
+
+### 現時点の制約
+
+- **カテゴリキーは `business` / `food` / `ai_dev` / `egg` に固定です。** ラベルとソースはテーマパックごとに変えられますが、キーの集合はまだ変えられません。パイプラインと画面側の8箇所にハードコードされています
+- **ビルド成果物の出力先は `public/` 固定です。** テーマパックを指定して実行してもリポジトリ内の `public/` に書き込みます。出力先の分離は今後の作業です
+- `prompts.yaml` は置いてあるだけで、要約プロンプトは `scripts/fetch_rss.py` 内で組み立てられています
 
 ## ローカル実行手順（PowerShell）
 
@@ -51,7 +96,11 @@ $env:ANTHROPIC_API_KEY="..."
 
 ## フィードバック
 
-ブラウザ上のいいね / バッドは、まず `localStorage` に保存されます。画面上部の「フィードバックをコピー」または「JSON保存」から `data/feedback.json` に反映し、次回スコアに反映したい場合は以下を実行します。
+「役に立った」「関心が薄い」は同じボタンをもう一度押すと取り消せます。評価はその場でおすすめ順に反映され、次の日の記事にも適用されます。学習はカテゴリ内に限定し、タグ・情報源の加減点には上限を設けています。「あなたの関心」で学習タグ・優先して追うタグ・情報源の見直し候補・活用提案を確認できます。
+
+データは端末のブラウザ内に保存します。設定からバックアップを保存・統合できます。クラウドへの自動送信や端末間の自動同期はありません。RSSの購読URL自体は自動変更しません。
+
+任意でパイプライン側にも反映する場合は、設定の「詳細：フィードバック書き出し」で保存した `feedback.json` を `data/feedback.json` に置き、以下を実行します。個人の評価を公開リポジトリにコミットする必要はありません。
 
 ```powershell
 python scripts/update_preferences.py
@@ -60,7 +109,7 @@ python scripts/build_site.py
 python scripts/analyze_source_feedback.py
 ```
 
-学習はカテゴリ内だけで行います。いいねは類似キーワードと同一ソースを上げ、バッドは下げます。`scripts/analyze_source_feedback.py` は `data/run_history.json` と `data/source_recommendations.json` を更新し、ソース差し替え候補を確認できるJSONも `public/` に出力します。
+`update_preferences.py` は編集用の `preferences.yaml` を変更せず、評価から再計算した `learned_tags` を `NEWSROOM_STATE_DIR/learned.yaml`（既定 `data/learned.yaml`）へ保存します。コメントも保持され、再実行で重みは増幅せず、取り消しも反映されます。サイト生成は編集用キーワードとこの学習語彙を読みます。情報源の評価は `score_articles.py` が `feedback.json` から直接使うため、未使用だった `learned_sources` は出力しません。`learned.yaml` は評価から再生成できる派生状態です。
 
 ## GoogleアラートRSSの追加方法
 
@@ -81,17 +130,21 @@ categories:
 - `google_alert`: GoogleアラートRSSです。通常RSSとして取得し、記事には `source_type: google_alert` を保存します。
 - `api_stub`: 将来API取得を追加するための予約枠です。現時点では記事を追加せず、既存処理を止めません。
 
-記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・開発カテゴリと卵・食品開発カテゴリでは、APIキーがある場合はAnthropicで英語記事の日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
+記事データには既存フィールドを残したまま、`source_type`、`original_title`、`translated_title` を追加します。AI・活用カテゴリと卵・食品開発カテゴリでは、APIキーがある場合はAnthropicで英語記事の日本語タイトル・要約を生成し、APIキーがない場合もフォールバックで日本語中心の要約を作ります。
 
 ## GitHub Pages
 
-Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml` が毎日 `public/` を生成し、Pages artifactとしてアップロードします。
+GitHub Pages は **`gh-pages` ブランチ**を配信しています（2026-10 切替）。毎日のビルドと配送は非公開リポジトリ `newsroom-themes` の `Private newsroom daily` が行い、`scripts/publish_gh_pages.sh` で成果物をこのリポジトリの `gh-pages` へ push します。
+
+このリポジトリの `daily_news.yml` は手動実行のみで、エンジンの動作確認に使います。配送はしません。経緯とゲートは `docs/migration-handoff.md` を参照してください。
+
+`gh-pages` は orphan ブランチで、ビルド成果物だけを持ちます。`public/index.html` が無い場合は publish を拒否して失敗するため、壊れたビルドが既存のサイトを消すことはありません。内容に変化が無い実行では commit も push もしません。
 
 ## ファイル構成
 
-- `config/sources.yaml`: RSSソース
-- `config/preferences.yaml`: スコアリング設定とカテゴリ別キーワード
-- `config/prompts.yaml`: AI要約用プロンプト
+- `themes/example/`: 公開フィードだけで構成したサンプルテーマパック（`sources.yaml` / `preferences.yaml` / `prompts.yaml`）。運用中の個人テーマは非公開リポジトリ `newsroom-themes` にあります
+- `scripts/publish_gh_pages.sh`: ビルド成果物を `gh-pages` ブランチへ publish
+- `scripts/newsroom_config.py`: 設定・学習データの置き場所とフィードURL注入の解決
 - `scripts/fetch_rss.py`: RSS取得と要約
 - `scripts/score_articles.py`: スコアリングとカテゴリ10件への絞り込み
 - `scripts/build_site.py`: 静的HTML生成
@@ -99,13 +152,111 @@ Pagesの公開元をGitHub Actionsに設定してください。`daily_news.yml`
 - `scripts/analyze_source_feedback.py`: スコアとフィードバック履歴からソース別の差し替え候補を集計
 - `scripts/update_preferences.py`: `feedback.json` から好み設定を更新
 - `scripts/collectors/`: RSS、GoogleアラートRSS、将来API取得の入口
-- `public/index.html`: GitHub Pages用HTML
+- `public/index.html`: `build_site.py` が生成するHTML（コミットしない。配信は `gh-pages`）
 - `public/style.css`: スマホ優先CSS
 - `public/app.js`: タブ表示とフィードバックUI
-- `data/articles.json`: 記事データ
-- `data/feedback.json`: 次回スコア反映用フィードバック
-- `data/run_history.json`: ソース別表示状況の蓄積
-- `data/source_recommendations.json`: ソース別の維持・強化・監視・差し替え候補
+- `public/i18n.js`: UI固定文言の翻訳キー辞書と `t()` フック
+- `tests/fixtures/state/`: CI のビルドとブラウザ検証に使う合成記事
+
+`config/` と `data/` は `.gitignore` 済みです。ローカルで既定値のまま動かす場合はここに置くか、下の環境変数で `themes/example` などを指定してください。
+
+## UI文言の翻訳フック（i18n）
+
+画面に出る固定文言は `public/i18n.js` の辞書に集約し、`i18n.t('キー')` 経由で取得します。記事タイトル・要約・impact などの記事本文は対象外で、従来どおり `data/articles.json` の値をそのまま表示します（AI・活用カテゴリのClaude翻訳パイプラインには一切手を入れていません）。
+
+デフォルト言語は日本語（`ja`）で、現時点で辞書は `ja` のみです。表示は従来と同一です。
+
+使い方:
+
+```js
+i18n.t("feedback.like");                                  // "いいね"
+i18n.t("nav.tab_label", { label: "AI・活用", count: 10 }); // "AI・活用 10"
+i18n.tList("fallback.themes.egg");                        // 文字列配列
+i18n.setLocale("en");                                     // 未登録ロケールは ja にフォールバック
+```
+
+HTML側は属性で指定し、`i18n.applyStaticText()` が差し替えます。日本語のテキストはマークアップにも残してあるため、`i18n.js` の読み込みに失敗しても見出し・ボタンなどの静的部分は日本語のまま表示されます（記事一覧の描画には従来どおり `app.js` が必要です）。
+
+```html
+<h1 data-i18n="header.headline">今日読むべき40本</h1>
+<nav data-i18n-attr="aria-label:nav.categories_aria_label" aria-label="カテゴリ"></nav>
+```
+
+キーが辞書にない場合はキー文字列をそのまま返すため、タイプミスが画面上で見つかります。
+
+多言語ファイルの追加は次段階です。`i18n.js` の `MESSAGES` に `en` などのオブジェクトを足し、`i18n.setLocale()` を呼ぶだけで切り替わります。コンポーネント側の変更は不要です。
+
+カテゴリ名は `config/sources.yaml` が正です。記事データにラベルが入っている場合はそちらを使い、記事0件時のフォールバック表示でのみ `i18n.js` の `category.*` を使います。
+
+## 設定とデータの置き場所
+
+`scripts/` は設定と学習データの場所を環境変数で差し替えられます。既定値はリポジトリ内の従来の配置なので、**何も設定しなければ挙動は変わりません**。
+
+| 環境変数 | 既定値 | 中身 |
+| --- | --- | --- |
+| `NEWSROOM_CONFIG_DIR` | `config/` | `sources.yaml` / `preferences.yaml` / `prompts.yaml` |
+| `NEWSROOM_STATE_DIR` | `data/` | `articles.json` / `feedback.json` / `run_history.json` / `source_recommendations.json` |
+
+リポジトリ外のテーマパックに対して実行する例:
+
+```powershell
+$env:NEWSROOM_CONFIG_DIR="C:/themes/personal"
+$env:NEWSROOM_STATE_DIR="C:/themes/personal/state"
+python scripts/fetch_rss.py
+```
+
+実行時にどちらを使ったかは `[source_config] config_dir=... , state_dir=...` としてログに出ます。
+
+### フィードURLを設定ファイルに書かずに注入する
+
+コミットしたくないフィードURL（GoogleアラートRSSなど）は、`sources.yaml` に名前だけ書いて値を環境変数から渡せます。
+
+```yaml
+- name: "Google Alert: スイーツ 新商品"
+  source_type: "google_alert"
+  url_env: "GOOGLE_ALERT_SWEETS"
+```
+
+解決順は次のとおりです。
+
+1. `url_env` と同名の環境変数
+2. `GOOGLE_ALERT_FEEDS`（名前とURLのJSONオブジェクト。1つのSecretに複数まとめる場合）
+3. 同じ項目の `url`（自分のURLを持つチェックアウトはこれで従来どおり動きます）
+
+```powershell
+$env:GOOGLE_ALERT_FEEDS='{"GOOGLE_ALERT_SWEETS":"https://...","GOOGLE_ALERT_EGG":"https://..."}'
+```
+
+どれも解決できない場合、そのソースは警告つきでスキップされ、他のソースの処理は続きます。ログには参照名だけが出て、URLは出ません。
+
+**注入されたURLはログから自動的に伏せられます。** 取得失敗時に requests が出す `Max retries exceeded with url: /alerts/feeds/...` にはホストとパスが分かれて現れ、GitHub のSecretマスクは完全一致でしか効かないためパスが素通りします。注入されたURLとそのパスは `[redacted]` に置換されます。`sources.yaml` に直書きされたURLは秘密ではないため置換しません。
+
+## ログ設定
+
+ログは Python 標準の `logging` に統一しています。出力形式は従来どおり `[タグ] 本文` のままです。
+
+| 環境変数 | 既定値 | 説明 |
+| --- | --- | --- |
+| `NEWSROOM_LOG_LEVEL` | `INFO` | コンソール出力レベル。`DEBUG` にすると記事単位の翻訳診断ログが復活します（`LOG_LEVEL` でも可）。 |
+| `NEWSROOM_LOG_FILE` | `logs/newsroom.log` | ログファイルの出力先。空文字を指定するとファイル出力を止めます。 |
+| `NEWSROOM_LOG_FILE_LEVEL` | `DEBUG` | ファイル出力レベル。コンソールに出さない詳細もファイルには残ります。 |
+| `NEWSROOM_LOG_MAX_BYTES` | `1048576`（1MiB） | 1ファイルあたりの上限。超えるとローテーションします。 |
+| `NEWSROOM_LOG_BACKUP_COUNT` | `3` | 保持する世代数。上限に達した古いファイルから削除されます。 |
+
+`logs/` は `.gitignore` 済みです。ローカル実行では最大 4MiB（1MiB × 4世代）でログの増加が止まります。
+
+GitHub Actions は既定で `NEWSROOM_LOG_LEVEL=INFO`、ファイル出力なしで実行します。詳細を見たいときは `daily_news.yml` の `NEWSROOM_LOG_LEVEL` を `DEBUG` にして手動実行してください。
+
+記事単位で繰り返し出るログには1実行あたりの件数上限があり、上限に達した場合は `[log_capped] グループ名: emitted=N, suppressed=M` を最後に出力します。ログが黙って欠けることはありません。
+
+デバッグ時のみ出力されるログ（`NEWSROOM_LOG_LEVEL=DEBUG` が必要）:
+
+- `[anthropic] request articles before prompt` / `request messages payload`
+- `[anthropic] response content types` / `tool_use name` / `tool_use.input item`
+- `[anthropic] translation_request_titles` / `translation_request_article_ids` / `final_ai_dev_display_article_ids`
+- `[anthropic] ai_dev japanese passthrough` / `applied translation to article`
+- 記事ごとの翻訳可否ダンプ（`article_id` / `translation_usable`）
+- `[rss] 名称: parse warning`（feedparser の bozo 判定は誤検知が多いため）
 
 ## Actionsログの見方
 
@@ -121,11 +272,11 @@ RSS取得:
 AI翻訳:
 
 - `api_key_present=True` なら Anthropic API キーがActions環境にあります。キー値はログに出しません。
-- `request_count` はAI・開発と卵・食品開発の最終表示候補のうち、英語記事を翻訳対象にした件数です。
+- `request_count` はAI・活用と卵・食品開発の最終表示候補のうち、英語記事を翻訳対象にした件数です。
 - `source_japanese_count` は対象カテゴリの表示候補のうち、日本語原文としてClaude翻訳をスキップした件数です。
 - `japanese_passthrough_count` は日本語原文記事に3点要約とimpactを補って表示可能にした件数です。
 - `api_success=1`、`matched_count=10`、`meaningful_translation_count=10`、`fallback_count=0` なら翻訳は成功です。
-- `translation_request_article_ids` と `final_ai_dev_display_article_ids`、および `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。
+- `request_display_match_count` で、翻訳対象と表示対象が一致しているか確認できます。内訳の `translation_request_article_ids` と `final_ai_dev_display_article_ids` は DEBUG レベルです（「ログ設定」を参照）。
 - `final_display_translated_count` が8以上なら概ね成功です。10なら理想状態です。
 - `fallback_count` が多い場合は、API失敗、レスポンス解析失敗、汎用翻訳判定、またはAPIキー未設定の可能性があります。
 

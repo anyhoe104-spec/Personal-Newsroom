@@ -1,0 +1,68 @@
+# Sample scoring configuration.
+#
+# Weights are applied to normalised 0..1 factors and summed, so they read as
+# relative importance. Keyword matching dominates, freshness comes next.
+# The real pack tunes these against months of feedback; this one is a starting
+# point that produces a sensible ordering out of the box.
+scoring:
+  keyword_weight: 0.42
+  recency_weight: 0.22
+  source_weight: 0.18
+  feedback_weight: 0.13
+  # Only used by the egg category, to push down articles that are mostly about
+  # price movements rather than product development.
+  egg_price_weight: 0.05
+
+categories:
+  business:
+    boost_keywords:
+      - 経済
+      - 戦略
+      - 新規事業
+      - 市場
+      - business
+      - strategy
+    downrank_keywords:
+      - 株価
+      - 為替
+  food:
+    boost_keywords:
+      - スイーツ
+      - 新商品
+      - 期間限定
+      - メニュー
+      - dessert
+      - restaurant
+    downrank_keywords:
+      - クーポン
+      - セール
+  ai_dev:
+    boost_keywords:
+      - 生成AI
+      - LLM
+      - エージェント
+      - API
+      - 活用事例
+      - developer
+    downrank_keywords:
+      - セール
+      - 割引
+  egg:
+    boost_keywords:
+      - 商品開発
+      - 製法
+      - 素材
+      - 加工
+      - food technology
+      - product development
+    downrank_keywords:
+      - レシピ
+      - キャンペーン
+
+# Sources listed here score higher than the 0.45 baseline. Leave a category
+# empty to treat all of its sources equally.
+preferred_sources:
+  business: []
+  food: []
+  ai_dev: []
+  egg: []

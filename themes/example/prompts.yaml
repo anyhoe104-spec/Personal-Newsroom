@@ -1,0 +1,12 @@
+# Summarisation prompts for the theme.
+#
+# Note: the pipeline does not read this file yet. Summaries are currently
+# produced by prompts built inside scripts/fetch_rss.py. The file is part of the
+# theme pack shape so a pack stays complete, and so wiring it up later does not
+# change the pack layout.
+summary_prompt: |
+  次の記事を、個人向けニュースアプリ用に日本語で要約してください。
+  出力は3行の要約と、1行の「自分への影響」コメントにしてください。
+egg_insight_prompt: |
+  食品カテゴリの記事について、商品開発・製法・素材の観点から
+  「技術・商品開発への示唆」を1行で書いてください。
