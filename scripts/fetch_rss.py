@@ -8,7 +8,7 @@ import re
 import socket
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
@@ -189,19 +189,32 @@ def article_id(url: str, title: str) -> str:
     return hashlib.sha256(f"{url}|{title}".encode("utf-8")).hexdigest()[:16]
 
 
+MAX_ARTICLE_AGE_DAYS = 7
+
+
 def parse_date(entry: dict) -> str:
-    for key in ("published", "updated", "created"):
-        raw = entry.get(key)
-        if not raw:
-            continue
+    # Prefer original publication over updates. Unknown dates must stay unknown.
+    raw = next((entry.get(key) for key in ("published", "created", "updated") if entry.get(key)), None)
+    if not isinstance(raw, str):
+        return ""
+    try:
         try:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
             dt = parsedate_to_datetime(raw)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc).isoformat()
-        except (TypeError, ValueError):
-            continue
-    return datetime.now(timezone.utc).isoformat()
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    except (TypeError, ValueError, OverflowError):
+        return ""
+
+
+def recent_entry(entry: dict, now: datetime | None = None) -> bool:
+    published = parse_date(entry)
+    if not published:
+        return False
+    age = (now or datetime.now(timezone.utc)) - datetime.fromisoformat(published)
+    return -timedelta(hours=1) <= age <= timedelta(days=MAX_ARTICLE_AGE_DAYS)
 
 
 def fallback_summary(title: str, description: str, category_label: str) -> tuple[list[str], str, str]:
@@ -1233,8 +1246,10 @@ def fetch_source(source: dict, category_key: str, category_label: str) -> list[d
         # skip this source; record_source_result() logs it as a failed source.
         raise ValueError(describe_unresolved_source(source))
     entries = collector(source)
+    recent = [entry for entry in entries if recent_entry(entry)]
+    LOG.info(f"[freshness] {category_key} / {source['name']}: kept={len(recent)}, excluded={len(entries) - len(recent)}, max_age_days={MAX_ARTICLE_AGE_DAYS}")
     articles = []
-    for entry in entries:
+    for entry in recent:
         article = normalize_entry(entry, source, category_key, category_label)
         if article:
             articles.append(article)
