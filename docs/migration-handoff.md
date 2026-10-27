@@ -178,7 +178,7 @@ B の実装箇所は `scripts/build_site.py` の `reader_vocabulary()`（59〜69
 ## 8. 完了条件
 
 - [ ] スマホで当日のニュースが表示される（配信URLは従来どおり）。Pages は 10/6 以降毎日 `gh-pages` からビルド成功（Actions API）。10/4 に配信元が main のままだった件はオーナーが修正済み。実機での再確認の記録はまだない
-- [x] `gh-pages` の配送元が `newsroom-themes` である（10/3 以降の Publish 元 SHA はすべて newsroom-themes のもの。2026-10-27 git で確認）
+- [x] `gh-pages` の配送元が `newsroom-themes` である（2026-10-03 01:50 UTC 以降の Publish 元 SHA はすべて newsroom-themes のもの。2026-10-27 git で確認）
 - [x] 公開側に `config/` の実運用ファイルと `data/` の学習ファイルが存在しない（PR #35）
 - [x] `grep -r "alerts/feeds" .` が0件（実URLは0件。ダミー値・説明文・テストのみ残る）
 - [x] 回帰テストが全件通る
