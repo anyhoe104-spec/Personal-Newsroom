@@ -16,269 +16,64 @@ ARTICLES_PATH = state_path("articles.json")
 FEEDBACK_PATH = state_path("feedback.json")
 PREFERENCES_PATH = config_path("preferences.yaml")
 LOG = get_logger()
-EGG_REQUIRED_KEYWORDS = (
-    "卵",
-    "たまご",
-    "玉子",
-    "鶏卵",
-    "ゆで卵",
-    "ゆで玉子",
-    "温泉卵",
-    "煮卵",
-    "半熟卵",
-    "卵加工",
-    "液卵",
-    "厚焼",
-    "オムライス",
-    "egg",
-    "eggs",
-    "boiled egg",
-    "egg product",
-)
-EGG_WEAK_CONTEXT_KEYWORDS = (
-    "食品工場",
-    "商品開発",
-    "加工技術",
-    "業務用",
-    "惣菜",
-    "製造",
-    "品質",
-)
-FOOD_PRODUCT_DEV_KEYWORDS = (
-    "商品開発",
-    "共同開発",
-    "開発",
-    "コラボ",
-    "コラボレーション",
-    "企画",
-    "開発背景",
-    "開発秘話",
-    "開発ストーリー",
-    "開発エピソード",
-    "ブランド戦略",
-    "リブランディング",
-    "素材",
-    "製法",
-    "技術",
-    "品質",
-    "食感",
-    "味づくり",
-    "味作り",
-    "差別化",
-    "リニューアル",
-    "監修",
-    "限定商品",
-    "新ブランド",
-    "新業態",
-    "メーカー",
-    "食品メーカー",
-    "外食チェーン",
-    "コンビニ",
-    "小売",
-    "惣菜",
-    "冷凍食品",
-    "チルド",
-    "業務用",
-    "plant-based",
-    "collaboration",
-    "co-developed",
-    "product development",
-    "formulation",
-)
-FOOD_PRODUCT_DEV_CONTEXT_KEYWORDS = (
-    "発売",
-    "新商品",
-    "新メニュー",
-    "期間限定",
-    "リニューアル",
-    "ブランド",
-    "シリーズ",
-    "ラインアップ",
-    "店舗",
-    "市場",
-    "需要",
-    "ターゲット",
-)
-EGG_OFF_TOPIC_KEYWORDS = (
-    "スイーツ",
-    "カフェ",
-    "タルト",
-    "メロン",
-    "コーラ",
-    "シェイク",
-    "フラペチーノ",
-    "ドリンク",
-    "飲料",
-    "キャンペーン",
-    "クーポン",
-    "値引き",
-    "アイス",
-)
-RELEASE_ONLY_KEYWORDS = (
-    "キャンペーン",
-    "クーポン",
-    "半額",
-    "値引き",
-    "お得",
-    "セール",
-    "福袋",
-    "まとめ",
-)
-AI_TECH_BOOST_KEYWORDS = (
-    "ai agent",
-    "agentic",
-    "llm",
-    "rag",
-    "api",
-    "sdk",
-    "codex",
-    "claude code",
-    "github copilot",
-    "openai",
-    "anthropic",
-    "gemini",
-    "model",
-    "inference",
-    "eval",
-    "benchmark",
-    "developer",
-    "workflow",
-    "automation",
-    "security",
-    "observability",
-    "オープンソース",
-    "推論",
-    "評価",
-    "開発者",
-    "自動化",
-    "生成ai",
-    "aiエージェント",
-    "モデル",
-)
-AI_COMMERCE_DOWNRANK_KEYWORDS = (
-    "sale",
-    "summer sale",
-    "kindle",
-    "campaign",
-    "coupon",
-    "discount",
-    "price",
-    "new product",
-    "book",
-    "books",
-    "発売",
-    "新商品",
-    "セール",
-    "割引",
-    "キャンペーン",
-    "クーポン",
-    "価格",
-    "最大",
-    "書籍",
-    "本",
-    "円",
-    "off",
-)
-FOOD_TREND_KEYWORDS = (
-    "スイーツ",
-    "カフェ",
-    "レストラン",
-    "新商品",
-    "期間限定",
-    "発売",
-    "メニュー",
-    "dessert",
-    "restaurant",
-    "bakery",
-    "cafe",
-)
-FOOD_DEV_DOWNRANK_KEYWORDS = (
-    "商品開発",
-    "共同開発",
-    "加工技術",
-    "製法",
-    "原料",
-    "品質",
-    "工場",
-    "研究",
-    "food tech",
-    "formulation",
-)
-EGG_TECH_DEV_KEYWORDS = (
-    "卵",
-    "たまご",
-    "玉子",
-    "商品開発",
-    "技術開発",
-    "共同開発",
-    "加工技術",
-    "製法",
-    "原料",
-    "品質",
-    "工場",
-    "研究",
-    "新規事業",
-    "海外展開",
-    "代替卵",
-    "卵加工",
-    "液卵",
-    "ゆで卵",
-    "温泉卵",
-    "加工卵",
-    "plant-based",
-    "formulation",
-    "processing",
-    "co-developed",
-    "product development",
-    "food",
-    "food tech",
-    "food technology",
-    "manufacturing",
-    "r&d",
-    "research and development",
-    "innovation",
-    "ingredient",
-    "ingredients",
-    "supply chain",
-    "automation",
-    "plant",
-    "protein",
-    "cultivated",
-    "cell-based",
-    "fermentation",
-    "packaging",
-)
-EGG_SWEETS_ONLY_DOWNRANK_KEYWORDS = (
-    "スイーツ",
-    "カフェ",
-    "アイス",
-    "ケーキ",
-    "チョコ",
-    "キャンペーン",
-    "セール",
-    "値引き",
-    "dessert",
-    "cafe",
-    "ice cream",
-)
-EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS = (
-    "レシピ",
-    "作って",
-    "食べ方",
-    "ランチョンセミナー",
-    "フェア",
-    "ホテル",
-    "駅",
-    "開店",
-    "ピザ",
-    "ドーナツ",
-    "アイス",
-    "パン",
-    "ワイン",
-    "recipe",
-)
+RULES_PATH = config_path("rules.yaml")
 CROSS_CATEGORY_DUPLICATE_KEY_FIELDS = ("url", "original_title", "title")
-EGG_PRICE_KEYWORDS = ("価格", "相場", "卵価", "price")
+
+# Category-specific keyword lists live in the theme pack's rules.yaml
+# (category_rules.<category>.<list>), not in the engine. Each module-level
+# name below is bound from that file; a missing file or list leaves it empty.
+# The formulas that use them stay here until categories themselves become
+# configurable (#44).
+CATEGORY_RULE_NAMES = {
+    "EGG_REQUIRED_KEYWORDS": ("egg", "required"),
+    "EGG_WEAK_CONTEXT_KEYWORDS": ("egg", "weak_context"),
+    "FOOD_PRODUCT_DEV_KEYWORDS": ("egg", "product_dev"),
+    "FOOD_PRODUCT_DEV_CONTEXT_KEYWORDS": ("egg", "product_dev_context"),
+    "EGG_OFF_TOPIC_KEYWORDS": ("egg", "off_topic"),
+    "RELEASE_ONLY_KEYWORDS": ("egg", "release_only"),
+    "EGG_TECH_DEV_KEYWORDS": ("egg", "tech_dev"),
+    "EGG_SWEETS_ONLY_DOWNRANK_KEYWORDS": ("egg", "sweets_only_downrank"),
+    "EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS": ("egg", "consumer_only_downrank"),
+    "EGG_PRICE_KEYWORDS": ("egg", "price"),
+    "AI_TECH_BOOST_KEYWORDS": ("ai_dev", "tech_boost"),
+    "AI_COMMERCE_DOWNRANK_KEYWORDS": ("ai_dev", "commerce_downrank"),
+    "FOOD_TREND_KEYWORDS": ("food", "trend"),
+    "FOOD_DEV_DOWNRANK_KEYWORDS": ("food", "dev_downrank"),
+}
+# Lists that make up the egg relevance filter. With none of them configured
+# the filter is off and every egg article counts as relevant.
+EGG_RELEVANCE_RULES = (
+    "EGG_REQUIRED_KEYWORDS",
+    "EGG_WEAK_CONTEXT_KEYWORDS",
+    "FOOD_PRODUCT_DEV_KEYWORDS",
+    "FOOD_PRODUCT_DEV_CONTEXT_KEYWORDS",
+    "EGG_TECH_DEV_KEYWORDS",
+)
+
+
+def apply_category_rules(rules: dict | None) -> None:
+    """Bind the keyword lists from a parsed rules.yaml (or clear them with None)."""
+    categories = (rules or {}).get("category_rules") or {}
+    for name, (category, key) in CATEGORY_RULE_NAMES.items():
+        values = (categories.get(category) or {}).get(key) or []
+        globals()[name] = tuple(str(value) for value in values)
+
+
+def load_category_rules(path: Path | None = None) -> None:
+    path = path or RULES_PATH
+    if not path.exists():
+        LOG.info(f"[rules] {path.name} not found; category keyword rules are empty")
+        apply_category_rules(None)
+        return
+    with path.open("r", encoding="utf-8") as f:
+        apply_category_rules(yaml.safe_load(f))
+
+
+def egg_relevance_rules_configured() -> bool:
+    return any(globals()[name] for name in EGG_RELEVANCE_RULES)
+
+
+load_category_rules()
 
 
 def load_yaml(path: Path) -> dict:
@@ -375,6 +170,8 @@ def category_quality_adjustment(article: dict) -> float:
 
 
 def egg_article_relevance(article: dict) -> float:
+    if not egg_relevance_rules_configured():
+        return 1.0
     text = article_text(article)
     required_hits = sum(1 for kw in EGG_REQUIRED_KEYWORDS if kw.lower() in text)
     context_hits = sum(1 for kw in EGG_WEAK_CONTEXT_KEYWORDS if kw.lower() in text)
