@@ -8,7 +8,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-from newsroom_config import state_path
+from newsroom_config import category_keys, state_path
 from newsroom_logging import get_logger
 
 
@@ -17,7 +17,6 @@ ARTICLES_PATH = state_path("articles.json")
 FEEDBACK_PATH = state_path("feedback.json")
 HISTORY_PATH = state_path("run_history.json")
 RECOMMENDATIONS_PATH = state_path("source_recommendations.json")
-CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
 LOG = get_logger()
 
 
@@ -62,7 +61,7 @@ def build_snapshot(articles: list[dict], feedback: dict[str, list[dict]]) -> dic
     generated_at = f"articles:{fingerprint}" if articles else datetime.now(timezone.utc).isoformat()
     source_feedback = feedback_by_source(feedback)
     categories: dict[str, dict] = {}
-    for category in CATEGORY_ORDER:
+    for category in category_keys():
         category_articles = [article for article in articles if article.get("category") == category]
         source_groups: dict[str, list[dict]] = defaultdict(list)
         for article in category_articles:

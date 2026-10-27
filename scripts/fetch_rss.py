@@ -17,6 +17,7 @@ import requests
 import yaml
 from collectors import COLLECTORS
 from newsroom_config import (
+    category_keys,
     config_path,
     describe_unresolved_source,
     log_config_locations,
@@ -1516,7 +1517,7 @@ def print_fetch_run_summary(articles: list[dict]) -> None:
     }
 
     LOG.info("=== Personal Newsroom Run Summary ===")
-    for category in ("business", "food", "ai_dev", "egg"):
+    for category in category_keys():
         LOG.info(
             f"{category}: fetched={fetched_counts.get(category, 0)}, "
             f"displayed={displayed_counts.get(category, 0)}, "

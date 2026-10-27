@@ -56,3 +56,11 @@ test('two tabs merge sequential edits; corrupt storage requires explicit recover
   broken.import(JSON.parse(tab2.export())); assert.equal(broken.error, '');
   assert.equal(broken.state.feedback.egg.length, 1);
 });
+
+test('votes for a category the page does not show are kept, malformed keys are not', () => {
+  const vote = { ...a, category: 'sports', value: 'like', at: '2026-09-08T00:00:00Z' };
+  const state = L.normalize({ version: 2, feedback: { sports: [vote] }, tags: { sports: ['試合結果'] } });
+  assert.equal(state.feedback.sports.length, 1);
+  assert.deepEqual(state.tags.sports, ['試合結果']);
+  for (const key of ['Sports', '1st', 'a-b', '']) assert.throws(() => L.normalize({ version: 2, feedback: { [key]: [] } }));
+});

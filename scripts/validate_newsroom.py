@@ -6,14 +6,13 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from newsroom_config import state_path
+from newsroom_config import category_keys, state_path
 from newsroom_logging import get_logger
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTICLES_PATH = state_path("articles.json")
 INDEX_PATH = ROOT / "public" / "index.html"
-CATEGORY_ORDER = ("business", "food", "ai_dev", "egg")
 LOG = get_logger()
 
 
@@ -120,7 +119,7 @@ def validate() -> int:
     if not INDEX_PATH.exists():
         errors.append(f"Missing {INDEX_PATH}")
 
-    for category in CATEGORY_ORDER:
+    for category in category_keys():
         displayed = category_counts.get(category, 0)
         fallback = fallback_counts.get(category, 0)
         LOG.info(f"[validation_summary] {category}: displayed={displayed}, fallback={fallback}")
@@ -140,7 +139,7 @@ def validate() -> int:
     LOG.info(f"[quality_duplicates] cross_category_duplicates={duplicate_count}")
     if duplicate_count:
         warnings.append(f"カテゴリ横断の重複記事が{duplicate_count}件あります。")
-    for category in CATEGORY_ORDER:
+    for category in category_keys():
         near_duplicates = near_duplicate_pairs(articles, category)
         LOG.info(f"[quality_near_duplicates] {category}: near_duplicate_pairs={near_duplicates}")
         if category == "food" and near_duplicates >= 3:

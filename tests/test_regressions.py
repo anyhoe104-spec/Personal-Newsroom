@@ -791,7 +791,7 @@ class ExampleThemePackTests(unittest.TestCase):
 
     def test_pack_covers_the_category_keys_the_engine_requires(self):
         # The keys are still hardcoded across the pipeline and the page.
-        required = set(validate_newsroom.CATEGORY_ORDER)
+        required = set(validate_newsroom.category_keys())
         self.assertEqual(set(self.load("sources.yaml")["categories"]), required)
         self.assertEqual(set(self.load("preferences.yaml")["categories"]), required)
 

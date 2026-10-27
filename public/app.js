@@ -28,7 +28,8 @@ function displayText(value) {
   }
   return text;
 }
-const label = c => t(`category.${c}`);
+// The theme's label (from the page data) names the tab; the dictionary covers pages built before it.
+const label = c => (typeof data.categories?.[c] === 'string' && data.categories[c]) || t(`category.${c}`);
 const titleOf = a => a.translated_title || a.fallback_title || a.display_title || a.title;
 const vocabulary = c => [...(data.vocabulary?.[c] || []), ...(store.state.tags[c] || [])];
 function el(tag, text, className) { const n = document.createElement(tag); if (text !== undefined) n.textContent = displayText(text); if (className) n.className = className; return n; }
