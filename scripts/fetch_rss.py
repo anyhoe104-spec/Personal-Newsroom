@@ -336,13 +336,11 @@ def parse_ai_json(content: str) -> Any:
             raise
 
 
-def sample_articles(category_key: str, category_label: str, count: int = 10) -> list[dict]:
-    examples = {
-        "business": "新規事業と市場変化を読むための経済ニュース",
-        "food": "スイーツ・外食・新商品と店舗トレンド",
-        "ai_dev": "AIモデル、開発ツール、API活用のアップデート",
-        "egg": "卵加工品、ゆで卵、温泉卵の商品開発と技術トレンド",
-    }
+def sample_articles(category_key: str, category_label: str, count: int = 10, focus: str = "") -> list[dict]:
+    # Placeholder copy comes from the theme pack (sources.yaml categories.<key>.focus)
+    # so the engine carries no one's interests; without a focus it names the label.
+    description = str(focus or "").strip() or f"{category_label}の最新動向"
+    examples = {category_key: description}
     now = datetime.now(timezone.utc).isoformat()
     articles = []
     for i in range(1, count + 1):
@@ -1580,7 +1578,7 @@ def main() -> None:
             missing = 10 - len(category_articles)
             LOG.warning(f"[fallback] {category_key} / {category['label']}: adding {missing} sample articles")
             RUN_STATS["fallback_by_category"][category_key] = RUN_STATS["fallback_by_category"].get(category_key, 0) + missing
-            category_articles.extend(sample_articles(category_key, category["label"], missing))
+            category_articles.extend(sample_articles(category_key, category["label"], missing, category.get("focus", "")))
         for article in category_articles:
             seen_key = f"{article['category']}:{article['id']}"
             if seen_key in seen:
