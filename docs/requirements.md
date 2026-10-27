@@ -83,8 +83,8 @@ MVPでは、RSSを中心にニュースを取得し、カテゴリ別に10件ず
 
 ### 4.6 静的サイト生成
 
-- `scripts/build_site.py` は `data/articles.json` から `public/index.html` を生成する。
-- GitHub Pages の公開対象は `public/` とする。
+- `scripts/build_site.py` は `NEWSROOM_STATE_DIR/articles.json`（既定 `data/`）から `public/index.html` を生成する。生成物はコミットしない。
+- 本番では非公開リポジトリの日次実行が `public/` を `gh-pages` ブランチへ push し、GitHub Pages は `gh-pages` を配信する。
 - スマートフォンで読みやすいカード型UI、下部ナビ、ダークモード、コンパクト表示を提供する。
 - PWAマニフェストとサービスワーカーでホーム画面追加とオフライン起動を可能にする。外部記事本文のオフライン取得は行わない。
 - 画面の固定文言は `public/i18n.js` の翻訳キー経由で取得する。デフォルト言語は日本語とする。
@@ -100,10 +100,10 @@ MVPでは、RSSを中心にニュースを取得し、カテゴリ別に10件ず
 
 ### 4.7 GitHub Actions
 
-- `.github/workflows/daily_news.yml` は毎日実行される。
+- 本番の日次実行は非公開リポジトリ `newsroom-themes` の `daily.yml` が担う。このリポジトリの `daily_news.yml` は手動実行のみの動作確認で、サンプルテーマ `themes/example` を使い、配信しない。
 - 実行順は `fetch_rss.py`、`score_articles.py`、`build_site.py`、`validate_newsroom.py`、`analyze_source_feedback.py` とする。
 - `build_site.py` 後に `validate_newsroom.py` を実行し、生成結果を確認する。
-- 成功時は Pages artifact をアップロードし、GitHub Pages にデプロイする。
+- 本番では成功時に `scripts/publish_gh_pages.sh` で `gh-pages` へ push する。
 - Actions ログには、RSS取得状況、カテゴリ別表示件数、fallback数、翻訳状況、近似重複、ソース評価状況を出力する。
 
 ## 5. 非機能要件
@@ -123,7 +123,7 @@ MVPでは、RSSを中心にニュースを取得し、カテゴリ別に10件ず
 
 - 4カテゴリすべてで最大10件の記事が表示される。
 - `python scripts/fetch_rss.py`、`python scripts/score_articles.py`、`python scripts/build_site.py` がローカルで完了する。
-- GitHub Actions の `build` と `deploy` が成功する。
+- 非公開側の日次実行が成功し、`gh-pages` が当日の内容で更新される。
 - AI・活用カテゴリで、翻訳済み記事と原文フォールバック記事の状態がUIとログから判別できる。
 - 卵・食品開発カテゴリに、明らかなキャンペーン/値引き/単純な新商品リリースだけの記事が優先表示されにくい。
 

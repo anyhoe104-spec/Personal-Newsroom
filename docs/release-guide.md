@@ -35,8 +35,9 @@ node tests/browser-smoke.cjs
 
 ## 公開状況と継続確認
 
-- PR #26/#18/#27はmainへ統合済み。main `3dd9b02` の [Daily実行](https://github.com/anyhoe104-spec/Personal-Newsroom/actions/runs/35437648483) はbuild/deploy成功（2026-09-19 Actions API確認）。
-- mainへのアプリ・設定・パイプライン変更でDailyを自動起動する。日次・手動実行も利用可能。文書だけの変更は公開更新を起動しない。
+- 配信は非公開リポジトリ `newsroom-themes` の `Private newsroom daily` が毎日行い、成果物をこのリポジトリの `gh-pages` へ push する。GitHub Pages は `gh-pages` ブランチを配信する（2026-10 切替。手順と経緯は `docs/migration-handoff.md`）。
+- 非公開側はこのリポジトリの main をエンジンとして毎回 checkout するため、main にマージしたアプリ・パイプラインの変更は翌朝の配信に反映される。即時に反映したい場合は非公開側の手動実行を使う。
+- このリポジトリの `daily_news.yml` は手動実行のみの動作確認で、配信はしない。
 - 「あなたの関心」などの画面は全カテゴリから開始。上の「表示するカテゴリ」で絞り込める。履歴は30件ずつ追加表示する。
 - Android実機でバックアップ取込、ホーム画面追加→評価→終了→再起動、機内モードで保存記事表示を継続確認する。
 - 卵の未評価記事に評価が表示された件は未再現。評価日時と該当記事・ボタンの画像をもとに照合する。
