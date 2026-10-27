@@ -42,6 +42,7 @@ AI_TRANSLATION_SUMMARY_KEYS = (
     "api_key_present",
     "model",
     "request_count",
+    "cache_hit_count",
     "api_success",
     "source_japanese_count",
     "source_english_count",
@@ -84,6 +85,7 @@ RUN_STATS: dict[str, Any] = {
         "japanese_passthrough_count": 0,
         "final_display_translated_count": 0,
         "final_display_untranslated_count": 0,
+        "cache_hit_count": 0,
         "request_display_match_count": 0,
     },
 }
@@ -1410,11 +1412,84 @@ def call_anthropic_with_chunk_retry(candidates: list[dict[str, str]]) -> dict[st
     return translations
 
 
+TRANSLATION_CACHE_PATH = state_path("translation_cache.json")
+TRANSLATION_CACHE_DAYS = 21
+
+
+def load_translation_cache(path: Path | None = None) -> dict[str, dict[str, Any]]:
+    path = path or TRANSLATION_CACHE_PATH
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as exc:
+        LOG.warning(f"[translation_cache] unreadable, starting empty: {exc}")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_translation_cache(cache: dict[str, dict[str, Any]], path: Path | None = None, now: datetime | None = None) -> None:
+    path = path or TRANSLATION_CACHE_PATH
+    cutoff = ((now or datetime.now(timezone.utc)) - timedelta(days=TRANSLATION_CACHE_DAYS)).isoformat()
+    kept = {key: entry for key, entry in cache.items() if str(entry.get("cached_at", "")) >= cutoff}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(kept, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def apply_cached_translations(
+    articles: list[dict], candidates: list[dict[str, str]], cache: dict[str, dict[str, Any]]
+) -> list[dict[str, str]]:
+    """Reuse earlier translations and return the candidates that still need one.
+
+    An article stays on the page for several days. Re-translating it each run
+    gave it a different Japanese title every day while its vote (keyed by the
+    article id) carried over, so a voted article looked like a new, unvoted
+    one that already had a vote (#49).
+    """
+    remaining = []
+    hits = 0
+    for candidate in candidates:
+        entry = cache.get(candidate["id"])
+        if not entry or entry.get("category") != candidate["category"]:
+            remaining.append(candidate)
+            continue
+        for article in articles:
+            if str(article.get("id")) == candidate["id"] and article.get("category") == candidate["category"]:
+                apply_newsroom_translation(article, entry)
+        hits += 1
+    RUN_STATS["ai_translation"]["cache_hit_count"] = hits
+    LOG.info(f"[translation_cache] reused={hits}, to_request={len(remaining)}")
+    return remaining
+
+
+def remember_translations(articles: list[dict], translated_ids: set[str], cache: dict[str, dict[str, Any]]) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    for article in articles:
+        article_id_value = str(article.get("id"))
+        if article_id_value not in translated_ids or article.get("fallback_title") or not article.get("translated_title"):
+            continue
+        cache[article_id_value] = {
+            "category": article.get("category"),
+            "translated_title": article.get("translated_title"),
+            "translated_summary": list(article.get("translated_summary") or []),
+            "impact": article.get("impact") or "",
+            "cached_at": now,
+        }
+
+
 def translate_final_ai_dev_articles(articles: list[dict]) -> None:
+    cache = load_translation_cache()
+    try:
+        translate_final_articles(articles, cache)
+    finally:
+        save_translation_cache(cache)
+
+
+def translate_final_articles(articles: list[dict], cache: dict[str, dict[str, Any]]) -> None:
     global anthropic_batch_requested
 
     ensure_translation_japanese_display_articles_localized(articles)
-    candidates = select_final_translation_candidates(articles)
+    candidates = apply_cached_translations(articles, select_final_translation_candidates(articles), cache)
     requested_article_ids = {candidate["id"] for candidate in candidates}
     RUN_STATS["ai_translation"]["api_key_present"] = bool(os.getenv("ANTHROPIC_API_KEY"))
     RUN_STATS["ai_translation"]["model"] = os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
@@ -1498,6 +1573,7 @@ def translate_final_ai_dev_articles(articles: list[dict]) -> None:
         translation = translations.get(str(article.get("id")))
         if translation:
             apply_newsroom_translation(article, translation)
+    remember_translations(articles, set(translations), cache)
     log_final_ai_dev_display_status(articles, requested_article_ids)
 
 
