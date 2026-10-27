@@ -124,8 +124,8 @@ git grep -n -E '新規事業|価格戦略|卵加工|domestic_ratio' -- . ':!docs
 
 ### Gate 4：②を無効化する（オーナーのみ・自動化不可）
 
-- [ ] **オーナー作業**：https://www.google.com/alerts で現行5本を削除し、同条件で作り直す（2026-10-27 時点で未確認。新URLでの取得は 10/3 の実行 #13 で確認済み）
-- [ ] **オーナー作業**：新URLを `newsroom-themes` の `GOOGLE_ALERT_FEEDS` へ直接入力する
+- [x] **オーナー作業**：https://www.google.com/alerts で現行5本を削除し、同条件で作り直す（2026-10-27 オーナーが無効化を確認。新URLでの取得は実行 #13 以降で確認）
+- [x] **オーナー作業**：新URLを `newsroom-themes` の `GOOGLE_ALERT_FEEDS` へ直接入力する
 
 **新URLをチャット・Issue・リポジトリファイルに貼らないこと。** Googleアラートに公開APIはなく、この作業は代行できない。手順は [alert-rotation.md](alert-rotation.md)。ここまで完了して初めて、履歴に残る旧URLが無害になる。
 
@@ -183,5 +183,5 @@ B の実装箇所は `scripts/build_site.py` の `reader_vocabulary()`（59〜69
 - [x] `grep -r "alerts/feeds" .` が0件（実URLは0件。ダミー値・説明文・テストのみ残る）
 - [x] 回帰テストが全件通る
 - [x] `newsroom-themes` の日次ワークフローが連日成功している（10/3〜10/27 の自動実行 #14〜#37 すべて success、Actions API）
-- [ ] 旧Googleアラート5本が無効化され、新URLがSecretに入っている
+- [x] 旧Googleアラート5本が無効化され、新URLがSecretに入っている（2026-10-27 オーナー確認）
 - [x] §5 の判断が記録され、選んだ案が実装されている（案B：公開HTMLの語彙は当日の記事に出現する語のみ。PR #30）
