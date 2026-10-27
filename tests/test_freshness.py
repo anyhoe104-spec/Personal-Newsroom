@@ -30,3 +30,21 @@ class FreshnessTests(unittest.TestCase):
             result = fetch_rss.fetch_source({'name': 'QA', 'url': 'https://example.org/rss'}, 'business', 'Business')
         self.assertEqual([e['title'] for e in result], ['0', '1'])
         self.assertEqual(normalize.call_count, 2)
+
+    def test_feed_with_nothing_recent_is_reported_as_stale(self):
+        # NHK cat5.xml kept answering with the same 2026-08-07 items for weeks.
+        frozen = [{'title': str(i), 'published': f'2026-08-0{i + 5}T01:30:00Z'} for i in range(3)]
+        frozen.append({'title': 'undated'})
+        stale_before = len(fetch_rss.RUN_STATS['stale_sources'])
+        with patch.dict(fetch_rss.COLLECTORS, {'rss': lambda _: frozen}):
+            self.assertEqual(fetch_rss.fetch_source({'name': 'Frozen', 'url': 'https://example.org/rss'}, 'business', 'Business'), [])
+        reported = fetch_rss.RUN_STATS['stale_sources'][stale_before:]
+        self.assertEqual(reported, [{'category': 'business', 'source': 'Frozen', 'entries': 4, 'newest': '2026-08-07'}])
+
+    def test_quiet_or_recent_feeds_are_not_stale(self):
+        now = datetime.now(timezone.utc)
+        stale_before = len(fetch_rss.RUN_STATS['stale_sources'])
+        for entries in ([], [{'title': 'new', 'published': now.isoformat()}]):
+            with patch.dict(fetch_rss.COLLECTORS, {'rss': lambda _, e=entries: e}), patch.object(fetch_rss, 'normalize_entry', side_effect=lambda entry, *_: entry):
+                fetch_rss.fetch_source({'name': 'QA', 'url': 'https://example.org/rss'}, 'business', 'Business')
+        self.assertEqual(len(fetch_rss.RUN_STATS['stale_sources']), stale_before)
