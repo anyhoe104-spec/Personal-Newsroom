@@ -80,7 +80,14 @@ const root = path.resolve(__dirname, '../public');
     await page.locator('[data-view="insights"]').click();
     await page.locator('.tag-form input').first().fill('商品開発'); await page.locator('.tag-form button').first().click();
     assert.match(await page.locator('.tag-remove').first().innerText(), /商品開発/);
-    await page.locator('#openSettings').click(); await page.locator('#theme').selectOption('dark');
+    await page.locator('#openSettings').click();
+    // Privacy policy, terms and sources are one tap away from settings (#45).
+    assert.equal(await page.locator('#policyLink').getAttribute('href'), './policy.html');
+    assert.match(await page.locator('#policyLink').innerText(), /プライバシー/);
+    const policy = await context.newPage(); await policy.goto(url + 'policy.html');
+    for (const id of ['privacy', 'terms', 'sources', 'contact']) assert.equal(await policy.locator(`section#${id} h2`).count(), 1, id);
+    await policy.close();
+    await page.locator('#theme').selectOption('dark');
     assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
     await page.locator('#compactToggle').check(); await page.locator('#learningToggle').uncheck();
     const backup = await page.evaluate(() => localStorage.getItem('personal-newsroom-state-v2'));

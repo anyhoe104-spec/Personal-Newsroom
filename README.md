@@ -300,3 +300,7 @@ HTTPステータスの目安:
 - `Validate newsroom output` の `[validation_summary] category: displayed=10` を確認します。
 - `[validation_warning]` はActionsを失敗させない注意ログです。卵カテゴリのfallback過多やAI翻訳不足を見ます。
 - `[validation_error]` はActionsを失敗させる構造エラーです。カテゴリ件数不足や生成ファイル不足を見ます。
+
+## ライセンス
+
+ソースコードは [MIT License](LICENSE) です。テーマパック（`themes/` 以外の個人テーマを含む）と、配信される記事の内容は対象外です。記事の著作権は各配信元に帰属します。アプリ内の「プライバシー・利用規約・出典」（`public/policy.html`）も参照してください。
