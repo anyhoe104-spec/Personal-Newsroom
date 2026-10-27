@@ -35,6 +35,42 @@ def article(article_id: str, category: str, **overrides) -> dict:
     return item
 
 
+FIXTURE_RULES = Path(__file__).resolve().parent / "fixtures" / "rules.yaml"
+
+
+def setUpModule():
+    # The engine reads keyword lists from the theme pack's rules.yaml; this
+    # public checkout has none, so the scoring tests run on synthetic rules.
+    score_articles.load_category_rules(FIXTURE_RULES)
+
+
+def tearDownModule():
+    score_articles.load_category_rules()
+
+
+class CategoryRulesLoadingTests(unittest.TestCase):
+    def tearDown(self):
+        score_articles.load_category_rules(FIXTURE_RULES)
+
+    def test_rules_file_binds_every_keyword_list(self):
+        self.assertIn("卵価", score_articles.EGG_PRICE_KEYWORDS)
+        self.assertIn("llm", score_articles.AI_TECH_BOOST_KEYWORDS)
+        self.assertIn("限定", score_articles.FOOD_TREND_KEYWORDS)
+        for name in score_articles.CATEGORY_RULE_NAMES:
+            self.assertIsInstance(getattr(score_articles, name), tuple, name)
+
+    def test_missing_rules_file_turns_category_rules_off(self):
+        score_articles.load_category_rules(FIXTURE_RULES.with_name("no-such-rules.yaml"))
+        for name in score_articles.CATEGORY_RULE_NAMES:
+            self.assertEqual(getattr(score_articles, name), (), name)
+        # Without relevance rules the egg filter keeps everything instead of
+        # dropping the whole category.
+        item = article("egg-any", "egg", title="Unrelated headline")
+        self.assertEqual(score_articles.egg_article_relevance(item), 1.0)
+        self.assertTrue(score_articles.egg_article_is_relevant(item))
+        self.assertEqual(score_articles.category_quality_adjustment(item), 0.0)
+
+
 class ScoringRegressionTests(unittest.TestCase):
     def test_ai_technical_article_outranks_commerce_article(self):
         technical = article(
@@ -205,6 +241,7 @@ class QualityMetricsRegressionTests(unittest.TestCase):
 class EggPriceKeywordRegressionTests(unittest.TestCase):
     def test_price_keywords_are_readable_japanese(self):
         # These were double-encoded through cp932 and could never match an article.
+        # They now come from rules.yaml, which must load as readable UTF-8.
         for keyword in score_articles.EGG_PRICE_KEYWORDS:
             self.assertTrue(keyword.isprintable())
         self.assertIn("価格", score_articles.EGG_PRICE_KEYWORDS)

@@ -1,0 +1,27 @@
+# Category keyword rules for the sample theme pack.
+#
+# score_articles.py reads category_rules.<category>.<list> from this file.
+# Every list is optional; a missing list is empty, and with no egg relevance
+# lists at all (required / weak_context / product_dev / product_dev_context /
+# tech_dev) the egg relevance filter is off and every egg article is kept.
+#
+# These are deliberately short, generic lists that prove the mechanism.
+# A real theme pack keeps its own, longer lists here.
+category_rules:
+  egg:
+    required: ["卵", "鶏卵", "たまご", "egg"]
+    weak_context: ["食品", "加工"]
+    product_dev: ["商品開発", "新商品"]
+    product_dev_context: ["食品メーカー", "製造"]
+    off_topic: ["ペット", "医療"]
+    release_only: ["新発売", "発売開始"]
+    tech_dev: ["製造技術", "品質管理", "加工技術", "製造工程"]
+    sweets_only_downrank: ["プリン", "スイーツ"]
+    consumer_only_downrank: ["レシピ", "献立"]
+    price: ["価格", "相場", "price"]
+  ai_dev:
+    tech_boost: ["llm", "api", "agent", "評価"]
+    commerce_downrank: ["sale", "coupon", "セール"]
+  food:
+    trend: ["限定", "トレンド"]
+    dev_downrank: ["製造工程"]

@@ -1,0 +1,20 @@
+# Synthetic category rules for the regression tests. The real lists belong
+# to each theme pack's rules.yaml; these only cover the words the tests use.
+category_rules:
+  egg:
+    required: ["卵", "鶏卵", "egg"]
+    weak_context: ["食品"]
+    product_dev: ["商品開発"]
+    product_dev_context: ["食品産業"]
+    off_topic: ["ペット"]
+    release_only: ["新発売"]
+    tech_dev: ["製造技術", "品質管理", "加工技術", "製造工程"]
+    sweets_only_downrank: ["プリン"]
+    consumer_only_downrank: ["レシピ"]
+    price: ["価格", "相場", "卵価", "price"]
+  ai_dev:
+    tech_boost: ["llm", "agent", "api", "evaluation"]
+    commerce_downrank: ["kindle", "sale", "coupon", "campaign"]
+  food:
+    trend: ["限定"]
+    dev_downrank: ["製造工程"]
