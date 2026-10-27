@@ -114,7 +114,7 @@ env:
 実測の内訳：`config/` と `data/` を削除した複製で `python -m unittest discover -s tests` を実行 → 65件中 **errors=2**。`NEWSROOM_CONFIG_DIR=themes/example` を与えると **errors=1**（残るのは上の表の1件目）。
 
 - [x] `grep -r "alerts/feeds" .` が `themes/example/` を含めて0件であることを確認する（実URL0件。残るヒットはダミー値・説明文・テストのみ、2026-10-03）
-- [ ] ①のキーワードが追跡ファイルに残っていないことを確認する（2026-10-03 未達：`scripts/score_articles.py`・`scripts/fetch_rss.py`・`public/i18n.js` の直書きと `themes/example/preferences.yaml` に残存。エンジンからの除去は別作業）
+- [ ] ①のキーワードが追跡ファイルに残っていないことを確認する（2026-10-03 未達：`scripts/score_articles.py`・`scripts/fetch_rss.py`・`public/i18n.js` の直書きと `themes/example/preferences.yaml` に残存。エンジンからの除去は Issue #43）
 
 ```
 git grep -n -E '新規事業|価格戦略|卵加工|domestic_ratio' -- . ':!docs' ':!WORKLOG.md'
@@ -124,7 +124,7 @@ git grep -n -E '新規事業|価格戦略|卵加工|domestic_ratio' -- . ':!docs
 
 ### Gate 4：②を無効化する（オーナーのみ・自動化不可）
 
-- [ ] **オーナー作業**：https://www.google.com/alerts で現行5本を削除し、同条件で作り直す
+- [ ] **オーナー作業**：https://www.google.com/alerts で現行5本を削除し、同条件で作り直す（2026-10-27 時点で未確認。新URLでの取得は 10/3 の実行 #13 で確認済み）
 - [ ] **オーナー作業**：新URLを `newsroom-themes` の `GOOGLE_ALERT_FEEDS` へ直接入力する
 
 **新URLをチャット・Issue・リポジトリファイルに貼らないこと。** Googleアラートに公開APIはなく、この作業は代行できない。手順は [alert-rotation.md](alert-rotation.md)。ここまで完了して初めて、履歴に残る旧URLが無害になる。
@@ -177,11 +177,11 @@ B の実装箇所は `scripts/build_site.py` の `reader_vocabulary()`（59〜69
 
 ## 8. 完了条件
 
-- [ ] スマホで当日のニュースが表示される（配信URLは従来どおり）
-- [ ] `gh-pages` の配送元が `newsroom-themes` である
-- [ ] 公開側に `config/` の実運用ファイルと `data/` の学習ファイルが存在しない
-- [ ] `grep -r "alerts/feeds" .` が0件
-- [ ] 回帰テストが全件通る
-- [ ] `newsroom-themes` の日次ワークフローが連日成功している
+- [ ] スマホで当日のニュースが表示される（配信URLは従来どおり）。Pages は 10/6 以降毎日 `gh-pages` からビルド成功（Actions API）。10/4 に配信元が main のままだった件はオーナーが修正済み。実機での再確認の記録はまだない
+- [x] `gh-pages` の配送元が `newsroom-themes` である（10/3 以降の Publish 元 SHA はすべて newsroom-themes のもの。2026-10-27 git で確認）
+- [x] 公開側に `config/` の実運用ファイルと `data/` の学習ファイルが存在しない（PR #35）
+- [x] `grep -r "alerts/feeds" .` が0件（実URLは0件。ダミー値・説明文・テストのみ残る）
+- [x] 回帰テストが全件通る
+- [x] `newsroom-themes` の日次ワークフローが連日成功している（10/3〜10/27 の自動実行 #14〜#37 すべて success、Actions API）
 - [ ] 旧Googleアラート5本が無効化され、新URLがSecretに入っている
-- [ ] §5 の判断が記録され、選んだ案が実装されている
+- [x] §5 の判断が記録され、選んだ案が実装されている（案B：公開HTMLの語彙は当日の記事に出現する語のみ。PR #30）
