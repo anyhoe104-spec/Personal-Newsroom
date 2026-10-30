@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import yaml
 from pathlib import Path
 
-from newsroom_config import category_keys, config_path, state_path, theme_categories
+from newsroom_config import category_keys, config_path, state_path, theme_categories, translation_categories
 from newsroom_logging import get_logger, log_capped, log_suppression_summary
 
 
@@ -99,7 +99,7 @@ def main() -> None:
     translation_articles = [
         article
         for article in sorted(
-            [article for article in articles if article.get("category") in {"ai_dev", "egg"}],
+            [article for article in articles if article.get("category") in translation_categories()],
             key=lambda item: item.get("score", 0),
             reverse=True,
         )[:20]

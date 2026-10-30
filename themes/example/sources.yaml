@@ -7,9 +7,14 @@
 # No Google Alert feeds here. Those are personal, cannot be rotated, and belong
 # in a private theme pack that injects them through url_env. See README.
 #
-# The category keys below (business / food / ai_dev / egg) are currently fixed:
-# the pipeline and the page still hardcode them. A theme pack can change the
-# labels and the sources, but not yet the set of keys.
+# Categories are listed in display order; keys must match ^[a-z][a-z0-9_]*$.
+# Each category may also set:
+#   profile           extra rules from rules.yaml: ai_dev | food | egg (default: none)
+#   translate         send English articles to the translation batch (default: false)
+#   preserve_subject  a translated title must keep the original subject (default: false)
+#   source_limit      most of the 10 articles one source may fill (default: no limit)
+# The keys business / food / ai_dev / egg keep their historical defaults when
+# these are left out, which is why this pack does not set them.
 categories:
   business:
     label: "経済・ビジネス"
