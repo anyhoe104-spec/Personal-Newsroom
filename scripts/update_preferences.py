@@ -5,14 +5,13 @@ from collections import Counter
 from pathlib import Path
 
 import yaml
-from newsroom_config import state_path
+from newsroom_config import category_keys, state_path
 from newsroom_logging import get_logger
 
 ROOT = Path(__file__).resolve().parents[1]
 FEEDBACK_PATH = state_path("feedback.json")
 LEARNED_PATH = state_path("learned.yaml")
 LOG = get_logger()
-CATEGORIES = ("business", "food", "ai_dev", "egg")
 
 
 def learned_preferences(prefs: dict, feedback: dict) -> dict:
@@ -21,7 +20,7 @@ def learned_preferences(prefs: dict, feedback: dict) -> dict:
     Re-running is idempotent; retracting or reversing a vote removes its influence.
     Browser-local learning works without uploading this optional feedback export.
     """
-    for category in CATEGORIES:
+    for category in category_keys():
         tags = Counter()
         rows = feedback.get(category, [])
         latest = {}

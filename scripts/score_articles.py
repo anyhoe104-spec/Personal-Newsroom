@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from newsroom_config import config_path, state_path
+from newsroom_config import category_keys, config_path, state_path
 from newsroom_logging import get_logger
 
 
@@ -363,10 +363,10 @@ def main() -> None:
     articles = enforce_category_limits(articles, 10)
     display_counts = count_by_category(articles)
     fallback_counts = fallback_count_by_category(articles)
-    for category in ("business", "food", "ai_dev", "egg"):
+    for category in category_keys():
         LOG.info(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
     LOG.info("=== Personal Newsroom Score Summary ===")
-    for category in ("business", "food", "ai_dev", "egg"):
+    for category in category_keys():
         LOG.info(
             f"{category}: input={input_counts.get(category, 0)}, "
             f"displayed={display_counts.get(category, 0)}, "

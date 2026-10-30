@@ -73,6 +73,35 @@ def state_path(filename: str) -> Path:
     return state_dir() / filename
 
 
+# The four categories every pack used before categories became theme data.
+# Used only when no sources.yaml can be read, so an unconfigured checkout and
+# the regression tests keep their old shape.
+DEFAULT_CATEGORY_KEYS = ("business", "food", "ai_dev", "egg")
+CATEGORY_KEY_PATTERN = r"^[a-z][a-z0-9_]{0,39}$"
+
+
+def theme_categories() -> dict:
+    """The ``categories`` mapping of the theme pack's sources.yaml ({} without one)."""
+    import yaml
+
+    path = config_path("sources.yaml")
+    if not path.exists():
+        return {}
+    return (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("categories") or {}
+
+
+def category_keys() -> tuple[str, ...]:
+    """Category keys in display order, as the theme pack's sources.yaml lists them."""
+    import re
+
+    categories = theme_categories()
+    keys = tuple(str(key) for key in categories)
+    invalid = [key for key in keys if not re.match(CATEGORY_KEY_PATTERN, key)]
+    if invalid:
+        raise ValueError(f"category keys must match {CATEGORY_KEY_PATTERN}: {invalid}")
+    return keys or DEFAULT_CATEGORY_KEYS
+
+
 def feed_bundle() -> dict[str, str]:
     """Parse ``GOOGLE_ALERT_FEEDS`` into a name-to-URL mapping.
 

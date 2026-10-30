@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import yaml
 from pathlib import Path
 
-from newsroom_config import config_path, state_path
+from newsroom_config import category_keys, config_path, state_path, theme_categories
 from newsroom_logging import get_logger, log_capped, log_suppression_summary
 
 
@@ -94,7 +94,7 @@ def shell_digest(directory: Path) -> str:
 def main() -> None:
     articles = load_articles()
     display_counts = count_by_category(articles)
-    for category in ("business", "food", "ai_dev", "egg"):
+    for category in category_keys():
         LOG.info(f"[display_summary] {category}: displayed={display_counts.get(category, 0)}")
     translation_articles = [
         article
@@ -126,19 +126,19 @@ def main() -> None:
         if translation_usable(article)
     )
     LOG.info("=== Personal Newsroom Build Summary ===")
-    for category in ("business", "food", "ai_dev", "egg"):
+    for category in category_keys():
         LOG.info(f"{category}: displayed={display_counts.get(category, 0)}")
     LOG.info(
         "Translation render check: "
         f"final_display_translated_count={translated_articles}, "
         f"final_display_untranslated_count={len(translation_articles) - translated_articles}"
     )
-    category_order = ["business", "food", "ai_dev", "egg"]
+    category_order = list(category_keys())
+    theme = theme_categories()
+    # The theme's label is the name shown on the tabs; article data is only a fallback.
     categories = {
-        key: next(
-            (a.get("category_label") or key for a in articles if a.get("category") == key),
-            key,
-        )
+        key: str((theme.get(key) or {}).get("label") or "")
+        or next((a.get("category_label") or key for a in articles if a.get("category") == key), key)
         for key in category_order
     }
     payload = {
