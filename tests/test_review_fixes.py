@@ -17,7 +17,7 @@ class ReviewFixTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             assets = ("app.js", "learning.js", "i18n.js", "style.css", "pwa.js",
-                      "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png")
+                      "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "policy.html")
             for name in assets:
                 (root / name).write_bytes(name.encode())
             original = build_site.shell_digest(root)

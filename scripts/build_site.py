@@ -87,7 +87,7 @@ def reader_vocabulary(articles: list[dict]) -> dict:
 def shell_digest(directory: Path) -> str:
     # Daily news is network-first and must not invalidate all static assets.
     names = ("app.js", "learning.js", "i18n.js", "style.css", "pwa.js",
-             "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png")
+             "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "policy.html")
     return hashlib.sha256(b"".join((directory / name).read_bytes() for name in names)).hexdigest()[:16]
 
 
@@ -199,6 +199,7 @@ def main() -> None:
     <div class="dialog-heading"><h2 id="settingsTitle" data-i18n="reader.settings">設定</h2><button id="closeSettings" type="button" data-i18n="reader.close">閉じる</button></div>
     <p id="settingsStatus" role="status" aria-live="polite"></p>
     <p data-i18n="reader.privacy"></p>
+    <p><a id="policyLink" href="./policy.html" data-i18n="reader.policy_link"></a></p>
     <label class="setting-row"><span data-i18n="reader.learning"></span><input id="learningToggle" type="checkbox"></label>
     <label class="setting-row"><span data-i18n="reader.compact"></span><input id="compactToggle" type="checkbox"></label>
     <label class="setting-row"><span data-i18n="reader.theme"></span><select id="theme"><option value="system" data-i18n="reader.system"></option><option value="light" data-i18n="reader.light"></option><option value="dark" data-i18n="reader.dark"></option></select></label>
