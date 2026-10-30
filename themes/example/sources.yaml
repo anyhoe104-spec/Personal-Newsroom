@@ -14,12 +14,13 @@ categories:
   business:
     label: "経済・ビジネス"
     sources:
-      - name: "NHK 経済"
-        source_type: "rss"
-        url: "https://www3.nhk.or.jp/rss/news/cat5.xml"
+      # NHK 経済 (cat5.xml) は 2026-08-07 から更新が止まっているため外した（#41）。
       - name: "ITmedia ビジネス"
         source_type: "rss"
         url: "https://rss.itmedia.co.jp/rss/2.0/business.xml"
+      - name: "東洋経済オンライン"
+        source_type: "rss"
+        url: "https://toyokeizai.net/list/feed/rss"
   food:
     label: "スイーツ・飲食"
     focus: "外食、スイーツ、新商品、限定メニュー"

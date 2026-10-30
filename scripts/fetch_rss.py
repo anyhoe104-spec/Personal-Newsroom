@@ -68,6 +68,7 @@ anthropic_last_matched_count = 0
 anthropic_last_generic_translation_count = 0
 RUN_STATS: dict[str, Any] = {
     "rss_sources": [],
+    "stale_sources": [],
     "fallback_by_category": {},
     "ai_translation": {
         "api_key_present": False,
@@ -152,6 +153,27 @@ def record_source_result(category: str, source: dict, fetched_count: int, failed
         log_safe(f"[rss_zero] {category} / {source_name} / {source_type}: 0 articles", logging.WARNING)
     else:
         log_safe(f"[rss_summary] {category} / {source_name} / {source_type}: fetched={fetched_count}")
+
+
+def record_stale_source(category: str, source: dict, entries: list[dict]) -> None:
+    # A feed that answers but has nothing recent has usually stopped updating.
+    # Without this it only shows up as a zero-count source, which also covers
+    # feeds that are merely quiet. NHK cat5.xml froze on 2026-08-07 and was
+    # shown as current news until the freshness filter arrived.
+    dates = [date for date in (parse_date(entry) for entry in entries) if date]
+    newest = max(dates)[:10] if dates else "unknown"
+    stale = {
+        "category": category,
+        "source": source.get("name", source.get("url", "unknown")),
+        "entries": len(entries),
+        "newest": newest,
+    }
+    RUN_STATS["stale_sources"].append(stale)
+    log_safe(
+        f"[rss_stale] {category} / {stale['source']}: all {stale['entries']} entries older than "
+        f"{MAX_ARTICLE_AGE_DAYS} days or undated (newest={newest})",
+        logging.WARNING,
+    )
 
 
 def count_by_category(articles: list[dict]) -> dict[str, int]:
@@ -1118,6 +1140,8 @@ def fetch_source(source: dict, category_key: str, category_label: str) -> list[d
     entries = collector(source)
     recent = [entry for entry in entries if recent_entry(entry)]
     LOG.info(f"[freshness] {category_key} / {source['name']}: kept={len(recent)}, excluded={len(entries) - len(recent)}, max_age_days={MAX_ARTICLE_AGE_DAYS}")
+    if entries and not recent:
+        record_stale_source(category_key, source, entries)
     articles = []
     for entry in recent:
         article = normalize_entry(entry, source, category_key, category_label)
@@ -1536,6 +1560,11 @@ def print_fetch_run_summary(articles: list[dict]) -> None:
         LOG.info("RSS zero_count_sources:")
         for result in zero_sources:
             LOG.info(f"- {result['category']} / {result['source']} / {result['source_type']}")
+
+    if RUN_STATS["stale_sources"]:
+        LOG.info("RSS stale_sources (feed answers but nothing is recent; check whether it stopped updating):")
+        for stale in RUN_STATS["stale_sources"]:
+            LOG.info(f"- {stale['category']} / {stale['source']}: entries={stale['entries']}, newest={stale['newest']}")
 
     ai = RUN_STATS["ai_translation"]
     LOG.info("AI translation:")
