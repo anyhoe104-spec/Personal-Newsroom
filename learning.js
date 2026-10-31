@@ -3,7 +3,21 @@
   'use strict';
   const KEY = 'personal-newsroom-state-v2';
   const LEGACY = 'personal-newsroom-feedback-v1';
-  const categories = ['business', 'food', 'ai_dev', 'egg'];
+  // Display order comes from the page (the theme's sources.yaml via build_site).
+  // Stored data is validated by key shape, not this list, so votes for a
+  // category the theme no longer shows are kept rather than rejected.
+  const DEFAULT_CATEGORIES = ['business', 'food', 'ai_dev', 'egg'];
+  const CATEGORY_KEY = /^[a-z][a-z0-9_]{0,39}$/;
+  const validCategory = c => typeof c === 'string' && CATEGORY_KEY.test(c);
+  function pageCategories() {
+    try {
+      const node = root.document && root.document.getElementById('newsData');
+      const keys = node ? Object.keys(JSON.parse(node.textContent).categories || {}).filter(validCategory) : [];
+      return keys.length ? keys : DEFAULT_CATEGORIES;
+    } catch { return DEFAULT_CATEGORIES; }
+  }
+  const categories = pageCategories();
+  const withStored = (...sources) => [...new Set([...categories, ...sources.flatMap(x => object(x) ? Object.keys(x).filter(validCategory) : [])])];
   const empty = () => ({ version: 2, feedback: {}, saved: {}, read: {}, tags: {}, settings: { learning: true, theme: 'system', compact: false } });
   const object = x => x && typeof x === 'object' && !Array.isArray(x);
   const text = x => typeof x === 'string' ? x.slice(0, 2000) : '';
@@ -15,7 +29,7 @@
   }
   function sample(a) { return a.source_type === 'fallback' || /example\.com|fallback sample/i.test(`${a.url} ${a.source}`); }
   function article(a) {
-    if (!object(a) || !text(a.id) || !categories.includes(a.category)) throw Error('invalid');
+    if (!object(a) || !text(a.id) || !validCategory(a.category)) throw Error('invalid');
     return { id: text(a.id), category: a.category, title: text(a.title), source: text(a.source),
       url: safeURL(a.url), published_at: text(a.published_at), translated_title: text(a.translated_title),
       summary: Array.isArray(a.translated_summary) && a.translated_summary.length ? a.translated_summary.slice(0, 3).map(text) : Array.isArray(a.summary) ? a.summary.slice(0, 3).map(text) : [], impact: text(a.impact),
@@ -28,8 +42,8 @@
     const state = empty();
     if (input.version !== undefined && input.version !== 2) throw Error('version');
     const feedback = input.version === 2 ? input.feedback : input;
-    if (!object(feedback) || Object.keys(feedback).some(k => !categories.includes(k))) throw Error('invalid');
-    for (const category of categories) {
+    if (!object(feedback) || Object.keys(feedback).some(k => !validCategory(k))) throw Error('invalid');
+    for (const category of withStored(feedback)) {
       const rows = feedback[category] || [];
       if (!Array.isArray(rows) || rows.length > 10000) throw Error('limit');
       const votes = new Map();
@@ -46,10 +60,10 @@
       if (!object(input[field]) || Object.keys(input[field]).length > 10000) throw Error('invalid');
       for (const [key, value] of Object.entries(input[field])) {
         if (field === 'saved') { const a = article(value); if (key !== idKey(a)) throw Error('invalid'); state.saved[key] = a; }
-        else { if (!/^(business|food|ai_dev|egg):.+/.test(key) || !validDate(value)) throw Error('invalid'); state.read[key] = value; }
+        else { if (!/^[a-z][a-z0-9_]{0,39}:.+/.test(key) || !validDate(value)) throw Error('invalid'); state.read[key] = value; }
       }
     }
-    for (const category of categories) {
+    for (const category of withStored(input.tags)) {
       const tags = input.tags?.[category] || [];
       if (!Array.isArray(tags) || tags.length > 30 || tags.some(v => typeof v !== 'string' || v.length < 2 || v.length > 50)) throw Error('invalid');
       state.tags[category] = words(tags);
@@ -115,7 +129,7 @@
         const incoming = normalize(input);
         const merge = next => {
           if (input.version === 2) next.settings = incoming.settings;
-          for (const c of categories) {
+          for (const c of withStored(next.feedback, incoming.feedback, next.tags, incoming.tags)) {
             const rows = new Map((next.feedback[c] || []).map(v => [v.id, v]));
             for (const v of incoming.feedback[c] || []) if (!rows.has(v.id) || Date.parse(rows.get(v.id).at) < Date.parse(v.at)) rows.set(v.id, v);
             next.feedback[c] = [...rows.values()];

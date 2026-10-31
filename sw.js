@@ -1,5 +1,5 @@
-const CACHE = 'newsroom-shell-c414a2d9e256d3a6';
-const ASSETS = ['./', './index.html', './style.css', './i18n.js', './learning.js', './app.js', './pwa.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
+const CACHE = 'newsroom-shell-9393dfab1838f119';
+const ASSETS = ['./', './index.html', './style.css', './i18n.js', './learning.js', './app.js', './pwa.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './policy.html'];
 const allowed = new Set(ASSETS.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

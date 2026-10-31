@@ -56,3 +56,4 @@ dialog { width:min(520px,calc(100% - 24px)); max-height:85dvh; padding:24px; bor
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; animation:none !important; transition:none !important; } }
 
 #refreshRanking[data-pending="true"] { border-color:var(--accent); }
+.policy { max-width:760px; padding-top:24px; }.policy h1 { font-size:24px; }.policy h2 { font-size:17px; margin-top:28px; }.policy li { margin-bottom:8px; }
