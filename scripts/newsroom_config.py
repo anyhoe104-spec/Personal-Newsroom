@@ -80,6 +80,9 @@ DEFAULT_CATEGORY_KEYS = ("business", "food", "ai_dev", "egg")
 CATEGORY_KEY_PATTERN = r"^[a-z][a-z0-9_]{0,39}$"
 
 
+_THEME_CACHE: dict[tuple[str, float], dict] = {}
+
+
 def theme_categories() -> dict:
     """The ``categories`` mapping of the theme pack's sources.yaml ({} without one)."""
     import yaml
@@ -87,7 +90,47 @@ def theme_categories() -> dict:
     path = config_path("sources.yaml")
     if not path.exists():
         return {}
-    return (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("categories") or {}
+    key = (str(path), path.stat().st_mtime)
+    if key not in _THEME_CACHE:
+        _THEME_CACHE.clear()
+        _THEME_CACHE[key] = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("categories") or {}
+    return _THEME_CACHE[key]
+
+
+# Category behaviour a theme can set per category in sources.yaml:
+#   profile           scoring/localisation rules to apply: "ai_dev", "food", "egg" or none
+#   translate         send English articles to the Anthropic translation batch
+#   preserve_subject  a translated title must keep the original's ASCII subject
+#   source_limit      most articles one source may fill in the category's 10
+# Unset fields fall back to what these four keys always did, so existing packs
+# behave exactly as before; any other key starts with no special behaviour.
+CATEGORY_PROFILES = ("ai_dev", "food", "egg")
+LEGACY_CATEGORY_SETTINGS = {
+    "business": {"source_limit": 6},
+    "food": {"profile": "food", "source_limit": 6},
+    "ai_dev": {"profile": "ai_dev", "translate": True, "preserve_subject": True, "source_limit": 4},
+    "egg": {"profile": "egg", "translate": True, "source_limit": 5},
+}
+
+
+def category_settings(key: str) -> dict:
+    settings = {"profile": None, "translate": False, "preserve_subject": False, "source_limit": None}
+    settings.update(LEGACY_CATEGORY_SETTINGS.get(key, {}))
+    theme = theme_categories().get(key) or {}
+    for field in settings:
+        if field in theme:
+            settings[field] = theme[field]
+    if settings["profile"] not in (None, *CATEGORY_PROFILES):
+        raise ValueError(f"category {key}: profile must be one of {CATEGORY_PROFILES} or empty")
+    return settings
+
+
+def category_profile(key: str | None) -> str | None:
+    return category_settings(str(key)).get("profile") if key else None
+
+
+def translation_categories() -> tuple[str, ...]:
+    return tuple(key for key in category_keys() if category_settings(key)["translate"])
 
 
 def category_keys() -> tuple[str, ...]:

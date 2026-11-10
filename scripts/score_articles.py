@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from newsroom_config import category_keys, config_path, state_path
+from newsroom_config import category_keys, category_profile, category_settings, config_path, state_path
 from newsroom_logging import get_logger
 
 
@@ -141,9 +141,9 @@ def normalized_duplicate_key(article: dict) -> str:
 
 
 def category_quality_adjustment(article: dict) -> float:
-    category = article.get("category")
+    profile = category_profile(article.get("category"))
     text = article_text(article)
-    if category == "ai_dev":
+    if profile == "ai_dev":
         tech_hits = keyword_hits(text, AI_TECH_BOOST_KEYWORDS)
         commerce_hits = keyword_hits(text, AI_COMMERCE_DOWNRANK_KEYWORDS)
         adjustment = min(0.18, tech_hits * 0.035) - min(0.36, commerce_hits * 0.09)
@@ -152,11 +152,11 @@ def category_quality_adjustment(article: dict) -> float:
         elif commerce_hits >= 2:
             adjustment -= 0.08
         return adjustment
-    if category == "food":
+    if profile == "food":
         trend_hits = keyword_hits(text, FOOD_TREND_KEYWORDS)
         dev_hits = keyword_hits(text, FOOD_DEV_DOWNRANK_KEYWORDS)
         return min(0.12, trend_hits * 0.025) - min(0.12, dev_hits * 0.035)
-    if category == "egg":
+    if profile == "egg":
         tech_hits = keyword_hits(text, EGG_TECH_DEV_KEYWORDS)
         sweets_hits = keyword_hits(text, EGG_SWEETS_ONLY_DOWNRANK_KEYWORDS)
         consumer_hits = keyword_hits(text, EGG_CONSUMER_ONLY_DOWNRANK_KEYWORDS)
@@ -235,12 +235,13 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
     recency = recency_score(article.get("published_at", ""))
     learned = (feedback_score(article, feedback.get(category, [])) + 1) / 2
 
+    profile = category_profile(category)
     egg_price_penalty = 0.0
     egg_relevance = 1.0
     article["category_relevance"] = 1.0
-    if category == "egg" and any(kw in text for kw in EGG_PRICE_KEYWORDS):
+    if profile == "egg" and any(kw in text for kw in EGG_PRICE_KEYWORDS):
         egg_price_penalty = weights.get("egg_price_weight", 0.05)
-    if category == "egg":
+    if profile == "egg":
         egg_relevance = egg_article_relevance(article)
         article["category_relevance"] = egg_relevance
     category_adjustment = category_quality_adjustment(article)
@@ -254,7 +255,7 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
         + category_adjustment
         - egg_price_penalty
     )
-    if category == "egg":
+    if profile == "egg":
         score *= egg_relevance
     score_value = round(max(0, min(100, score * 100)), 1)
     if article.get("source_type") == "fallback":
@@ -263,15 +264,8 @@ def score_article(article: dict, prefs: dict, feedback: dict) -> float:
 
 
 def source_limit_for_category(category: str) -> int | None:
-    if category == "business":
-        return 6
-    if category == "ai_dev":
-        return 4
-    if category == "egg":
-        return 5
-    if category == "food":
-        return 6
-    return None
+    limit = category_settings(category)["source_limit"]
+    return int(limit) if limit else None
 
 
 def select_category_articles(
